@@ -21,21 +21,48 @@ class DocumentFormat(str, Enum):
 
 
 class ElementType(str, Enum):
-    """Types of document elements."""
+    """Types of document elements.
 
+    Based on Unstructured.io's element taxonomy with extensions for
+    scientific and technical documents.
+    """
+
+    # Primary text elements
     TITLE = "title"
-    HEADING = "heading"
-    PARAGRAPH = "paragraph"
+    NARRATIVE_TEXT = "narrative_text"  # Well-formed sentences (Unstructured standard)
+    LIST_ITEM = "list_item"  # Individual list items
+
+    # Structural elements
+    HEADER = "header"
+    FOOTER = "footer"
+    PAGE_BREAK = "page_break"
+    PAGE_NUMBER = "page_number"
+
+    # Rich content elements
     TABLE = "table"
-    LIST = "list"
     IMAGE = "image"
+    FIGURE_CAPTION = "figure_caption"
     FORMULA = "formula"
-    CODE = "code"
-    CAPTION = "caption"
+    CODE_SNIPPET = "code_snippet"
+
+    # Metadata elements
+    ADDRESS = "address"
+    EMAIL_ADDRESS = "email_address"
+
+    # Legacy/compatibility (kept for backward compatibility)
+    HEADING = "heading"  # Alias for TITLE
+    PARAGRAPH = "paragraph"  # Alias for NARRATIVE_TEXT
+    LIST = "list"  # Container for LIST_ITEM elements
+    CODE = "code"  # Alias for CODE_SNIPPET
+    CAPTION = "caption"  # Alias for FIGURE_CAPTION
     FOOTNOTE = "footnote"
     REFERENCE = "reference"
     METADATA = "metadata"
-    UNKNOWN = "unknown"
+
+    # Special elements
+    COMPOSITE_ELEMENT = "composite_element"  # Created during chunking
+    UNCATEGORIZED_TEXT = "uncategorized_text"  # Fallback for unclassified text
+    UNKNOWN = "unknown"  # Legacy fallback
 
 
 class QualityLevel(str, Enum):
@@ -57,15 +84,60 @@ class ProcessingStatus(str, Enum):
     REQUIRES_REVIEW = "requires_review"
 
 
+class ElementMetadata(BaseModel):
+    """Enhanced metadata for document elements.
+
+    Based on Unstructured.io's metadata model with extensions for
+    hierarchy tracking, emphasis preservation, and custom extraction.
+    """
+
+    # Core metadata
+    element_id: str = Field(default_factory=lambda: str(uuid4()))
+    filename: str | None = None
+    file_directory: str | None = None
+    filetype: str | None = None
+    last_modified: str | None = None
+
+    # Spatial metadata
+    coordinates: tuple[float, float, float, float] | None = None  # x0, y0, x1, y1 (bounding box)
+    page_number: int | None = None
+    page_name: str | None = None  # For Excel sheets, etc.
+
+    # Hierarchy metadata
+    parent_id: str | None = None  # ID of parent element
+    category_depth: int | None = None  # Depth within element category (e.g., heading level)
+
+    # Content metadata
+    text_as_html: str | None = None  # HTML representation (for tables)
+    languages: list[str] = Field(default_factory=list)  # Detected languages
+    emphasized_text_contents: list[str] = Field(default_factory=list)  # Bold/italic text
+    emphasized_text_tags: list[str] = Field(default_factory=list)  # Emphasis types (b, i, etc.)
+
+    # Detection metadata
+    detection_class_prob: float | None = Field(default=None, ge=0.0, le=1.0)  # Model confidence
+
+    # Chunking metadata
+    is_continuation: bool = False  # True if element continues from previous chunk
+    orig_elements: list[str] = Field(default_factory=list)  # Original element IDs in chunk
+
+    # Custom metadata
+    regex_metadata: dict[str, Any] = Field(default_factory=dict)  # User-defined regex extractions
+
+    # Additional metadata (extensible)
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
 class DocumentElement(BaseModel):
     """A single element extracted from a document."""
 
     element_type: ElementType
     content: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    bbox: tuple[float, float, float, float] | None = None  # x0, y0, x1, y1
-    page_number: int | None = None
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    metadata: ElementMetadata = Field(default_factory=ElementMetadata)
+
+    # Legacy fields (for backward compatibility)
+    bbox: tuple[float, float, float, float] | None = None  # Deprecated: use metadata.coordinates
+    page_number: int | None = None  # Deprecated: use metadata.page_number
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)  # Deprecated: use metadata.detection_class_prob
 
     # #CRITICAL: Data Integrity: Assumes content is valid UTF-8 string
     # #VERIFY: Must validate and sanitize content to prevent encoding errors
@@ -77,6 +149,26 @@ class DocumentElement(BaseModel):
             msg = "Element content cannot be empty"
             raise ValueError(msg)
         return v
+
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        """Sync legacy fields with metadata."""
+        # Sync legacy bbox to metadata.coordinates
+        if self.bbox and not self.metadata.coordinates:
+            self.metadata.coordinates = self.bbox
+        elif self.metadata.coordinates and not self.bbox:
+            self.bbox = self.metadata.coordinates
+
+        # Sync legacy page_number to metadata.page_number
+        if self.page_number and not self.metadata.page_number:
+            self.metadata.page_number = self.page_number
+        elif self.metadata.page_number and not self.page_number:
+            self.page_number = self.metadata.page_number
+
+        # Sync legacy confidence to metadata.detection_class_prob
+        if self.confidence and not self.metadata.detection_class_prob:
+            self.metadata.detection_class_prob = self.confidence
+        elif self.metadata.detection_class_prob and not self.confidence:
+            self.confidence = self.metadata.detection_class_prob
 
 
 class Chunk(BaseModel):
