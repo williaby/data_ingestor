@@ -222,3 +222,7 @@ docs/zen/
 # Generated reports (organized)
 reports/
 zen-mcp-server/
+
+# Project-specific test data
+data/test_pdfs/
+scripts/
