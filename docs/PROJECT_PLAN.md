@@ -133,6 +133,105 @@ Build a production-grade data ingestion pipeline that:
 | FR-6.6 | Python SDK | P2 | ✅ Implemented (native API) |
 | FR-6.7 | Web UI for management | P3 | ⏳ Planned (Phase 5) |
 
+#### FR-7: Output Formats & Export
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-7.1 | JSON export with full metadata | P0 | ⏳ In Progress (Phase 1) |
+| FR-7.2 | Markdown export with preserved structure | P0 | ⏳ In Progress (Phase 1) |
+| FR-7.3 | Dual format export (JSON + Markdown) | P0 | ⏳ In Progress (Phase 1) |
+| FR-7.4 | Metadata preservation in front matter | P1 | ⏳ In Progress (Phase 1) |
+| FR-7.5 | CSV export for tabular data | P2 | ⏳ Planned (Phase 2) |
+| FR-7.6 | HTML export with styling | P3 | ⏳ Planned (Phase 3) |
+
+**Acceptance Criteria (FR-7.2 - Markdown Export)**:
+- Must preserve document structure (headings, lists, tables)
+- Must include metadata as YAML front matter
+- Must maintain text emphasis (bold, italic)
+- Must handle tables with proper markdown syntax
+- Must support LLM-friendly formatting
+- Must preserve element hierarchy
+
+**Acceptance Criteria (FR-7.3 - Dual Export)**:
+- Must export both JSON and Markdown from single command
+- Must ensure content consistency between formats
+- Must preserve all metadata in both formats
+- Must support streaming export for large documents
+
+#### FR-8: Enhanced Metadata & Enrichment
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-8.1 | Coordinate tracking (bounding boxes) | P1 | ⏳ In Progress (Phase 1) |
+| FR-8.2 | Hierarchy tracking (parent_id, depth) | P1 | ⏳ In Progress (Phase 1) |
+| FR-8.3 | Text emphasis preservation (bold, italic) | P1 | ⏳ In Progress (Phase 1) |
+| FR-8.4 | Model confidence scores | P1 | ⏳ In Progress (Phase 1) |
+| FR-8.5 | Image extraction as Base64 | P0 | ⏳ Planned (Multimodal Phase 1) |
+| FR-8.6 | Custom regex metadata extraction | P2 | ⏳ Planned (Phase 3) |
+| FR-8.7 | LLM-based image descriptions | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-8.8 | Table summarization | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-8.9 | Named Entity Recognition (NER) | P3 | ⏳ Planned (Phase 5) |
+
+#### FR-10: Multimodal RAG (Based on Alejandro AO's Architecture)
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-10.1 | Image extraction from PDFs as Base64 | P0 | ⏳ Planned (Multimodal Phase 1) |
+| FR-10.2 | Summary generation for text content | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-10.3 | Summary generation for tables | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-10.4 | Vision LLM-based image descriptions | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-10.5 | Summary-based embedding (embed summaries, not raw content) | P0 | ⏳ Planned (Multimodal Phase 2) |
+| FR-10.6 | Multi-vector store architecture (Qdrant + Document Store) | P0 | ⏳ Planned (Multimodal Phase 3) |
+| FR-10.7 | Two-stage retrieval (search summaries, fetch originals) | P0 | ⏳ Planned (Multimodal Phase 3) |
+| FR-10.8 | Multimodal LLM integration (Claude 3.5 Sonnet) | P0 | ⏳ Planned (Multimodal Phase 4) |
+| FR-10.9 | RAG query engine with image + text + table support | P0 | ⏳ Planned (Multimodal Phase 4) |
+| FR-10.10 | Conversation memory for multi-turn dialogues | P1 | ⏳ Planned (Multimodal Phase 4) |
+| FR-10.11 | Source citation with provenance tracking | P1 | ⏳ Planned (Multimodal Phase 4) |
+| FR-10.12 | Gradio demo interface for interactive exploration | P2 | ⏳ Planned (Multimodal Phase 4) |
+
+**Acceptance Criteria (FR-10.1 - Image Extraction)**:
+- Must extract images from PDFs as Base64-encoded data
+- Must preserve image metadata (size, format, position)
+- Must handle multiple image formats (JPEG, PNG, TIFF)
+- Must integrate with all three PDF parsers (PyMuPDF, PyMuPDF4LLM, Marker)
+- Must gracefully handle corrupted or encrypted images
+
+**Acceptance Criteria (FR-10.5 - Summary-Based Embedding)**:
+- Must generate concise summaries (50-200 words) for all content types
+- Must embed summaries instead of raw content for retrieval
+- Must maintain link between summaries and original content
+- Summary generation <2s per chunk
+- Embedding quality improvement >15% vs. raw content embedding
+
+**Acceptance Criteria (FR-10.6 - Multi-Vector Store)**:
+- Must separate vector store (Qdrant) from document store
+- Must link summaries to originals via chunk_id
+- Must support batch operations (1000+ chunks)
+- Retrieval must return original content, not summaries
+- Must preserve all metadata through storage/retrieval
+
+**Acceptance Criteria (FR-8.1 - Coordinates)**:
+- Must capture bounding box for all visual elements
+- Must support coordinate system transformation
+- Must preserve spatial relationships
+- Must enable visual rendering capabilities
+
+**Acceptance Criteria (FR-8.2 - Hierarchy)**:
+- Must track parent-child relationships
+- Must calculate category depth
+- Must support nested structures (lists, sections)
+- Must enable structure-aware queries
+
+#### FR-9: Source & Destination Connectors
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-9.1 | S3-compatible storage source | P2 | ⏳ Planned (Phase 4) |
+| FR-9.2 | Google Drive source connector | P2 | ⏳ Planned (Phase 4) |
+| FR-9.3 | Dropbox source connector | P3 | ⏳ Planned (Phase 5) |
+| FR-9.4 | SharePoint source connector | P3 | ⏳ Planned (Phase 5) |
+| FR-9.5 | Batch processing from connectors | P2 | ⏳ Planned (Phase 4) |
+
 ### 2. Non-Functional Requirements
 
 #### NFR-1: Performance
@@ -423,15 +522,136 @@ def process_document(
 - Documentation complete
 - User acceptance testing passed
 
-### Phase 5: Advanced Features (Week 13+)
+### Multimodal RAG Phase 1: Image Extraction (Week 13-14)
+
+**Objective**: Enable extraction of images from PDFs as Base64-encoded data
+
+**Based on**: Alejandro AO's 2025 Multimodal RAG Tutorial ([MULTIMODAL_RAG_COMPARISON.md](MULTIMODAL_RAG_COMPARISON.md))
+
+**Requirements**:
+- [ ] FR-10.1: Image extraction from PDFs as Base64
+- [ ] FR-8.5: Base64 encoding for all PDF parsers
+- [ ] Update PyMuPDFParser with `_extract_images()` method
+- [ ] Update PyMuPDF4LLMParser for image handling
+- [ ] Update MarkerParser for PIL Image to Base64 conversion
+- [ ] Image metadata capture (size, format, position)
+
+**Deliverables**:
+- Enhanced PDF parsers with image extraction
+- Unit tests for image extraction
+- Integration tests with sample PDFs containing images
+- Documentation for image handling
+
+**Exit Criteria**:
+- 100% of images extracted from test PDFs
+- No memory issues with large PDFs (>100MB, 50+ images)
+- Graceful error handling for corrupted images
+- All three parsers support image extraction
+
+**Estimated Effort**: 5 days (1 week)
+
+### Multimodal RAG Phase 2: Summary-Based Embedding (Week 15-16)
+
+**Objective**: Implement summary generation and embedding for improved retrieval
+
+**Requirements**:
+- [ ] FR-10.2-10.4: Summary generation for text, tables, images
+- [ ] FR-10.5: Summary-based embedding architecture
+- [ ] FR-8.7-8.8: LLM-based image descriptions and table summarization
+- [ ] Parallel summarization chains (text LLM + vision LLM)
+- [ ] Embedding module with sentence-transformers
+- [ ] Summary caching for cost optimization
+
+**Deliverables**:
+- `src/data_ingestor/embeddings/` module
+- `SummaryGenerator` class with multi-modal support
+- `SummaryBasedEmbedder` class
+- Configuration for LLM models (Haiku for text, Sonnet for vision)
+- Unit and integration tests
+- Performance benchmarks
+
+**Exit Criteria**:
+- Summary quality >8/10 (human evaluation)
+- Summary generation <2s per chunk
+- Vision LLM accurately describes images
+- API costs reduced 80% with caching
+- Embedding quality improved >15% vs. raw content
+
+**Estimated Effort**: 10 days (2 weeks)
+
+### Multimodal RAG Phase 3: Multi-Vector Store (Week 17-18)
+
+**Objective**: Implement dual-store architecture for optimal retrieval
+
+**Requirements**:
+- [ ] FR-10.6: Multi-vector store architecture
+- [ ] FR-10.7: Two-stage retrieval (summaries → originals)
+- [ ] FR-5.4: Qdrant vector store integration
+- [ ] Document store for original chunks (SQLite initially)
+- [ ] Batch operations for 1000+ chunks
+- [ ] Collection management (create, delete, update)
+
+**Deliverables**:
+- `src/data_ingestor/storage/` module
+- `MultiVectorStore` class
+- `DocumentStore` class (SQLite backend)
+- Qdrant integration with collection management
+- Configuration for Qdrant connection
+- Integration tests with end-to-end storage/retrieval
+
+**Exit Criteria**:
+- Qdrant integration working with collection management
+- Two-stage retrieval returns original content
+- Batch operations handle 1000+ chunks efficiently
+- Retrieval accuracy >85%
+- Metadata preserved through storage/retrieval
+
+**Estimated Effort**: 10 days (2 weeks)
+
+### Multimodal RAG Phase 4: RAG Query Engine (Week 19-21)
+
+**Objective**: Complete end-to-end multimodal RAG system
+
+**Requirements**:
+- [ ] FR-10.8-10.9: Multimodal LLM integration and RAG engine
+- [ ] FR-10.10: Conversation memory
+- [ ] FR-10.11: Source citation and provenance
+- [ ] FR-10.12: Gradio demo interface
+- [ ] Vision LLM integration (Claude 3.5 Sonnet)
+- [ ] Query processing with multimodal content
+- [ ] CLI query command
+- [ ] Web interface for demos
+
+**Deliverables**:
+- `src/data_ingestor/rag/` module
+- `MultimodalRAGChain` class
+- `RAGResponse` model
+- CLI `query` command
+- Gradio demo interface
+- Conversation memory implementation
+- Source citation with page numbers
+- End-to-end integration tests
+
+**Exit Criteria**:
+- Text-only queries work with high accuracy
+- Image-based queries leverage vision LLM
+- Table queries parse structure correctly
+- Answer quality >8/10 (human evaluation)
+- Response time <5s for typical queries
+- Demo interface functional and user-friendly
+
+**Estimated Effort**: 14 days (3 weeks)
+
+### Phase 5: Advanced Features (Week 22+)
 
 **Optional enhancements based on usage**:
 - Speaker diarization for videos
-- Image description generation (LLM-based)
-- Semantic chunking strategies
 - GraphRAG entity extraction
 - Custom parser plugin system
-- Web UI for management
+- Web UI for management (beyond demo)
+- Response streaming for better UX
+- Advanced conversation memory with summarization
+- Query optimization and caching
 
 ---
 
@@ -612,6 +832,11 @@ def process_document(
 | 2025-11-02 | Implement parser fallback chains | Reliability and quality | Higher success rate |
 | 2025-11-02 | Token-based chunking first | Simpler to implement, adequate for Phase 1 | Faster delivery |
 | 2025-11-02 | Response-Aware Development | Risk mitigation, code quality | Better maintainability |
+| 2025-11-03 | Adopt Alejandro AO's multimodal RAG patterns | Proven architecture, better retrieval quality | Comprehensive multimodal support |
+| 2025-11-03 | Summary-based embedding over raw content | Improved retrieval accuracy (>15%), reduced storage | Better RAG performance |
+| 2025-11-03 | Multi-vector store architecture | Optimal search and retrieval separation | Scalable retrieval system |
+| 2025-11-03 | Claude 3.5 Sonnet for vision tasks | Superior multimodal capabilities, better quality | High-quality image understanding |
+| 2025-11-03 | Qdrant for vector storage | Open-source, excellent performance, self-hostable | Cost-effective, production-ready |
 
 ### B. Technology Stack
 
@@ -632,6 +857,12 @@ def process_document(
 - PostgreSQL (Metadata)
 - Docker (Containerization)
 
+**Multimodal RAG**:
+- Qdrant (Vector store)
+- sentence-transformers (Embeddings)
+- Anthropic Claude 3.5 (Vision + Summarization)
+- Gradio (Demo interface)
+
 **Quality Assurance**:
 - Pytest (Testing)
 - Black, Ruff (Linting)
@@ -645,14 +876,24 @@ def process_document(
 - **Chunk**: A segmented portion of document content optimized for vector embedding
 - **Parser**: A component that extracts structured data from a specific document format
 - **Token**: A unit of text used by LLMs (approximately 4 characters)
+- **Multimodal RAG**: RAG system that handles text, images, and tables together
+- **Summary-Based Embedding**: Embedding summaries instead of raw content for improved retrieval
+- **Multi-Vector Store**: Architecture with separate stores for summaries and original content
+- **Vision LLM**: Language model with image understanding capabilities
+- **Two-Stage Retrieval**: Search summaries, fetch originals
 
 ---
 
 **Document Control**:
-- **Version**: 1.0
-- **Last Updated**: 2025-11-02
-- **Next Review**: End of Phase 1
-- **Approval Status**: Draft → Review → Approved → Active
+- **Version**: 2.0
+- **Last Updated**: 2025-11-03
+- **Next Review**: End of Multimodal Phase 1
+- **Approval Status**: Updated with Multimodal RAG Roadmap
 
 **Change Log**:
 - 2025-11-02: Initial version created
+- 2025-11-03: Added Multimodal RAG phases (FR-10) based on Alejandro AO's architecture
+- 2025-11-03: Updated priorities for image extraction and summarization (FR-8.5, FR-8.7, FR-8.8)
+- 2025-11-03: Added 4 new implementation phases for multimodal RAG (Weeks 13-21)
+- 2025-11-03: Updated technology stack with Qdrant, Claude 3.5, Gradio
+- 2025-11-03: Referenced new documentation: MULTIMODAL_RAG_COMPARISON.md and MULTIMODAL_RAG_ROADMAP.md

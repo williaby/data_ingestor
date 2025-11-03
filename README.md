@@ -8,11 +8,16 @@ A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation)
 ## Features
 
 - **Multi-format Support**: PDF, DOCX, HTML, Video, Audio
-- **Intelligent Chunking**: Token-based and element-based chunking strategies
+- **Dual Output Formats**: Export as JSON, Markdown, or both with metadata preservation
+- **Advanced Chunking Strategies**:
+  - Token-based chunking with overlap
+  - Section-aware chunking (by_title) that preserves document structure
+- **Enhanced Element Types**: 15+ element types including formulas, code snippets, and hierarchical structures
+- **Rich Metadata Model**: Coordinates, hierarchy tracking, emphasis preservation, and confidence scores
 - **Parser Fallback Chains**: Automatic fallback to alternative parsers on failure
 - **Format Detection**: Automatic document format detection using multiple strategies
 - **Deduplication**: Hash-based duplicate detection
-- **CLI Interface**: Easy-to-use command-line interface
+- **CLI Interface**: Easy-to-use command-line interface with extensive options
 - **REST API**: FastAPI-based API endpoints (coming soon)
 
 ## Quick Start
@@ -43,6 +48,18 @@ poetry install --with advanced-pdf
 # Process a PDF and output to JSON
 poetry run data-ingestor process document.pdf --output output.json
 
+# Process and export as Markdown
+poetry run data-ingestor process document.pdf --format markdown --output output.md
+
+# Export both JSON and Markdown
+poetry run data-ingestor process document.pdf --format both --output document
+
+# Use section-aware chunking (preserves document structure)
+poetry run data-ingestor process document.pdf --chunking-strategy by_title --output output.json
+
+# Combine small sections (by_title only)
+poetry run data-ingestor process document.pdf --chunking-strategy by_title --combine-under 500 --output output.json
+
 # Check parser health
 poetry run data-ingestor health
 ```
@@ -54,7 +71,8 @@ from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
 from data_ingestor.parsers.pdf_parser import PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
-from data_ingestor.chunking.token_chunker import TokenChunker
+from data_ingestor.chunking import TokenChunker, ByTitleChunker, ChunkingStrategy
+from data_ingestor.export import DocumentExporter, OutputFormat
 
 # Initialize and process
 settings = Settings()
@@ -64,10 +82,32 @@ router.parser_registry.register(PyMuPDFParser(), [DocumentFormat.PDF])
 document, result = router.process_document(source_path="document.pdf")
 print(f"Extracted {len(document.elements)} elements")
 
-# Chunk the document
-chunker = TokenChunker(chunk_size=1000, chunk_overlap=200)
-chunks = chunker.chunk_document(document)
+# Option 1: Token-based chunking (basic strategy)
+token_chunker = TokenChunker(chunk_size=1000, chunk_overlap=200)
+chunks = token_chunker.chunk_document(document)
 print(f"Created {len(chunks)} chunks")
+
+# Option 2: Section-aware chunking (by_title strategy)
+section_chunker = ByTitleChunker(
+    chunk_size=1000,
+    chunk_overlap=200,
+    combine_text_under_n_chars=500,  # Combine small sections
+    respect_page_boundaries=False,    # Optional page boundary respect
+)
+chunks = section_chunker.chunk_document(document)
+document.chunks = chunks
+
+# Export in different formats
+exporter = DocumentExporter()
+
+# Export as JSON
+json_data = exporter.to_json(document)
+
+# Export as Markdown with YAML front matter
+markdown = exporter.to_markdown(document, include_chunks=True)
+
+# Export both formats
+json_data, markdown = exporter.export(document, OutputFormat.BOTH)
 ```
 
 ## Architecture
@@ -75,8 +115,34 @@ print(f"Created {len(chunks)} chunks")
 - **Document Router**: Routes documents to appropriate parsers with fallback support
 - **Parser Registry**: Manages multiple parsers per format with priority ordering
 - **Format Detector**: Detects document format using libmagic and file extensions
-- **Token Chunker**: Intelligent document segmentation with overlap
+- **Chunking Strategies**:
+  - **Token Chunker**: Token-based segmentation with overlap
+  - **By-Title Chunker**: Section-aware chunking that preserves document structure
+- **Document Exporter**: Export to JSON, Markdown, or both with metadata preservation
+- **Enhanced Element Types**: 15+ element types with rich metadata
 - **Quality Assessor**: Validates extraction quality (coming soon)
+
+### Element Types
+
+The system supports 15+ element types based on Unstructured.io's taxonomy:
+
+**Text Elements**: `TITLE`, `NARRATIVE_TEXT`, `LIST_ITEM`, `HEADER`, `FOOTER`
+
+**Rich Content**: `TABLE`, `IMAGE`, `FIGURE_CAPTION`, `FORMULA`, `CODE_SNIPPET`
+
+**Metadata Elements**: `ADDRESS`, `EMAIL_ADDRESS`, `PAGE_BREAK`, `PAGE_NUMBER`
+
+**Special**: `COMPOSITE_ELEMENT` (chunking), `UNCATEGORIZED_TEXT`
+
+### Enhanced Metadata
+
+Each element includes comprehensive metadata:
+
+- **Spatial**: Bounding box coordinates, page numbers
+- **Hierarchy**: Parent-child relationships, category depth
+- **Content**: HTML representations (tables), text emphasis tracking
+- **Detection**: Model confidence scores
+- **Custom**: User-defined regex extractions
 
 ### PDF Parser Comparison
 
@@ -100,7 +166,11 @@ The system uses a **fallback chain** strategy with three PDF parsers:
 - [x] Parser fallback chains
 - [x] GPU detection and CPU fallback
 - [x] Token-based chunking
-- [x] CLI interface
+- [x] **Section-aware chunking (by_title)**
+- [x] **Dual output formats (JSON + Markdown)**
+- [x] **Enhanced element types (15+ types)**
+- [x] **Rich metadata model with hierarchy and coordinates**
+- [x] CLI interface with extensive options
 - [x] Format detection
 
 **Phase 2 (Next)**: Multi-format expansion
