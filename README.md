@@ -23,8 +23,19 @@ A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation)
 # Clone and install
 git clone https://github.com/Byron/data_ingestor.git
 cd data_ingestor
+
+# Basic installation (PyMuPDF parsers)
 poetry install
+
+# With advanced PDF processing (Marker - requires GPU for best performance)
+poetry install --with advanced-pdf
+
+# For CPU-only systems (Marker will still work but slower)
+poetry install --with advanced-pdf
+# Then: export CUDA_VISIBLE_DEVICES=""  # Force CPU mode
 ```
+
+**Note**: Marker provides the highest quality PDF extraction (especially for tables and formulas) but requires ~2GB of model downloads on first use. The system automatically falls back to PyMuPDF if Marker is not installed.
 
 ### Process a PDF Document
 
@@ -67,12 +78,27 @@ print(f"Created {len(chunks)} chunks")
 - **Token Chunker**: Intelligent document segmentation with overlap
 - **Quality Assessor**: Validates extraction quality (coming soon)
 
+### PDF Parser Comparison
+
+The system uses a **fallback chain** strategy with three PDF parsers:
+
+| Parser | Priority | Quality | Speed | Tables | Formulas | GPU | Installation |
+|--------|----------|---------|-------|--------|----------|-----|--------------|
+| **Marker** | Highest (10) | Excellent | Slow | ★★★★★ | ★★★★★ | Optional | `--with advanced-pdf` |
+| **PyMuPDF4LLM** | Medium (100) | Very Good | Fast | ★★★ | ★★ | No | Default |
+| **PyMuPDF** | Lowest (100) | Good | Very Fast | ★★ | ★ | No | Default |
+
+**Automatic Fallback**: If Marker fails or isn't installed, the system automatically tries PyMuPDF4LLM, then PyMuPDF. This ensures reliability while maintaining quality when possible.
+
 ## Development Status
 
 **Phase 1 (Current)**: Core foundation with PDF support
 
 - [x] Core architecture and base classes
 - [x] PDF parsing with PyMuPDF
+- [x] **PDF parsing with Marker** (advanced tables/formulas)
+- [x] Parser fallback chains
+- [x] GPU detection and CPU fallback
 - [x] Token-based chunking
 - [x] CLI interface
 - [x] Format detection
@@ -82,7 +108,7 @@ print(f"Created {len(chunks)} chunks")
 - [ ] DOCX parsing
 - [ ] Web scraping
 - [ ] Video transcription
-- [ ] Advanced PDF parsers (Marker, Docling)
+- [ ] Advanced PDF parser (Docling)
 - [ ] REST API
 
 See full [Project Plan](docs/project-plan.md) for details.

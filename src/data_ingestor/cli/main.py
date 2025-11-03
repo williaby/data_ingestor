@@ -14,7 +14,7 @@ from rich.table import Table
 from data_ingestor.chunking.token_chunker import TokenChunker
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
-from data_ingestor.parsers.pdf_parser import PyMuPDF4LLMParser, PyMuPDFParser
+from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
 
 console = Console()
@@ -76,12 +76,17 @@ def process(
         # Initialize router
         router = DocumentRouter(settings)
 
-        # Register PDF parsers
-        pdf_parser_primary = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
-        pdf_parser_fallback = PyMuPDFParser(settings.get_parser_config("pymupdf"))
+        # Register PDF parsers (in priority order: Marker → PyMuPDF4LLM → PyMuPDF)
+        marker_parser = MarkerParser(settings.get_parser_config("marker"))
+        pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
+        pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
 
-        router.parser_registry.register(pdf_parser_primary, [DocumentFormat.PDF])
-        router.parser_registry.register(pdf_parser_fallback, [DocumentFormat.PDF])
+        # Marker has priority 10 (highest quality, optional)
+        router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
+        # PyMuPDF4LLM has priority 100 (LLM-optimized, reliable)
+        router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
+        # PyMuPDF has priority 100 (fast fallback)
+        router.parser_registry.register(pymupdf_parser, [DocumentFormat.PDF])
 
         console.print(f"[bold blue]Processing document:[/bold blue] {file_path}")
 
@@ -142,12 +147,14 @@ def health(ctx: click.Context) -> None:
 
     router = DocumentRouter(settings)
 
-    # Register parsers
-    pdf_parser_primary = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
-    pdf_parser_fallback = PyMuPDFParser(settings.get_parser_config("pymupdf"))
+    # Register all PDF parsers
+    marker_parser = MarkerParser(settings.get_parser_config("marker"))
+    pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
+    pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
 
-    router.parser_registry.register(pdf_parser_primary, [DocumentFormat.PDF])
-    router.parser_registry.register(pdf_parser_fallback, [DocumentFormat.PDF])
+    router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
+    router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
+    router.parser_registry.register(pymupdf_parser, [DocumentFormat.PDF])
 
     # Get health status
     health_status = router.parser_registry.health_check()

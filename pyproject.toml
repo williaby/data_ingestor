@@ -85,8 +85,10 @@ jinja2 = "^3.1.6"
 # PDF processing
 pymupdf = "^1.24.0"
 pymupdf4llm = "^0.0.17"
-# Note: marker-pdf and docling may require separate installation or GPU dependencies
-# Install separately: pip install marker-pdf docling
+# Note: Advanced PDF processing with marker-pdf available via optional group
+# Install with: poetry install --with advanced-pdf
+# Note: docling may require separate installation
+# Install separately: pip install docling
 # DOCX processing
 python-docx = "^1.1.0"
 docx2python = "^3.1.2"
@@ -161,6 +163,15 @@ mkdocstrings = {extras = ["python"], version = "^0.24.0"}
 pytest-benchmark = ">=4.0.0"
 pytest-memray = ">=1.5.0"
 aiosqlite = "^0.21.0"
+
+[tool.poetry.group.advanced-pdf]
+optional = true
+
+[tool.poetry.group.advanced-pdf.dependencies]
+# Marker for advanced PDF processing (requires GPU for optimal performance)
+marker-pdf = "^0.2.17"
+torch = "^2.0.0"
+torchvision = "^0.15.0"
 
 
 [[tool.poetry.source]]
