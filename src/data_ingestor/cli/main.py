@@ -11,9 +11,10 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
 
-from data_ingestor.chunking.token_chunker import TokenChunker
+from data_ingestor.chunking import ByTitleChunker, ChunkingStrategy, TokenChunker
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
+from data_ingestor.export.exporter import DocumentExporter, OutputFormat
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
 
@@ -52,10 +53,24 @@ def cli(ctx: click.Context, debug: bool) -> None:
 
 @cli.command()
 @click.argument("file_path", type=click.Path(exists=True))
-@click.option("--output", "-o", type=click.Path(), help="Output file path")
-@click.option("--format", "-f", type=click.Choice(["json", "markdown", "text"]), default="json", help="Output format")
+@click.option("--output", "-o", type=click.Path(), help="Output file path (for 'both' format, creates .json and .md)")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["json", "markdown", "both", "text"]),
+    default="json",
+    help="Output format (both exports JSON and Markdown)",
+)
 @click.option("--chunk-size", type=int, default=1000, help="Chunk size in tokens")
 @click.option("--chunk-overlap", type=int, default=200, help="Chunk overlap in tokens")
+@click.option(
+    "--chunking-strategy",
+    type=click.Choice(["basic", "by_title"]),
+    default="basic",
+    help="Chunking strategy (basic: token-based, by_title: section-aware)",
+)
+@click.option("--combine-under", type=int, help="Combine sections under N characters (by_title only)")
+@click.option("--include-chunks", is_flag=True, help="Include chunks in markdown output")
 @click.pass_context
 def process(
     ctx: click.Context,
@@ -64,13 +79,24 @@ def process(
     format: str,
     chunk_size: int,
     chunk_overlap: int,
+    chunking_strategy: str,
+    combine_under: int | None,
+    include_chunks: bool,
 ) -> None:
     """Process a single document.
 
-    Example:
+    Examples:
+        # Export as JSON
         data-ingestor process document.pdf --output output.json
+
+        # Export as Markdown
+        data-ingestor process document.pdf --format markdown --output output.md
+
+        # Export both JSON and Markdown
+        data-ingestor process document.pdf --format both --output document
     """
     settings: Settings = ctx.obj["settings"]
+    exporter = DocumentExporter()
 
     try:
         # Initialize router
@@ -104,7 +130,19 @@ def process(
         # Chunk document
         if document.elements:
             console.print(f"\n[bold blue]Chunking document...[/bold blue]")
-            chunker = TokenChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+            # Select chunking strategy
+            if chunking_strategy == "by_title":
+                chunker = ByTitleChunker(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    combine_text_under_n_chars=combine_under,
+                )
+                console.print("[dim]Using by_title strategy (section-aware)[/dim]")
+            else:
+                chunker = TokenChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+                console.print("[dim]Using basic strategy (token-based)[/dim]")
+
             chunks = chunker.chunk_document(document)
             document.chunks = chunks
 
@@ -119,15 +157,23 @@ def process(
 
         # Output results
         if output:
-            output_path = Path(output)
-            if format == "json":
-                _output_json(document, output_path)
-            elif format == "markdown":
-                _output_markdown(document, output_path)
-            else:
-                _output_text(document, output_path)
+            output_format = OutputFormat(format)
 
-            console.print(f"\n[bold green]✓[/bold green] Output saved to {output}")
+            # Handle special case for include_chunks in markdown
+            if format == "markdown" and include_chunks:
+                markdown_content = exporter.to_markdown(document, include_chunks=True)
+                Path(output).write_text(markdown_content, encoding="utf-8")
+                console.print(f"\n[bold green]✓[/bold green] Markdown output saved to {output}")
+            else:
+                # Use standard export method
+                exporter.export(document, output_format, output)
+
+                if format == "both":
+                    base_name = Path(output).stem
+                    console.print(f"\n[bold green]✓[/bold green] JSON output saved to {base_name}.json")
+                    console.print(f"[bold green]✓[/bold green] Markdown output saved to {base_name}.md")
+                else:
+                    console.print(f"\n[bold green]✓[/bold green] Output saved to {output}")
         else:
             # Display preview
             _display_preview(document)
@@ -183,86 +229,6 @@ def health(ctx: click.Context) -> None:
     console.print(table)
 
 
-def _output_json(document: Any, output_path: Path) -> None:  # noqa: ANN401
-    """Output document as JSON.
-
-    Args:
-        document: Document to output
-        output_path: Output file path
-    """
-    data = {
-        "document_id": document.document_id,
-        "source_path": document.source_path,
-        "format": document.format.value,
-        "status": document.status.value,
-        "metadata": document.metadata,
-        "elements": [
-            {
-                "type": e.element_type.value,
-                "content": e.content,
-                "page_number": e.page_number,
-                "metadata": e.metadata,
-            }
-            for e in document.elements
-        ],
-        "chunks": [
-            {
-                "chunk_id": c.chunk_id,
-                "content": c.content,
-                "token_count": c.token_count,
-                "metadata": c.metadata,
-            }
-            for c in document.chunks
-        ],
-    }
-
-    with output_path.open("w") as f:
-        json.dump(data, f, indent=2)
-
-
-def _output_markdown(document: Any, output_path: Path) -> None:  # noqa: ANN401
-    """Output document as Markdown.
-
-    Args:
-        document: Document to output
-        output_path: Output file path
-    """
-    lines: list[str] = []
-
-    # Add title
-    lines.append(f"# {document.metadata.get('title', 'Document')}\n")
-
-    # Add metadata
-    lines.append("## Metadata\n")
-    for key, value in document.metadata.items():
-        lines.append(f"- **{key}**: {value}")
-    lines.append("")
-
-    # Add content
-    lines.append("## Content\n")
-    for element in document.elements:
-        if element.element_type.value == "title":
-            lines.append(f"# {element.content}\n")
-        elif element.element_type.value == "heading":
-            lines.append(f"## {element.content}\n")
-        else:
-            lines.append(f"{element.content}\n")
-
-    with output_path.open("w") as f:
-        f.write("\n".join(lines))
-
-
-def _output_text(document: Any, output_path: Path) -> None:  # noqa: ANN401
-    """Output document as plain text.
-
-    Args:
-        document: Document to output
-        output_path: Output file path
-    """
-    lines = [element.content for element in document.elements]
-
-    with output_path.open("w") as f:
-        f.write("\n\n".join(lines))
 
 
 def _display_preview(document: Any) -> None:  # noqa: ANN401
