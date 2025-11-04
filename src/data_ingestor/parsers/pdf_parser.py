@@ -3,13 +3,13 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF  # type: ignore[import-untyped]
 
 from data_ingestor.core.base import BaseParser
 from data_ingestor.core.exceptions import ParserError
-from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementType, ParserResult
+from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementMetadata, ElementType, ParserResult
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class PyMuPDFParser(BaseParser):
                                         block["bbox"][2],
                                         block["bbox"][3],
                                     ),
-                                    metadata={"font_size": font_size},
+                                    metadata=ElementMetadata(extra={"font_size": font_size}),
                                 )
                                 elements.append(element)
 
@@ -247,7 +247,7 @@ class PyMuPDF4LLMParser(BaseParser):
         start_time = time.time()
 
         try:
-            import pymupdf4llm
+            import pymupdf4llm  # type: ignore[import-untyped]
 
             # Extract markdown from PDF
             md_text = pymupdf4llm.to_markdown(document.source_path)
@@ -371,9 +371,35 @@ class MarkerParser(BaseParser):
         self._marker_available = False
         self._gpu_available = False
 
+        # LLM configuration with fallback support
+        # #CRITICAL: Model Fallback: Primary (free) model may have rate limits or availability issues
+        # #VERIFY: Fallback to paid model ensures reliability
+        import os
+
+        self.use_llm = os.getenv("MARKER_USE_LLM", "false").lower() == "true"
+        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+
+        # Primary model (free tier - Llama 4 Maverick)
+        self.llm_model_primary = os.getenv("MARKER_LLM_MODEL", "meta-llama/llama-4-maverick:free")
+
+        # Fallback model (paid tier - Gemini 2.5 Flash Lite)
+        self.llm_model_fallback = os.getenv("MARKER_LLM_FALLBACK_MODEL", "google/gemini-2.5-flash-lite")
+
+        # Enable/disable fallback
+        self.enable_fallback = os.getenv("MARKER_ENABLE_FALLBACK", "true").lower() == "true"
+
+        if self.use_llm:
+            if not self.openrouter_api_key:
+                logger.warning("MARKER_USE_LLM enabled but OPENROUTER_API_KEY not found. Disabling LLM.")
+                self.use_llm = False
+            else:
+                logger.info(f"Marker LLM enabled with primary model: {self.llm_model_primary}")
+                if self.enable_fallback:
+                    logger.info(f"Fallback model configured: {self.llm_model_fallback}")
+
         # Check availability
         try:
-            import marker  # noqa: F401
+            import marker  # noqa: F401  # type: ignore[import-untyped]
 
             self._marker_available = True
 
@@ -440,38 +466,143 @@ class MarkerParser(BaseParser):
         start_time = time.time()
 
         try:
-            from marker.convert import convert_single_pdf
-            from marker.models import load_all_models
+            # Marker 1.10.x API - completely different from 0.2.x
+            from marker.config.parser import ConfigParser
+            from marker.converters.pdf import PdfConverter
+            from marker.models import create_model_dict
 
             # Load Marker models
-            # #CRITICAL: Model Loading: First-time model download can take minutes
+            # #CRITICAL: Model Loading: First-time model download can take minutes (~2GB)
             # #VERIFY: Implement model caching and pre-loading strategy
             logger.info("Loading Marker models...")
-            model_lst = load_all_models()
 
-            # Convert PDF to markdown
+            # Create model dict with GPU if available
+            device = "cuda" if self._gpu_available else "cpu"
+            dtype_str = "float16" if self._gpu_available else "float32"
+
+            model_dict = create_model_dict(device=device, dtype=dtype_str)
+
+            # Create converter with default config
             # #ASSUME: Marker Configuration: Default configuration suitable for most PDFs
             # #VERIFY: May need custom config for specific document types
             logger.info(f"Processing {Path(document.source_path).name} with Marker...")
 
-            full_text, images, metadata = convert_single_pdf(
-                document.source_path,
-                model_lst,
-                max_pages=self.config.get("max_pages"),  # None = all pages
-                langs=self.config.get("ocr_languages", ["English"]),
-            )
+            config = {}
+            if self.config.get("max_pages"):
+                config["max_pages"] = self.config.get("max_pages")
+
+            # Quality and accuracy improvements
+            # #ASSUME: Quality Settings: These settings improve accuracy without issues
+            # #VERIFY: Monitor processing time and quality improvements
+            config["paginate_output"] = True  # Add page separators for page tracking
+            config["force_ocr"] = False  # Disabled: Too slow for real-world PDFs (was causing 20+ min hangs)
+            config["debug"] = True  # Enable debug logging for diagnostics
+
+            # Configure LLM enhancement with fallback support
+            # #CRITICAL: LLM API Configuration: API key must be valid
+            # #VERIFY: Test with actual OpenRouter API key
+            output = None
+            llm_model_used = None
+
+            if self.use_llm and self.openrouter_api_key:
+                # Try primary model first
+                try:
+                    logger.info(f"Attempting LLM enhancement with primary model: {self.llm_model_primary}")
+                    output = self._process_with_llm(
+                        document.source_path, model_dict, config.copy(), self.llm_model_primary,
+                    )
+                    llm_model_used = self.llm_model_primary
+                    logger.info(f"✓ Successfully processed with primary model: {self.llm_model_primary}")
+
+                except Exception as e:
+                    # Check if it's an API-related error that warrants fallback
+                    error_str = str(e).lower()
+                    is_api_error = any(
+                        keyword in error_str
+                        for keyword in [
+                            "api",
+                            "connection",
+                            "timeout",
+                            "rate limit",
+                            "unavailable",
+                            "endpoint",
+                            "403",
+                            "429",
+                            "500",
+                            "502",
+                            "503",
+                            "504",
+                        ]
+                    )
+
+                    if is_api_error and self.enable_fallback:
+                        logger.warning(f"Primary model ({self.llm_model_primary}) failed with API error: {e}")
+                        logger.info(f"Attempting fallback to: {self.llm_model_fallback}")
+
+                        try:
+                            output = self._process_with_llm(
+                                document.source_path, model_dict, config.copy(), self.llm_model_fallback,
+                            )
+                            llm_model_used = self.llm_model_fallback
+                            logger.info(f"✓ Successfully processed with fallback model: {self.llm_model_fallback}")
+
+                        except Exception as fallback_error:
+                            logger.error(f"Fallback model also failed: {fallback_error}")
+                            logger.info("Processing without LLM enhancement")
+                            # Process without LLM as last resort
+                            output = self._process_without_llm(document.source_path, model_dict, config.copy())
+                    else:
+                        # Non-API error or fallback disabled, re-raise
+                        logger.error(f"LLM processing failed: {e}")
+                        if self.enable_fallback:
+                            logger.info("Error not API-related, processing without LLM")
+                            output = self._process_without_llm(document.source_path, model_dict, config.copy())
+                        else:
+                            raise
+
+            if output is None:
+                # No LLM configured, process normally
+                output = self._process_without_llm(document.source_path, model_dict, config.copy())
+
+            # Extract markdown string and metadata from MarkdownOutput
+            full_text = output.markdown
+            images = output.images
+            metadata = output.metadata
 
             # Convert markdown to elements
             elements = self._markdown_to_elements(full_text)
 
+            # Fix 4: Enhance element metadata (confidence, parent_id, category_depth)
+            elements = self._enhance_element_metadata(elements, metadata)
+
             # Enhance metadata
+            # Fix 1: Calculate page_count from elements if Marker doesn't provide it
+            page_count = metadata.get("pages", 0)
+            if page_count == 0 and elements:
+                # Calculate from max page number in elements
+                page_numbers = [el.metadata.page_number for el in elements if el.metadata.page_number is not None]
+                page_count = max(page_numbers) if page_numbers else 0
+
+            # Fix 2: Extract TOC from headings if Marker doesn't provide it
+            toc = metadata.get("toc", [])
+            if not toc:
+                toc = self._extract_toc_from_elements(elements)
+
+            # Fix 3: Detect languages if Marker doesn't provide them
+            languages = metadata.get("languages", [])
+            if not languages and elements:
+                languages = self._detect_languages(elements)
+
             enhanced_metadata = {
-                "page_count": metadata.get("pages", 0),
-                "toc": metadata.get("toc", []),
-                "languages": metadata.get("languages", []),
+                "page_count": page_count,
+                "toc": toc,
+                "languages": languages,
                 "images_extracted": len(images),
                 "marker_version": metadata.get("version", "unknown"),
                 "gpu_used": self._gpu_available,
+                "llm_enhanced": self.use_llm and llm_model_used is not None,
+                "llm_model": llm_model_used,
+                "llm_fallback_used": llm_model_used == self.llm_model_fallback if llm_model_used else False,
             }
 
             processing_time = time.time() - start_time
@@ -508,6 +639,74 @@ class MarkerParser(BaseParser):
                 error_message=error_msg,
             )
 
+    def _process_with_llm(self, source_path: str, model_dict: dict, config: dict, llm_model: str) -> Any:
+        """Process PDF with LLM enhancement using specified model.
+
+        Args:
+            source_path: Path to PDF file
+            model_dict: Marker model dictionary
+            config: Configuration dictionary
+            llm_model: LLM model to use
+
+        Returns:
+            MarkdownOutput object from Marker
+
+        Raises:
+            Exception: If processing fails
+        """
+        from marker.config.parser import ConfigParser
+        from marker.converters.pdf import PdfConverter
+
+        logger.info(f"Configuring LLM enhancement with model: {llm_model}")
+        config["use_llm"] = True
+        config["llm_service"] = "marker.services.openai.OpenAIService"
+        config["openai_api_key"] = self.openrouter_api_key
+        config["openai_base_url"] = "https://openrouter.ai/api/v1"
+        config["openai_model"] = llm_model
+        config["redo_inline_math"] = True  # Highest quality inline math with LLM
+
+        # Create ConfigParser and converter
+        config_parser = ConfigParser(config)
+        converter = PdfConverter(
+            artifact_dict=model_dict,
+            config=config_parser.generate_config_dict(),
+            llm_service=config_parser.get_llm_service(),
+        )
+
+        # Convert PDF
+        return converter(source_path)
+
+    def _process_without_llm(self, source_path: str, model_dict: dict, config: dict) -> Any:
+        """Process PDF without LLM enhancement.
+
+        Args:
+            source_path: Path to PDF file
+            model_dict: Marker model dictionary
+            config: Configuration dictionary
+
+        Returns:
+            MarkdownOutput object from Marker
+
+        Raises:
+            Exception: If processing fails
+        """
+        from marker.config.parser import ConfigParser
+        from marker.converters.pdf import PdfConverter
+
+        logger.info("Processing without LLM enhancement")
+        config["use_llm"] = False
+
+        # Create ConfigParser and converter
+        config_parser = ConfigParser(config)
+        converter = PdfConverter(
+            artifact_dict=model_dict,
+            config=config_parser.generate_config_dict(),
+            llm_service=None,
+        )
+
+        # Convert PDF
+        return converter(source_path)
+
     def _markdown_to_elements(self, markdown: str) -> list[DocumentElement]:
         """Convert Marker's markdown output to document elements.
 
@@ -520,20 +719,40 @@ class MarkerParser(BaseParser):
         Returns:
             List of document elements
         """
+        import re
+
+        from data_ingestor.core.models import ElementMetadata
+
         elements: list[DocumentElement] = []
         lines = markdown.split("\n")
 
         in_table = False
         table_lines: list[str] = []
+        current_page = 1  # Track current page number
 
         for line in lines:
             line_stripped = line.strip()
+
+            # Detect page markers (format: "{N}" where N is 0-indexed page number)
+            # #ASSUME: Page Markers: paginate_output uses {N} format (0-indexed)
+            # #VERIFY: Format confirmed from Marker 1.10.x output
+            page_match = re.match(r"^\{(\d+)\}", line_stripped)
+            if page_match:
+                # Convert from 0-indexed to 1-indexed
+                current_page = int(page_match.group(1)) + 1
+                logger.debug(f"Detected page marker: page {current_page}")
+                continue
+
+            # Also skip separator lines (dashes following page markers)
+            if re.match(r"^-{10,}$", line_stripped):
+                continue
 
             if not line_stripped:
                 # Flush table if we were in one
                 if in_table and table_lines:
                     table_content = "\n".join(table_lines)
-                    element = DocumentElement(element_type=ElementType.TABLE, content=table_content)
+                    metadata = ElementMetadata(page_number=current_page)
+                    element = DocumentElement(element_type=ElementType.TABLE, content=table_content, metadata=metadata)
                     elements.append(element)
                     table_lines = []
                     in_table = False
@@ -548,7 +767,8 @@ class MarkerParser(BaseParser):
             # If we were in a table, flush it
             if in_table and table_lines:
                 table_content = "\n".join(table_lines)
-                element = DocumentElement(element_type=ElementType.TABLE, content=table_content)
+                metadata = ElementMetadata(page_number=current_page)
+                element = DocumentElement(element_type=ElementType.TABLE, content=table_content, metadata=metadata)
                 elements.append(element)
                 table_lines = []
                 in_table = False
@@ -556,7 +776,8 @@ class MarkerParser(BaseParser):
             # Detect formulas (LaTeX in $$...$$)
             if line_stripped.startswith("$$") and line_stripped.endswith("$$"):
                 content = line_stripped[2:-2].strip()
-                element = DocumentElement(element_type=ElementType.FORMULA, content=content)
+                metadata = ElementMetadata(page_number=current_page)
+                element = DocumentElement(element_type=ElementType.FORMULA, content=content, metadata=metadata)
                 elements.append(element)
                 continue
 
@@ -575,13 +796,15 @@ class MarkerParser(BaseParser):
                 content = line_stripped
 
             if content:
-                element = DocumentElement(element_type=element_type, content=content)
+                metadata = ElementMetadata(page_number=current_page)
+                element = DocumentElement(element_type=element_type, content=content, metadata=metadata)
                 elements.append(element)
 
         # Flush any remaining table
         if in_table and table_lines:
             table_content = "\n".join(table_lines)
-            element = DocumentElement(element_type=ElementType.TABLE, content=table_content)
+            metadata = ElementMetadata(page_number=current_page)
+            element = DocumentElement(element_type=ElementType.TABLE, content=table_content, metadata=metadata)
             elements.append(element)
 
         return elements
@@ -608,6 +831,191 @@ class MarkerParser(BaseParser):
             logger.error(f"Marker health check error: {e}")
             return False
 
+    def _extract_toc_from_elements(self, elements: list[DocumentElement]) -> list[dict[str, Any]]:
+        """Extract table of contents from document elements.
+
+        # #ASSUME: Document Structure: Headings represent document hierarchy
+        # #VERIFY: May need more sophisticated logic for complex documents
+
+        Args:
+            elements: List of document elements
+
+        Returns:
+            Table of contents as list of dictionaries with title, level, and page
+        """
+        toc: list[dict[str, Any]] = []
+
+        for element in elements:
+            # Include titles and headings in TOC
+            if element.element_type in (ElementType.TITLE, ElementType.HEADING):
+                # Determine level: Title = 1, Heading = 2 (can be refined)
+                level = 1 if element.element_type == ElementType.TITLE else 2
+
+                # Use category_depth if available for more precise levels
+                if element.metadata.category_depth is not None:
+                    level = element.metadata.category_depth
+
+                toc_entry = {
+                    "title": element.content[:100],  # Limit to 100 chars
+                    "level": level,
+                    "page": element.metadata.page_number or 0,
+                    "element_id": element.metadata.element_id,
+                }
+                toc.append(toc_entry)
+
+        logger.debug(f"Extracted {len(toc)} TOC entries from elements")
+        return toc
+
+    def _detect_languages(self, elements: list[DocumentElement]) -> list[str]:
+        """Detect languages present in document elements.
+
+        # #CRITICAL: Library Dependency: langdetect may not be installed
+        # #VERIFY: Gracefully degrade if library unavailable
+
+        Args:
+            elements: List of document elements
+
+        Returns:
+            List of detected language codes (ISO 639-1)
+        """
+        try:
+            from collections import Counter
+
+            from langdetect import LangDetectException, detect
+
+            # Sample text from elements (combine up to 1000 chars for better accuracy)
+            sample_texts: list[str] = []
+            total_chars = 0
+            max_chars = 1000
+
+            for element in elements:
+                # Only detect from text content (paragraphs, headings)
+                if element.element_type in (
+                    ElementType.PARAGRAPH,
+                    ElementType.NARRATIVE_TEXT,
+                    ElementType.HEADING,
+                    ElementType.TITLE,
+                ):
+                    sample_texts.append(element.content)
+                    total_chars += len(element.content)
+                    if total_chars >= max_chars:
+                        break
+
+            if not sample_texts:
+                return []
+
+            # Combine samples
+            combined_text = " ".join(sample_texts)[:max_chars]
+
+            # Detect language
+            # #ASSUME: Language Detection: Single language detection sufficient
+            # #VERIFY: May need multi-language detection for multilingual docs
+            try:
+                detected_lang = detect(combined_text)
+                logger.debug(f"Detected language: {detected_lang}")
+                return [detected_lang]
+            except LangDetectException:
+                logger.warning("Language detection failed - insufficient text")
+                return []
+
+        except ImportError:
+            logger.debug("langdetect not installed, skipping language detection")
+            return []
+        except Exception as e:
+            logger.warning(f"Language detection failed: {e}")
+            return []
+
+    def _enhance_element_metadata(
+        self,
+        elements: list[DocumentElement],
+        marker_metadata: dict[str, Any],
+    ) -> list[DocumentElement]:
+        """Enhance element metadata with additional information.
+
+        # Fix 4: Add confidence scores and improve metadata fields
+
+        Args:
+            elements: List of document elements
+            marker_metadata: Metadata from Marker
+
+        Returns:
+            Enhanced list of document elements
+        """
+        # Build hierarchy for parent_id assignment
+        heading_stack: list[tuple[int, DocumentElement]] = []  # (level, element)
+
+        for i, element in enumerate(elements):
+            # Fix: Add confidence score based on element type
+            # #ASSUME: Confidence Estimation: Element type indicates extraction confidence
+            # #VERIFY: May need actual ML model confidence if available
+            confidence = self._estimate_confidence(element)
+            element.metadata.detection_class_prob = confidence
+
+            # Fix: Assign category_depth for headings/titles
+            if element.element_type == ElementType.TITLE:
+                element.metadata.category_depth = 1
+                heading_stack = [(1, element)]  # Reset stack with title
+            elif element.element_type == ElementType.HEADING:
+                # Simple heuristic: assume level 2 for all headings
+                # (can be refined with font size analysis)
+                element.metadata.category_depth = 2
+                # Pop headings of same or higher level
+                while heading_stack and heading_stack[-1][0] >= 2:
+                    heading_stack.pop()
+                heading_stack.append((2, element))
+
+            # Fix: Assign parent_id based on heading hierarchy
+            if element.element_type in (
+                ElementType.PARAGRAPH,
+                ElementType.NARRATIVE_TEXT,
+                ElementType.TABLE,
+                ElementType.FORMULA,
+                ElementType.LIST,
+            ):
+                # Assign to most recent heading
+                if heading_stack:
+                    element.metadata.parent_id = heading_stack[-1][1].metadata.element_id
+
+            # Note: coordinates would require position info from Marker
+            # Marker's current API doesn't provide bounding boxes in structured form
+            # This would need additional integration with Marker's layout detection
+
+        return elements
+
+    def _estimate_confidence(self, element: DocumentElement) -> float:
+        """Estimate confidence score for element extraction.
+
+        # #ASSUME: Confidence Heuristics: Element properties indicate quality
+        # #VERIFY: Compare with actual extraction accuracy metrics
+
+        Args:
+            element: Document element
+
+        Returns:
+            Confidence score between 0.0 and 1.0
+        """
+        # Base confidence by element type
+        type_confidence = {
+            ElementType.FORMULA: 0.95,  # LaTeX formulas are high confidence
+            ElementType.TABLE: 0.90,  # Marker excels at tables
+            ElementType.TITLE: 0.95,  # Clear structure
+            ElementType.HEADING: 0.90,
+            ElementType.PARAGRAPH: 0.85,
+            ElementType.NARRATIVE_TEXT: 0.85,
+            ElementType.LIST: 0.85,
+        }
+
+        base_confidence = type_confidence.get(element.element_type, 0.80)
+
+        # Adjust based on content length (very short elements may be misclassified)
+        content_length = len(element.content.strip())
+        if content_length < 5:
+            base_confidence *= 0.7  # Reduce confidence for very short content
+        elif content_length > 100:
+            base_confidence = min(base_confidence + 0.05, 1.0)  # Boost for substantial content
+
+        return round(base_confidence, 2)
+
     def get_priority(self) -> int:
         """Get parser priority.
 
@@ -617,4 +1025,4 @@ class MarkerParser(BaseParser):
         Returns:
             Priority value (10 = high priority)
         """
-        return self.config.get("priority", 10)
+        return cast(int, self.config.get("priority", 10))

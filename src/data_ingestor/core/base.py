@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from data_ingestor.core.models import Document, DocumentFormat, ParserResult
 
@@ -102,4 +102,4 @@ class BaseParser(ABC):
         Returns:
             Priority value (default: 100)
         """
-        return self.config.get("priority", 100)
+        return cast(int, self.config.get("priority", 100))

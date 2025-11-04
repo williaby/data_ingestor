@@ -1,3 +1,3 @@
 """Utility functions and helper classes."""
 
-__all__ = []
+__all__: list[str] = []

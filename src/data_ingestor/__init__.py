@@ -13,4 +13,4 @@ __email__ = "byronawilliams@gmail.com"
 from data_ingestor.core.config import Settings
 from data_ingestor.pipeline.router import DocumentRouter
 
-__all__ = ["Settings", "DocumentRouter", "__version__"]
+__all__ = ["DocumentRouter", "Settings", "__version__"]

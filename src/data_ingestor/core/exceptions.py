@@ -92,10 +92,8 @@ class QualityCheckError(DataIngestorError):
 class StorageError(DataIngestorError):
     """Exception raised when storage operation fails."""
 
-    pass
 
 
 class ChunkingError(DataIngestorError):
     """Exception raised when document chunking fails."""
 
-    pass

@@ -1,7 +1,6 @@
 """Token-based chunking strategies for document segmentation."""
 
 import logging
-from typing import Any
 
 import tiktoken
 
@@ -94,7 +93,7 @@ class TokenChunker:
                     "total_chunks": len(chunks),
                     "source_path": document.source_path,
                     "document_format": document.format.value,
-                }
+                },
             )
 
         return chunks

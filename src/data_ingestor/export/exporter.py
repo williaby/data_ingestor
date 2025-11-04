@@ -1,7 +1,6 @@
 """Document export service for JSON, Markdown, and other formats."""
 
 import json
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -29,7 +28,6 @@ class DocumentExporter:
 
     def __init__(self) -> None:
         """Initialize the document exporter."""
-        pass
 
     def export(
         self,
@@ -51,18 +49,18 @@ class DocumentExporter:
             ValueError: If format is unsupported
         """
         if format == OutputFormat.JSON:
-            result = self.to_json(document)
+            json_result = self.to_json(document)
             if output_path:
-                self._write_json(result, Path(output_path))
-            return result
+                self._write_json(json_result, Path(output_path))
+            return json_result
 
-        elif format == OutputFormat.MARKDOWN:
-            result = self.to_markdown(document)
+        if format == OutputFormat.MARKDOWN:
+            md_result = self.to_markdown(document)
             if output_path:
-                self._write_markdown(result, Path(output_path))
-            return result
+                self._write_markdown(md_result, Path(output_path))
+            return md_result
 
-        elif format == OutputFormat.BOTH:
+        if format == OutputFormat.BOTH:
             json_data = self.to_json(document)
             markdown_data = self.to_markdown(document)
 
@@ -73,15 +71,14 @@ class DocumentExporter:
 
             return json_data, markdown_data
 
-        elif format == OutputFormat.TEXT:
-            result = self.to_text(document)
+        if format == OutputFormat.TEXT:
+            text_result = self.to_text(document)
             if output_path:
-                Path(output_path).write_text(result, encoding="utf-8")
-            return result
+                Path(output_path).write_text(text_result, encoding="utf-8")
+            return text_result
 
-        else:
-            msg = f"Unsupported format: {format}"
-            raise ValueError(msg)
+        msg = f"Unsupported format: {format}"
+        raise ValueError(msg)
 
     def to_json(self, document: Document) -> dict[str, Any]:
         """Export document as JSON with full metadata.
@@ -137,7 +134,7 @@ class DocumentExporter:
 
         # Add YAML front matter
         lines.append("---")
-        front_matter = {
+        front_matter: dict[str, Any] = {
             "document_id": document.document_id,
             "source": document.source_path or document.source_url,
             "format": document.format.value,
@@ -256,36 +253,35 @@ class DocumentExporter:
             return f"{heading_prefix} {element.content}\n"
 
         # Handle list items
-        elif element_type == ElementType.LIST_ITEM:
+        if element_type == ElementType.LIST_ITEM:
             return f"- {element.content}\n"
 
         # Handle tables
-        elif element_type == ElementType.TABLE:
+        if element_type == ElementType.TABLE:
             if element.metadata.text_as_html:
                 # Try to preserve table structure
                 return f"{element.content}\n"
-            else:
-                return f"\n{element.content}\n"
+            return f"\n{element.content}\n"
 
         # Handle code snippets
-        elif element_type in (ElementType.CODE_SNIPPET, ElementType.CODE):
+        if element_type in (ElementType.CODE_SNIPPET, ElementType.CODE):
             return f"```\n{element.content}\n```\n"
 
         # Handle formulas
-        elif element_type == ElementType.FORMULA:
+        if element_type == ElementType.FORMULA:
             return f"$${element.content}$$\n"
 
         # Handle images
-        elif element_type == ElementType.IMAGE:
+        if element_type == ElementType.IMAGE:
             caption = element.content or "Image"
             return f"![{caption}](image)\n"
 
         # Handle figure captions
-        elif element_type in (ElementType.FIGURE_CAPTION, ElementType.CAPTION):
+        if element_type in (ElementType.FIGURE_CAPTION, ElementType.CAPTION):
             return f"*{element.content}*\n"
 
         # Handle emphasized text
-        elif element.metadata.emphasized_text_contents:
+        if element.metadata.emphasized_text_contents:
             # Content has emphasis, try to preserve it
             content = element.content
             for emphasized_text in element.metadata.emphasized_text_contents:
@@ -294,8 +290,7 @@ class DocumentExporter:
             return f"{content}\n"
 
         # Default: narrative text and paragraphs
-        else:
-            return f"{element.content}\n"
+        return f"{element.content}\n"
 
     def _write_json(self, data: dict[str, Any], path: Path) -> None:
         """Write JSON data to file.

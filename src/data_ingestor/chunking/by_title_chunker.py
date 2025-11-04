@@ -117,7 +117,7 @@ class ByTitleChunker:
                     "source_path": document.source_path,
                     "document_format": document.format.value,
                     "chunking_strategy": "by_title",
-                }
+                },
             )
 
             # Track original elements in chunk metadata
@@ -298,9 +298,7 @@ class ByTitleChunker:
         token_count = len(self.encoding.encode(content))
 
         # Determine page range
-        page_numbers = [
-            e.metadata.page_number for e in elements if e.metadata.page_number is not None
-        ]
+        page_numbers = [e.metadata.page_number for e in elements if e.metadata.page_number is not None]
         start_page = min(page_numbers) if page_numbers else None
         end_page = max(page_numbers) if page_numbers else None
 

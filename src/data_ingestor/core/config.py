@@ -1,7 +1,7 @@
 """Configuration settings for the data ingestion pipeline."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -87,18 +87,18 @@ class Settings(BaseSettings):
 
     @field_validator("celery_broker_url", mode="before")
     @classmethod
-    def set_celery_broker_default(cls, v: str | None, info: Any) -> str:  # noqa: ANN401
+    def set_celery_broker_default(cls, v: str | None, info: Any) -> str:
         """Set celery broker URL to redis_url if not provided."""
         if v is None:
-            return info.data.get("redis_url", "redis://localhost:6379/0")
+            return cast(str, info.data.get("redis_url", "redis://localhost:6379/0"))
         return v
 
     @field_validator("celery_result_backend", mode="before")
     @classmethod
-    def set_celery_result_backend_default(cls, v: str | None, info: Any) -> str:  # noqa: ANN401
+    def set_celery_result_backend_default(cls, v: str | None, info: Any) -> str:
         """Set celery result backend to redis_url if not provided."""
         if v is None:
-            return info.data.get("redis_url", "redis://localhost:6379/0")
+            return cast(str, info.data.get("redis_url", "redis://localhost:6379/0"))
         return v
 
     def get_parser_config(self, parser_name: str) -> dict[str, Any]:

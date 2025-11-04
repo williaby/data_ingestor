@@ -2,7 +2,7 @@
 
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import magic
 
@@ -13,7 +13,7 @@ class FormatDetector:
     """Detect document format using multiple strategies."""
 
     # MIME type to format mapping
-    MIME_TYPE_MAP: dict[str, DocumentFormat] = {
+    MIME_TYPE_MAP: ClassVar[dict[str, DocumentFormat]] = {
         "application/pdf": DocumentFormat.PDF,
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": DocumentFormat.DOCX,
         "application/msword": DocumentFormat.DOCX,
@@ -32,7 +32,7 @@ class FormatDetector:
     }
 
     # File extension to format mapping
-    EXTENSION_MAP: dict[str, DocumentFormat] = {
+    EXTENSION_MAP: ClassVar[dict[str, DocumentFormat]] = {
         ".pdf": DocumentFormat.PDF,
         ".docx": DocumentFormat.DOCX,
         ".doc": DocumentFormat.DOCX,
@@ -54,7 +54,7 @@ class FormatDetector:
         """Initialize format detector."""
         # Initialize magic for file type detection
         try:
-            self.magic_detector = magic.Magic(mime=True)
+            self.magic_detector: magic.Magic | None = magic.Magic(mime=True)
         except Exception:
             # #EDGE: Library Availability: python-magic may not be installed correctly
             # #VERIFY: Fall back to mimetypes library if magic fails
@@ -77,8 +77,8 @@ class FormatDetector:
         # Stage 1: Try magic (libmagic) for most accurate detection
         if self.magic_detector:
             try:
-                mime_type = self.magic_detector.from_file(str(path))
-                format_detected = self.MIME_TYPE_MAP.get(mime_type)
+                detected_mime = self.magic_detector.from_file(str(path))
+                format_detected = self.MIME_TYPE_MAP.get(detected_mime)
                 if format_detected:
                     return format_detected
             except Exception:

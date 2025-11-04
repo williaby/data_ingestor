@@ -1,6 +1,5 @@
 """Command-line interface for document processing."""
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -11,12 +10,13 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
 
-from data_ingestor.chunking import ByTitleChunker, ChunkingStrategy, TokenChunker
+from data_ingestor.chunking import ByTitleChunker, TokenChunker
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
 from data_ingestor.export.exporter import DocumentExporter, OutputFormat
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
+from data_ingestor.benchmarking import BenchmarkOrchestrator, BenchmarkReporter
 
 console = Console()
 
@@ -129,9 +129,10 @@ def process(
 
         # Chunk document
         if document.elements:
-            console.print(f"\n[bold blue]Chunking document...[/bold blue]")
+            console.print("\n[bold blue]Chunking document...[/bold blue]")
 
             # Select chunking strategy
+            chunker: ByTitleChunker | TokenChunker
             if chunking_strategy == "by_title":
                 chunker = ByTitleChunker(
                     chunk_size=chunk_size,
@@ -229,9 +230,196 @@ def health(ctx: click.Context) -> None:
     console.print(table)
 
 
+@cli.command()
+@click.option(
+    "--datasets",
+    "-d",
+    multiple=True,
+    help="Datasets to benchmark (readoc, doclaynet, pubtables). Default: all",
+)
+@click.option(
+    "--parsers",
+    "-p",
+    multiple=True,
+    help="Parsers to test (pymupdf, pymupdf4llm). Default: all",
+)
+@click.option(
+    "--workers",
+    "-w",
+    type=int,
+    default=4,
+    help="Number of parallel workers",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output JSON file (default: timestamp-based)",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default="results",
+    help="Output directory for results",
+)
+@click.pass_context
+def benchmark(
+    ctx: click.Context,
+    datasets: tuple[str, ...],
+    parsers: tuple[str, ...],
+    workers: int,
+    output: str | None,
+    output_dir: str,
+) -> None:
+    """Run comprehensive benchmark across datasets.
+
+    Examples:
+        # Run all benchmarks
+        data-ingestor benchmark
+
+        # Benchmark specific datasets
+        data-ingestor benchmark -d readoc -d doclaynet
+
+        # Test specific parsers
+        data-ingestor benchmark -p pymupdf -p pymupdf4llm
+
+        # Custom configuration
+        data-ingestor benchmark -d readoc -p pymupdf -w 8 -o baseline.json
+    """
+    try:
+        console.print("\n[bold blue]🚀 Starting Benchmark Run[/bold blue]\n")
+
+        # Convert tuples to lists
+        dataset_list = list(datasets) if datasets else None
+        parser_list = list(parsers) if parsers else None
+
+        # Initialize orchestrator
+        orchestrator = BenchmarkOrchestrator(
+            datasets=dataset_list,
+            parsers=parser_list,
+            workers=workers,
+            output_dir=output_dir,
+        )
+
+        console.print(f"[cyan]Datasets:[/cyan] {', '.join(orchestrator.config.datasets)}")
+        console.print(f"[cyan]Parsers:[/cyan] {', '.join(orchestrator.config.parsers)}")
+        console.print(f"[cyan]Workers:[/cyan] {workers}\n")
+
+        # Run benchmark
+        with console.status("[bold green]Running benchmarks..."):
+            results = orchestrator.run()
+
+        # Save results
+        output_file = output if output else None
+        saved_path = orchestrator.save_results(results, output_file)
+
+        # Display summary
+        console.print("\n[bold green]✓ Benchmark Complete[/bold green]\n")
+
+        overall = results.get("overall", {})
+        console.print(f"[cyan]Total Documents:[/cyan] {overall.get('total_documents', 0)}")
+        console.print(f"[cyan]Success Rate:[/cyan] {overall.get('success_rate', 0):.1%}")
+        console.print(f"[cyan]Throughput:[/cyan] {overall.get('throughput_docs_per_hour', 0):.1f} docs/hr")
+        console.print(f"[cyan]Total Time:[/cyan] {overall.get('total_time', 0)/60:.1f} minutes")
+        console.print(f"\n[cyan]Results saved to:[/cyan] {saved_path}")
+
+        console.print("\n[dim]Generate reports with:[/dim]")
+        console.print(f"[dim]  data-ingestor benchmark-report {saved_path}[/dim]")
+
+    except Exception as e:
+        console.print(f"\n[bold red]Error:[/bold red] {e}")
+        if ctx.obj["debug"]:
+            console.print_exception()
+        sys.exit(1)
 
 
-def _display_preview(document: Any) -> None:  # noqa: ANN401
+@cli.command()
+@click.argument("results_file", type=click.Path(exists=True))
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["html", "json", "csv", "all"]),
+    default="html",
+    help="Report format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file path (auto-generated if not specified)",
+)
+@click.pass_context
+def benchmark_report(
+    ctx: click.Context,
+    results_file: str,
+    format: str,
+    output: str | None,
+) -> None:
+    """Generate reports from benchmark results.
+
+    Examples:
+        # Generate HTML report
+        data-ingestor benchmark-report results/baseline.json
+
+        # Generate all formats
+        data-ingestor benchmark-report results/baseline.json --format all
+
+        # Custom output location
+        data-ingestor benchmark-report results/baseline.json -o reports/my_report.html
+    """
+    try:
+        console.print(f"\n[bold blue]📊 Generating Report[/bold blue]\n")
+        console.print(f"[cyan]Input:[/cyan] {results_file}")
+        console.print(f"[cyan]Format:[/cyan] {format}\n")
+
+        # Load results
+        import json
+
+        with open(results_file) as f:
+            results = json.load(f)
+
+        # Initialize reporter
+        reporter = BenchmarkReporter(results)
+
+        # Determine output paths
+        results_path = Path(results_file)
+        base_name = results_path.stem
+
+        generated_files = []
+
+        if format in ["html", "all"]:
+            html_output = output if output and format == "html" else f"reports/{base_name}.html"
+            html_path = reporter.generate_html(html_output)
+            generated_files.append(("HTML", html_path))
+
+        if format in ["json", "all"]:
+            json_output = output if output and format == "json" else f"reports/{base_name}_report.json"
+            json_path = reporter.generate_json(json_output)
+            generated_files.append(("JSON", json_path))
+
+        if format in ["csv", "all"]:
+            csv_output = output if output and format == "csv" else f"reports/{base_name}_metrics.csv"
+            csv_path = reporter.generate_csv(csv_output)
+            generated_files.append(("CSV", csv_path))
+
+        # Display results
+        console.print("[bold green]✓ Reports Generated[/bold green]\n")
+
+        for format_name, file_path in generated_files:
+            console.print(f"[cyan]{format_name}:[/cyan] {file_path}")
+
+        if "html" in [f[0] for f in generated_files]:
+            html_file = [f[1] for f in generated_files if f[0] == "HTML"][0]
+            console.print(f"\n[dim]Open in browser:[/dim] file://{Path(html_file).absolute()}")
+
+    except Exception as e:
+        console.print(f"\n[bold red]Error:[/bold red] {e}")
+        if ctx.obj["debug"]:
+            console.print_exception()
+        sys.exit(1)
+
+
+def _display_preview(document: Any) -> None:
     """Display document preview in console.
 
     Args:

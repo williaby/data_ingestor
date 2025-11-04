@@ -10,10 +10,10 @@ from data_ingestor.core.exceptions import (
 
 __all__ = [
     "BaseParser",
+    "DataIngestorError",
     "Document",
+    "ParserError",
     "ParserResult",
     "Settings",
-    "DataIngestorError",
-    "ParserError",
     "UnsupportedFormatError",
 ]

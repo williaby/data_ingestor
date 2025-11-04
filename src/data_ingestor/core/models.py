@@ -150,7 +150,7 @@ class DocumentElement(BaseModel):
             raise ValueError(msg)
         return v
 
-    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, __context: Any) -> None:
         """Sync legacy fields with metadata."""
         # Sync legacy bbox to metadata.coordinates
         if self.bbox and not self.metadata.coordinates:
@@ -183,7 +183,7 @@ class Chunk(BaseModel):
     start_page: int | None = None
     end_page: int | None = None
 
-    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, __context: Any) -> None:
         """Calculate character count if not provided."""
         if self.char_count == 0:
             self.char_count = len(self.content)
@@ -203,7 +203,7 @@ class QualityMetrics(BaseModel):
 
     @field_validator("quality_level", mode="before")
     @classmethod
-    def calculate_quality_level(cls, v: QualityLevel | None, info: Any) -> QualityLevel:  # noqa: ANN401
+    def calculate_quality_level(cls, v: QualityLevel | None, info: Any) -> QualityLevel:
         """Calculate quality level from overall score if not provided."""
         if v is not None:
             return v

@@ -1,3 +1,3 @@
 """FastAPI REST API endpoints for document processing."""
 
-__all__ = []
+__all__: list[str] = []
