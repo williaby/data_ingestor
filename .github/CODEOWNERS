@@ -1,0 +1,48 @@
+# CODEOWNERS file for Data Ingestor - Enhanced PDF/Document Parsing System
+#
+# This file defines code ownership for automated review assignment and branch protection.
+# For solo development, the repository owner reviews all changes to maintain consistency
+# and ensure compliance with document processing quality standards.
+
+# Global ownership - all files require review by repository owner
+* @Byron
+
+# Critical document processing components
+/src/data_ingestor/parsers/ @Byron
+/src/data_ingestor/chunking/ @Byron
+/src/data_ingestor/quality/ @Byron
+/src/data_ingestor/export/ @Byron
+
+# Core infrastructure
+/src/data_ingestor/core/ @Byron
+/src/data_ingestor/pipeline/ @Byron
+
+# API and CLI interfaces
+/src/data_ingestor/api/ @Byron
+/src/data_ingestor/cli/ @Byron
+
+# Utilities and helpers
+/src/data_ingestor/utils/ @Byron
+/src/data_ingestor/storage/ @Byron
+
+# Configuration and deployment files
+/.github/ @Byron
+/pyproject.toml @Byron
+/poetry.lock @Byron
+/requirements*.txt @Byron
+
+# Security-sensitive directories
+/scripts/ @Byron
+/.env* @Byron
+
+# Documentation and planning require consistency
+/docs/ @Byron
+README.md @Byron
+CLAUDE.md @Byron
+LICENSE @Byron
+
+# Test files for document processing accuracy validation
+/tests/ @Byron
+/tests/test_parsers/ @Byron
+/tests/test_chunking/ @Byron
+/tests/test_quality/ @Byron

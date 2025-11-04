@@ -1,0 +1,131 @@
+# Security Exceptions Registry for Data Ingestor Document Parsing System
+# This file tracks approved exceptions for security scan findings
+# All exceptions must be reviewed and approved by the repository owner
+
+version: "1.0"
+metadata:
+  description: "Registry of approved security exceptions for Data Ingestor Document Parsing System"
+  last_reviewed: "2025-11-03"
+  next_review: "2026-02-03"
+  project: "data-ingestor"
+  criticality: "medium"  # Document processing system
+
+# Exception categories:
+# - false-positive: Tool incorrectly identified a security issue
+# - accepted-risk: Real issue but risk is accepted with mitigation
+# - pending-fix: Real issue with planned remediation
+# - library-specific: Document processing library patterns that appear suspicious but are legitimate
+
+exceptions:
+  # Test assertions are standard practice
+  - id: "EX-001"
+    type: "false-positive"
+    tool: "bandit"
+    rule: "B101"  # assert_used
+    file: "tests/"
+    line: "*"
+    justification: "Test assertions are standard practice in pytest"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "Assertions only in test code, not production"
+
+  # Temporary directory for document processing
+  - id: "EX-002"
+    type: "accepted-risk"
+    tool: "bandit"
+    rule: "B108"  # hardcoded_tmp_directory
+    file: "src/data_ingestor/"
+    line: "*"
+    justification: "Temporary data directory for document processing is configurable via environment"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "Temp directory is configurable and properly cleaned up after processing"
+
+  # Document processing libraries may use subprocess
+  - id: "EX-003"
+    type: "library-specific"
+    tool: "bandit"
+    rule: "B603"  # subprocess_without_shell_equals_true
+    file: "src/data_ingestor/parsers/"
+    line: "*"
+    justification: "PDF parsers (Docling, Marker) may spawn subprocesses for document conversion"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "All subprocess calls are to trusted libraries with validated inputs"
+
+  # Vision model dependencies and transformers
+  - id: "EX-004"
+    type: "library-specific"
+    tool: "safety"
+    rule: "development-dependencies"
+    file: "pyproject.toml"
+    line: "*"
+    justification: "Vision models (transformers, torch) are core dependencies for OCR"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "All model dependencies are pinned and scanned regularly"
+
+  # Pickle usage for model loading
+  - id: "EX-005"
+    type: "library-specific"
+    tool: "bandit"
+    rule: "B301"  # pickle
+    file: "src/data_ingestor/parsers/"
+    line: "*"
+    justification: "PyTorch and transformers use pickle for model serialization"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "Models are loaded only from trusted sources (HuggingFace, local cache)"
+
+  # File path operations for document processing
+  - id: "EX-006"
+    type: "accepted-risk"
+    tool: "semgrep"
+    rule: "python.lang.security.audit.path-traversal"
+    file: "src/data_ingestor/"
+    line: "*"
+    justification: "Document processing requires file path operations with validation"
+    risk_accepted: true
+    expires: "2026-06-01"
+    approved_by: "@Byron"
+    approved_date: "2025-11-03"
+    pr_reference: "Initial setup"
+    mitigation: "All file paths are validated and sanitized before use"
+
+# Process for adding new exceptions:
+# 1. Create a PR that adds the exception to this file
+# 2. Include detailed justification in the PR description
+# 3. Get approval from repository owner
+# 4. Reference the exception ID in code comments if needed
+# 5. Exceptions are automatically reviewed quarterly
+
+# Document processing specific security considerations:
+# - Temporary file handling requires careful cleanup
+# - PDF parsing libraries may spawn subprocesses
+# - Vision models use pickle for serialization
+# - File upload validation is critical
+# - Path traversal prevention for user-supplied paths
+
+# Move expired or resolved exceptions here for historical record
+archived_exceptions: []
+
+# Data ingestor specific notes:
+# - Document processing libraries (docling, marker) may trigger subprocess warnings
+# - Vision models (transformers, torch) use pickle for model loading
+# - Temporary directories must be properly managed and cleaned
+# - File path validation is critical for security
