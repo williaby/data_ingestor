@@ -226,3 +226,28 @@ zen-mcp-server/
 # Project-specific test data
 data/test_pdfs/
 scripts/
+
+# Benchmarking & Testing (Phase 1.5)
+# =================================
+# Benchmark datasets (large files, downloaded separately)
+data/benchmarks/
+data/readoc/
+data/doclaynet/
+data/pubtables/
+data/wind_docs/
+
+# Test outputs and results
+test_output/
+test_results/
+benchmark_results/
+evaluation_results/
+
+# Generated reports
+reports/*.html
+reports/*.csv
+reports/*.json
+
+# Benchmark cache and temp files
+.benchmark_cache/
+*.benchmark
+*.evaluation
