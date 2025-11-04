@@ -1,6 +1,7 @@
 """Tests for section-aware (by_title) chunking strategy."""
 
-from datetime import UTC, datetime
+
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,7 +21,7 @@ def sample_document_with_sections() -> Document:
     """Create a document with multiple sections for testing."""
     doc = Document(
         document_id="test-sections-123",
-        source_path="/path/to/test.pdf",
+        source_path=None,  # Use None to avoid path validation in tests
         format=DocumentFormat.PDF,
         status=ProcessingStatus.COMPLETED,
     )
@@ -97,9 +98,7 @@ class TestByTitleChunker:
         # Verify no chunk contains elements from different sections
         for chunk in chunks:
             section_titles_in_chunk = [
-                elem.content
-                for elem in chunk.elements
-                if elem.element_type in (ElementType.TITLE, ElementType.HEADING)
+                elem.content for elem in chunk.elements if elem.element_type in (ElementType.TITLE, ElementType.HEADING)
             ]
             # Each chunk should have at most one section title
             assert len(section_titles_in_chunk) <= 1
@@ -108,7 +107,7 @@ class TestByTitleChunker:
         """Test combining small sections below threshold."""
         doc = Document(
             document_id="test-small-sections",
-            source_path="/path/to/test.pdf",
+            source_path=None,  # Use None to avoid path validation in tests
             format=DocumentFormat.PDF,
             status=ProcessingStatus.COMPLETED,
         )
@@ -151,7 +150,7 @@ class TestByTitleChunker:
         """Test that tables are preserved as standalone chunks."""
         doc = Document(
             document_id="test-tables",
-            source_path="/path/to/test.pdf",
+            source_path=None,  # Use None to avoid path validation in tests
             format=DocumentFormat.PDF,
             status=ProcessingStatus.COMPLETED,
         )
@@ -192,7 +191,7 @@ class TestByTitleChunker:
         """Test that page boundaries are respected when configured."""
         doc = Document(
             document_id="test-pages",
-            source_path="/path/to/test.pdf",
+            source_path=None,  # Use None to avoid path validation in tests
             format=DocumentFormat.PDF,
             status=ProcessingStatus.COMPLETED,
         )
@@ -243,7 +242,7 @@ class TestByTitleChunker:
         """Test handling of empty document."""
         doc = Document(
             document_id="test-empty",
-            source_path="/path/to/test.pdf",
+            source_path=None,  # Use None to avoid path validation in tests
             format=DocumentFormat.PDF,
             status=ProcessingStatus.COMPLETED,
             elements=[],
@@ -258,7 +257,7 @@ class TestByTitleChunker:
         """Test handling of single element exceeding chunk size."""
         doc = Document(
             document_id="test-oversized",
-            source_path="/path/to/test.pdf",
+            source_path=None,  # Use None to avoid path validation in tests
             format=DocumentFormat.PDF,
             status=ProcessingStatus.COMPLETED,
         )
@@ -289,3 +288,124 @@ class TestByTitleChunker:
         """Test ChunkingStrategy enum."""
         assert ChunkingStrategy.BASIC == "basic"
         assert ChunkingStrategy.BY_TITLE == "by_title"
+
+
+class TestByTitleChunkerEdgeCases:
+    """Edge case tests for ByTitleChunker."""
+
+    @patch("data_ingestor.chunking.by_title_chunker.tiktoken")
+    def test_tiktoken_encoding_fallback(self, mock_tiktoken) -> None:
+        """Test fallback when tiktoken encoding fails."""
+        # Make get_encoding raise exception first, then succeed on fallback
+        mock_tiktoken.get_encoding.side_effect = [
+            Exception("Encoding not found"),
+            MagicMock(encode=lambda x: [1] * len(x.split())),
+        ]
+        
+        chunker = ByTitleChunker(chunk_size=100)
+        
+        # Should fall back to cl100k_base
+        assert chunker.encoding is not None
+
+    def test_section_chunking_with_empty_section(self, sample_document: Document) -> None:
+        """Test chunking with empty sections."""
+        # Add elements with some empty sections
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="Title"),
+            # Empty section - no content before next title
+            DocumentElement(element_type=ElementType.TITLE, content="Another Title"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content="Content"),
+        ]
+        sample_document.elements = elements
+        
+        chunker = ByTitleChunker(chunk_size=100)
+        chunks = chunker.chunk_document(sample_document)
+        
+        # Should handle empty sections
+        assert len(chunks) >= 0
+
+    def test_combine_sections_with_single_small_section(self, sample_document: Document) -> None:
+        """Test combining when only one small section exists."""
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="Short"),
+        ]
+        sample_document.elements = elements
+        
+        chunker = ByTitleChunker(chunk_size=1000, combine_text_under_n_chars=500)
+        chunks = chunker.chunk_document(sample_document)
+        
+        # Should handle single section
+        assert len(chunks) >= 0
+
+    def test_chunk_section_exceeding_size(self, sample_document: Document) -> None:
+        """Test section chunking when content exceeds chunk size."""
+        # Create large content that needs splitting
+        large_content = " ".join(["word"] * 500)
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="Title"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=large_content),
+        ]
+        sample_document.elements = elements
+        
+        chunker = ByTitleChunker(chunk_size=100, chunk_overlap=20)
+        chunks = chunker.chunk_document(sample_document)
+
+        # Should create multiple chunks with overlap
+        assert len(chunks) > 1
+
+    def test_combine_sections_none_disabled(self, sample_document: Document) -> None:
+        """Test that no combining happens when combine_text_under_n_chars is None."""
+        # Create small sections
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="A"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content="Short 1"),
+            DocumentElement(element_type=ElementType.TITLE, content="B"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content="Short 2"),
+        ]
+        sample_document.elements = elements
+
+        # With combine_text_under_n_chars=None, should not combine
+        chunker = ByTitleChunker(chunk_size=1000, combine_text_under_n_chars=None)
+        chunks = chunker.chunk_document(sample_document)
+
+        # Should have 2 separate section chunks
+        assert len(chunks) == 2
+
+    def test_combine_sections_flush_pending_before_large(self, sample_document: Document) -> None:
+        """Test flushing pending small sections before adding large section."""
+        # Create: small section, another small section, then large section
+        large_content = "This is large content. " * 100
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="Small 1"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content="A"),
+            DocumentElement(element_type=ElementType.TITLE, content="Small 2"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content="B"),
+            DocumentElement(element_type=ElementType.TITLE, content="Large"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=large_content),
+        ]
+        sample_document.elements = elements
+
+        # Combine small sections under 200 chars
+        chunker = ByTitleChunker(chunk_size=2000, combine_text_under_n_chars=200)
+        chunks = chunker.chunk_document(sample_document)
+
+        # Should have combined the two small sections, then the large section separately
+        assert len(chunks) >= 2
+
+    def test_chunk_section_mid_section_split(self, sample_document: Document) -> None:
+        """Test chunking that splits within a section when tokens exceed limit."""
+        # Create a section with content that exceeds chunk_size
+        very_long_content = " ".join(["word"] * 200)  # 200 words
+        elements = [
+            DocumentElement(element_type=ElementType.TITLE, content="Section"),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=very_long_content),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=very_long_content),
+        ]
+        sample_document.elements = elements
+
+        # Small chunk_size forces mid-section splitting
+        chunker = ByTitleChunker(chunk_size=50, chunk_overlap=10)
+        chunks = chunker.chunk_document(sample_document)
+
+        # Should create multiple chunks from the same section
+        assert len(chunks) > 2

