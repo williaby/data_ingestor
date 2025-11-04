@@ -1,13 +1,26 @@
 # Marker LLM Integration with Zen MCP OpenRouter
 
+## Document Scope
+
+**IMPORTANT**: This integration applies to **PDF documents only**, where Marker serves as the primary parser with intelligent OCR routing.
+
+For other document formats in the Data Ingestor system:
+- **Office Formats (XLSX, PPTX, DOCX)**: Docling (primary parser, MIT license, native parsing)
+- **HTML**: Docling (primary for static content) or Playwright (for JavaScript-rendered sites)
+- **Email**: Email parser with recursive attachment processing
+
+See [ARCHITECTURE_UPDATE_SUMMARY.md](ARCHITECTURE_UPDATE_SUMMARY.md) for the complete format routing strategy.
+
+---
+
 ## Executive Summary
 
-This document proposes integrating Marker's LLM-assisted PDF extraction capabilities with your existing zen-mcp-server's OpenRouter configuration, providing enhanced table extraction, inline math processing, and form value extraction.
+This document proposes integrating Marker's LLM-assisted **PDF** extraction capabilities with your existing zen-mcp-server's OpenRouter configuration, providing enhanced table extraction, inline math processing, and form value extraction for PDF documents.
 
 **Key Benefits:**
 - Leverage existing OpenRouter API key and infrastructure
 - Access to 24 pre-configured AI models (9 free, 15 paid)
-- Improved PDF extraction quality for complex documents
+- Improved **PDF** extraction quality for complex documents
 - Cost-optimized model selection based on document complexity
 
 ---
