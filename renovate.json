@@ -1,0 +1,241 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":enablePreCommit",
+    "group:monorepos",
+    "group:recommended",
+    "workarounds:all"
+  ],
+  "timezone": "America/New_York",
+  "schedule": [
+    "before 3am on Monday"
+  ],
+  "labels": [
+    "dependencies",
+    "automated"
+  ],
+  "assignees": [
+    "Byron"
+  ],
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 5,
+  "stabilityDays": 3,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security"
+    ],
+    "assignees": [
+      "Byron"
+    ],
+    "stabilityDays": 0
+  },
+  "osvVulnerabilityAlerts": true,
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
+  "separateMinorPatch": false,
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 3am on the first day of the month"
+    ],
+    "commitMessageAction": "refresh",
+    "commitMessageTopic": "lock files"
+  },
+  "packageRules": [
+    {
+      "description": "Security vulnerability updates - high priority, immediate",
+      "matchDatasources": [
+        "pypi",
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "labels": [
+        "security",
+        "priority-high"
+      ],
+      "stabilityDays": 0,
+      "prPriority": 10,
+      "automerge": false
+    },
+    {
+      "description": "Python dependencies - Poetry managed",
+      "matchDatasources": [
+        "pypi"
+      ],
+      "rangeStrategy": "bump",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps-python",
+      "labels": [
+        "dependencies",
+        "python"
+      ]
+    },
+    {
+      "description": "GitHub Actions - pin to commit SHA with version tag comment",
+      "matchDatasources": [
+        "github-actions"
+      ],
+      "pinDigests": true,
+      "commitMessageExtra": "to {{newDigestShort}}",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps-actions",
+      "labels": [
+        "dependencies",
+        "github-actions"
+      ]
+    },
+    {
+      "description": "Development dependencies - lower priority",
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchCategories": [
+        "test",
+        "lint"
+      ],
+      "prPriority": -1,
+      "labels": [
+        "dependencies",
+        "dev-only"
+      ]
+    },
+    {
+      "description": "Major updates - require manual review",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-update",
+        "needs-review"
+      ],
+      "automerge": false,
+      "schedule": [
+        "before 3am on the first day of the month"
+      ]
+    },
+    {
+      "description": "Minor and patch updates - can automerge if CI passes",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "ignoreTests": false,
+      "labels": [
+        "dependencies",
+        "automerge"
+      ]
+    },
+    {
+      "description": "Document processing core dependencies - careful updates",
+      "matchPackageNames": [
+        "pymupdf",
+        "pymupdf4llm",
+        "marker-pdf",
+        "docling",
+        "pdfplumber",
+        "pypdf"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "core-parsing",
+        "needs-review"
+      ],
+      "prPriority": 5
+    },
+    {
+      "description": "Security tooling - always update",
+      "matchPackageNames": [
+        "bandit",
+        "safety",
+        "semgrep"
+      ],
+      "automerge": true,
+      "labels": [
+        "dependencies",
+        "security-tooling"
+      ]
+    },
+    {
+      "description": "AI/ML dependencies - test thoroughly",
+      "matchPackageNames": [
+        "anthropic",
+        "openai",
+        "transformers",
+        "torch",
+        "tiktoken"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "ai-ml",
+        "needs-testing"
+      ],
+      "prPriority": 3
+    },
+    {
+      "description": "Pre-commit hooks - update with other dev dependencies",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "automerge": true,
+      "labels": [
+        "dependencies",
+        "pre-commit"
+      ]
+    }
+  ],
+  "regexManagers": [
+    {
+      "description": "Update Python version in workflows",
+      "fileMatch": [
+        "^\\.github/workflows/[^/]+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "python-version:\\s*['\"]?(?<currentValue>\\d+\\.\\d+(?:\\.\\d+)?)['\"]?"
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "github-tags",
+      "packageNameTemplate": "python/cpython",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^pyproject\\.toml$"
+      ],
+      "matchStrings": [
+        "requires-python\\s*=\\s*\">=(?<currentValue>\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "github-tags",
+      "packageNameTemplate": "python/cpython"
+    }
+  ],
+  "ignoreDeps": [
+    "typing-extensions"
+  ],
+  "ignorePaths": [
+    "**/test_output/**",
+    "**/htmlcov/**",
+    "**/.venv/**",
+    "**/tmp_cleanup/**"
+  ]
+}

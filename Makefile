@@ -22,26 +22,38 @@ setup: install ## Complete development setup
 	$(POETRY) run python src/utils/encryption.py
 	@echo "Development environment ready!"
 
-test: ## Run tests with coverage
+test: ## Run tests with coverage (parallelized)
+	$(POETRY) run pytest -v -n auto --cov=src --cov-report=html --cov-report=term-missing
+
+test-serial: ## Run tests without parallelization (for debugging)
 	$(POETRY) run pytest -v --cov=src --cov-report=html --cov-report=term-missing
 
-test-fast: ## Run fast tests for development (< 1 minute)
-	$(POETRY) run pytest tests/unit/ tests/auth/ -m "not slow and not performance and not stress" --maxfail=3 --tb=short
+test-fast: ## Run fast tests for development (< 10 seconds, parallelized)
+	$(POETRY) run pytest tests/unit/ -m "not slow and not performance and not stress" -n auto --maxfail=3 --tb=short
 
-test-pre-commit: ## Run pre-commit validation tests (< 2 minutes)
-	$(POETRY) run pytest tests/unit/ tests/auth/ tests/integration/ -m "not performance and not stress and not contract" --maxfail=5
+test-integration: ## Run integration tests (parallelized, excludes slow)
+	$(POETRY) run pytest tests/integration/ -m "not slow and not performance" -n auto -v
 
-test-pr: ## Run PR validation tests (< 5 minutes)
-	$(POETRY) run pytest -m "not performance and not stress" --maxfail=10
+test-integration-all: ## Run ALL integration tests (includes slow tests)
+	$(POETRY) run pytest tests/integration/ -n auto -v
+
+test-pre-commit: ## Run pre-commit validation tests (< 30 seconds, parallelized)
+	$(POETRY) run pytest tests/unit/ tests/integration/ -m "not slow and not performance and not stress and not contract" -n auto --maxfail=5
+
+test-pr: ## Run PR validation tests (< 2 minutes, parallelized)
+	$(POETRY) run pytest -m "not slow and not performance and not stress" -n auto --maxfail=10
 
 test-performance: ## Run performance tests only
 	$(POETRY) run pytest tests/performance/ -m "performance or stress" --tb=line
 
 test-smoke: ## Run smoke tests for basic functionality
-	$(POETRY) run pytest tests/unit/ -m "smoke or fast" --maxfail=1 -x
+	$(POETRY) run pytest tests/unit/ -m "smoke or fast" -n auto --maxfail=1 -x
 
-test-with-timing: ## Run tests with detailed timing analysis
+test-with-timing: ## Run tests with detailed timing analysis (serial for accurate timing)
 	$(POETRY) run pytest --durations=20 --tb=short
+
+test-debug: ## Run tests in debug mode (serial, verbose, stop on first failure)
+	$(POETRY) run pytest -xvs --tb=short --pdb
 
 lint: ## Run linting checks
 	$(POETRY) run black --check .

@@ -22,8 +22,6 @@ from data_ingestor.benchmarking.runner import BenchmarkRunner
 from data_ingestor.evaluation import (
     AggregatedMetrics,
     DocLayNetEvaluator,
-    PubTablesEvaluator,
-    ReadOCEvaluator,
 )
 from data_ingestor.evaluation.base import BaseEvaluator
 
@@ -36,7 +34,7 @@ class BenchmarkConfig:
     Configuration for benchmark run.
 
     Attributes:
-        datasets: List of datasets to evaluate (readoc, doclaynet, pubtables)
+        datasets: List of datasets to evaluate (doclaynet - Phase 1 only)
         parsers: List of parser names to test
         workers: Number of parallel workers
         batch_size: Documents per batch
@@ -190,15 +188,11 @@ class BenchmarkOrchestrator:
             # #ASSUME: Ground truth directory exists for each dataset
             # #VERIFY: Directory validation happens in evaluator __init__
             try:
-                if dataset_name == "readoc":
-                    evaluators[dataset_name] = ReadOCEvaluator(gt_dir)
-                elif dataset_name == "doclaynet":
+                if dataset_name == "doclaynet":
                     evaluators[dataset_name] = DocLayNetEvaluator(gt_dir)
-                elif dataset_name == "pubtables":
-                    evaluators[dataset_name] = PubTablesEvaluator(gt_dir)
                 else:
                     logger.warning(
-                        f"Unknown dataset type: {dataset_name}, skipping"
+                        f"Unknown dataset type: {dataset_name}. Only 'doclaynet' is supported in Phase 1."
                     )
                     continue
 

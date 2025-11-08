@@ -531,11 +531,15 @@ class TestDisplayPreview:
 
     def test_display_preview_short_document(self, mock_document: Document) -> None:
         """Test preview display for short document."""
-        _display_preview(mock_document)
+        from rich.console import Console
+        console = Console()
+        _display_preview(mock_document, console)
         # Function should execute without errors
 
     def test_display_preview_long_document(self) -> None:
         """Test preview display for long document."""
+        from rich.console import Console
+        console = Console()
         elements = [
             DocumentElement(element_type=ElementType.PARAGRAPH, content=f"Paragraph {i}")
             for i in range(20)
@@ -546,18 +550,20 @@ class TestDisplayPreview:
             elements=elements,
         )
 
-        _display_preview(doc)
+        _display_preview(doc, console)
         # Should handle > 10 elements
 
     def test_display_preview_with_chunks(self, mock_document: Document) -> None:
         """Test preview display with chunks."""
+        from rich.console import Console
         from data_ingestor.core.models import Chunk
 
+        console = Console()
         chunks = [
             Chunk(content=f"Chunk {i} content " * 50, metadata={}, token_count=100)
             for i in range(5)
         ]
         mock_document.chunks = chunks
 
-        _display_preview(mock_document)
+        _display_preview(mock_document, console)
         # Should display chunk preview

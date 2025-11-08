@@ -2,6 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://github.com/williaby/.github/blob/main/CODE_OF_CONDUCT.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Byron/data_ingestor/badge)](https://scorecard.dev/viewer/?uri=github.com/Byron/data_ingestor)
 
 A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation) systems that transforms diverse document formats into high-quality, structured data with intelligent chunking and metadata preservation.
 

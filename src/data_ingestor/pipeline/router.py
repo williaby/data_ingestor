@@ -9,6 +9,7 @@ from data_ingestor.core.base import BaseParser
 from data_ingestor.core.config import Settings
 from data_ingestor.core.exceptions import ParserError, UnsupportedFormatError
 from data_ingestor.core.models import Document, DocumentFormat, ParserResult, ProcessingStatus
+from data_ingestor.pipeline.pdf_analyzer import PDFDocumentAnalyzer, PDFPreflightResult
 from data_ingestor.utils.format_detector import FormatDetector
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,9 @@ class DocumentRouter:
         self.parser_registry = ParserRegistry()
         self._deduplication_cache: set[str] = set()
 
+        # Initialize PDF analyzer for pre-flight analysis (Phase 1c)
+        self.pdf_analyzer = PDFDocumentAnalyzer(settings=self.settings)
+
     def create_document(
         self,
         source_path: str | Path | None = None,
@@ -192,6 +196,8 @@ class DocumentRouter:
         # #CRITICAL: Parser Failures: Must implement fallback chain for reliability
         # #VERIFY: Try all available parsers before failing
 
+        # Phase 1c: Perform PDF pre-flight analysis and upscaling if needed
+
         Args:
             document: Document to process
 
@@ -202,6 +208,45 @@ class DocumentRouter:
             UnsupportedFormatError: If no parsers available for format
             ParserError: If all parsers fail
         """
+        # Phase 1c: Perform pre-flight analysis for PDFs
+        preflight_result: PDFPreflightResult | None = None
+        original_source_path = document.source_path
+
+        if document.format == DocumentFormat.PDF and document.source_path:
+            try:
+                logger.info("Performing PDF pre-flight analysis (Phase 1c)")
+                preflight_result = self.pdf_analyzer.analyze(document.source_path)
+
+                # Use upscaled version if available and successful
+                if preflight_result.should_use_upscaled and preflight_result.upscaled_path:
+                    logger.info(
+                        f"Using upscaled PDF: {preflight_result.upscaled_path} "
+                        f"(upscaling took {preflight_result.upscaling_result.get('processing_time', 0):.2f}s)"
+                    )
+                    document.source_path = preflight_result.upscaled_path
+
+                    # Add upscaling metadata
+                    document.metadata["upscaling"] = {
+                        "performed": True,
+                        "original_path": original_source_path,
+                        "upscaled_path": preflight_result.upscaled_path,
+                        "resolution_analysis": preflight_result.resolution_analysis,
+                        "upscaling_result": preflight_result.upscaling_result,
+                    }
+                else:
+                    document.metadata["upscaling"] = {
+                        "performed": False,
+                        "resolution_analysis": preflight_result.resolution_analysis,
+                        "reason": "Resolution acceptable or upscaling failed",
+                    }
+
+            except Exception as e:
+                logger.warning(f"PDF pre-flight analysis failed: {e}, proceeding with original PDF")
+                document.metadata["upscaling"] = {
+                    "performed": False,
+                    "error": str(e),
+                }
+
         # Get parsers for this format
         parsers = self.parser_registry.get_parsers(document.format)
 
@@ -232,6 +277,15 @@ class DocumentRouter:
                     document.processing_time = result.processing_time
                     document.elements = result.elements
                     document.metadata.update(result.metadata)
+
+                    # Cleanup temporary upscaled file if it exists
+                    if preflight_result and preflight_result.upscaled_path:
+                        try:
+                            Path(preflight_result.upscaled_path).unlink(missing_ok=True)
+                            logger.debug(f"Cleaned up temporary upscaled file: {preflight_result.upscaled_path}")
+                        except Exception as cleanup_error:
+                            logger.warning(f"Failed to cleanup upscaled file: {cleanup_error}")
+
                     return result
 
                 errors.append(f"{parser.name}: {result.error_message}")
@@ -243,6 +297,14 @@ class DocumentRouter:
 
         # All parsers failed
         document.update_status(ProcessingStatus.FAILED)
+
+        # Cleanup temporary upscaled file if parsing failed
+        if preflight_result and preflight_result.upscaled_path:
+            try:
+                Path(preflight_result.upscaled_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+
         error_summary = "; ".join(errors)
         raise ParserError(
             message=f"All parsers failed for document format {document.format.value}",

@@ -87,6 +87,9 @@ jinja2 = "^3.1.6"
 # PDF processing
 pymupdf = "^1.24.0"
 pymupdf4llm = "^0.0.17"
+# Image processing for PDF resolution enhancement
+opencv-python-headless = "^4.10.0"
+pillow = ">=10.1.0,<11.0.0"  # Compatible with marker-pdf
 # Note: Advanced PDF processing with marker-pdf available via optional group
 # Install with: poetry install --with advanced-pdf
 # Note: docling may require separate installation
@@ -405,6 +408,10 @@ markers = [
 
     # Component-specific markers
     "auth: authentication and authorization tests",
+
+    # Dependency-specific markers
+    "requires_marker: tests requiring Marker parser (GPU-accelerated, high-quality parsing)",
+    "requires_doclaynet: tests requiring DocLayNet benchmark dataset",
 ]
 
 # Note: Test execution profiles are implemented via Makefile and noxfile.py

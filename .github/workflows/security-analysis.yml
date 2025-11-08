@@ -1,5 +1,30 @@
 # Comprehensive Security Analysis for Data Ingestor Document Processing System
 # Enhanced security scanning for document and file processing protection
+#
+# CONSOLIDATION STRATEGY (Option 2: Aggressive Consolidation)
+# This workflow provides centralized security scanning, eliminating duplications:
+#
+# WORKFLOW SCANS (Centralized Here):
+#   - CodeQL: Python security-extended and quality queries
+#   - Dependency Review: PR-based dependency vulnerability detection
+#   - Bandit: Python static security analysis
+#   - Safety: Python dependency CVE scanning
+#   - Document Processing Security: Custom validation for file handling
+#
+# EXTERNAL GITHUB APPS (Complementary - No Duplication):
+#   - Semgrep Cloud Platform: Advanced SAST with better UI/tracking
+#   - GitGuardian: Secrets detection in commits
+#   - OpenSSF Scorecard: Supply chain security assessment
+#
+# REMOVED DUPLICATIONS:
+#   - Semgrep workflow step (now using Semgrep App)
+#   - Bandit/Safety from ci.yml (consolidated here)
+#   - CodeQL standalone check (using workflow version with custom queries)
+#
+# BENEFITS:
+#   - Saves ~10-12 minutes per PR
+#   - Single source of truth for security findings
+#   - Better separation: CI focuses on code quality, this workflow on security
 
 name: Security Analysis
 
@@ -31,11 +56,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Python for Document Processing Dependencies
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.11'
 
@@ -66,7 +96,7 @@ jobs:
           "
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.27.5
         with:
           languages: python
           queries: security-extended,security-and-quality
@@ -82,10 +112,10 @@ jobs:
               - uses: security-and-quality
 
       - name: Build CodeQL Database
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.27.5
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.27.5
         with:
           category: "/language:python"
           upload: true
@@ -95,11 +125,16 @@ jobs:
     name: Dependency Security Review
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Dependency Review for Document Processing Libraries
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@4081bf99e2866ebe428fc0477b69eb4fcda7220a # v4.5.0
         with:
           # Moderate threshold for document processing systems
           fail-on-severity: moderate
@@ -113,10 +148,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.11'
 
@@ -146,6 +186,9 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           echo "🛡️ Scanning for known vulnerabilities in document processing dependencies..."
 
+          # Install poetry-plugin-export (required for poetry export in Poetry 2.0+)
+          poetry self add poetry-plugin-export
+
           # Export requirements for safety scanning
           poetry export -f requirements.txt --output requirements-scan.txt
 
@@ -158,22 +201,13 @@ jobs:
           poetry run safety check \
             --file requirements-scan.txt || true
 
-      # Semgrep for additional security rules
-      - name: Semgrep Security Analysis
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/python
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-        continue-on-error: true
+      # Note: Semgrep scanning provided by Semgrep Cloud Platform GitHub App
+      # This eliminates duplicate scanning and provides better UI/tracking
 
       # Upload security scan artifacts
       - name: Upload Security Reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: security-scan-reports
           path: |
@@ -186,10 +220,15 @@ jobs:
     name: Document Processing Security Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.11'
 

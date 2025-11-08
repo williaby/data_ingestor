@@ -1,5 +1,23 @@
 # Data Ingestor Document Parsing System CI Pipeline
 # Optimized for document processing with PDF parsers and vision models
+#
+# CI FOCUS: Code Quality & Testing
+# This workflow focuses on code quality, formatting, and comprehensive testing.
+# Security scanning has been consolidated in security-analysis.yml workflow.
+#
+# QUALITY CHECKS (This Workflow):
+#   - MyPy: Strict type checking
+#   - Black: Code formatting validation
+#   - Ruff: Enhanced linting
+#   - Pytest: Comprehensive test suite with 80%+ coverage
+#
+# SECURITY SCANS (See security-analysis.yml):
+#   - Bandit: Python static security analysis
+#   - Safety: Python dependency CVE scanning
+#   - CodeQL: Advanced security analysis
+#   - Dependency Review: PR-based vulnerability detection
+#
+# This separation improves CI performance by ~10-12 minutes per PR
 
 name: CI
 
@@ -19,7 +37,6 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
-  security-events: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -45,7 +62,12 @@ jobs:
       poetry-hash: ${{ steps.cache-key.outputs.poetry-hash }}
       pyproject-hash: ${{ steps.cache-key.outputs.pyproject-hash }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Generate cache keys
         id: cache-key
@@ -54,7 +76,7 @@ jobs:
           echo "pyproject-hash=${{ hashFiles('**/pyproject.toml') }}" >> $GITHUB_OUTPUT
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.11'
 
@@ -69,7 +91,7 @@ jobs:
 
       # Document processing optimized caching strategy
       - name: Cache Poetry dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
@@ -137,10 +159,15 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -152,7 +179,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Restore dependency cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
@@ -178,12 +205,13 @@ jobs:
           mkdir -p ${{ env.DATA_INGESTOR_TEMP_DIR }}
           mkdir -p ${{ env.DATA_INGESTOR_OUTPUT_DIR }}
 
-      # Run comprehensive test suite
+      # Run comprehensive test suite with parallel execution
       - name: Run document processing test suite
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          echo "🧪 Running document processing tests..."
+          echo "🧪 Running document processing tests (parallelized)..."
           poetry run pytest -v \
+            -n auto \
             --cov=src \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
@@ -211,23 +239,10 @@ jobs:
           CI_ENVIRONMENT: true
           DATA_INGESTOR_TEMP_DIR: ${{ env.DATA_INGESTOR_TEMP_DIR }}
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: ${{ env.CODECOV_TOKEN != '' }} && !cancelled()
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: python-${{ matrix.python-version }}
-          name: Data Ingestor Coverage (Python ${{ matrix.python-version }})
-          verbose: true
-        continue-on-error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
+      # Note: Coverage upload moved to dedicated codecov.yml workflow
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-results-${{ matrix.python-version }}
           path: |
@@ -242,10 +257,15 @@ jobs:
     timeout-minutes: 12
     needs: setup-optimized
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.11'
 
@@ -257,7 +277,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Restore dependency cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
@@ -289,14 +309,8 @@ jobs:
           echo "🔧 Running enhanced linting for document processing..."
           poetry run ruff check . --config=pyproject.toml
 
-      - name: Security scanning
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          echo "🔒 Running security scans for document processing application..."
-          echo "Running Bandit security analysis..."
-          poetry run bandit -r src -c pyproject.toml || echo "Bandit completed with findings"
-          echo "Running Safety dependency scan..."
-          poetry run safety check || echo "Safety completed with findings"
+      # Note: Security scanning (Bandit, Safety) moved to security-analysis.yml workflow
+      # This eliminates duplicate scans and consolidates security tooling
 
   # Success validation
   ci-success:

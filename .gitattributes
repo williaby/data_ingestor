@@ -1,0 +1,195 @@
+# .gitattributes - What The Diff (WTD) Configuration
+# =================================================
+# Marks files/directories as generated or vendored to exclude from AI-powered PR summaries.
+# This reduces token consumption and focuses WTD analysis on meaningful code changes.
+#
+# Reference: docs/WTD-RUNBOOK.md
+# Last Updated: 2025-11-06
+
+# Lock Files
+# =================================================
+# Dependency lock files are auto-generated and don't provide review value
+poetry.lock linguist-generated=true
+package-lock.json linguist-generated=true
+yarn.lock linguist-generated=true
+Pipfile.lock linguist-generated=true
+
+# Benchmark Datasets
+# =================================================
+# Large static datasets downloaded separately, not meaningful for code review
+data/benchmarks/** linguist-generated=true
+data/readoc/** linguist-generated=true
+data/doclaynet/** linguist-generated=true
+data/pubtables/** linguist-generated=true
+data/wind_docs/** linguist-generated=true
+data/benchmarks_unsorted/** linguist-generated=true
+data/test_pdfs/** linguist-generated=true
+
+# Test Results and Outputs
+# =================================================
+# Generated test outputs and benchmark results
+test_output/** linguist-generated=true
+test_results/** linguist-generated=true
+results/** linguist-generated=true
+benchmark_results/** linguist-generated=true
+evaluation_results/** linguist-generated=true
+test_output.txt linguist-generated=true
+
+# Build Artifacts and Distribution
+# =================================================
+# Compiled and distributed code
+dist/** linguist-generated=true
+build/** linguist-generated=true
+out/** linguist-generated=true
+*.egg-info/** linguist-generated=true
+
+# Coverage Reports
+# =================================================
+# Test coverage reports (HTML, XML, JSON)
+htmlcov/** linguist-generated=true
+coverage.xml linguist-generated=true
+coverage.json linguist-generated=true
+.coverage linguist-generated=true
+*.cover linguist-generated=true
+junit.xml linguist-generated=true
+nosetests.xml linguist-generated=true
+
+# Security Reports
+# =================================================
+# Bandit security scan reports
+bandit-report.json linguist-generated=true
+bandit-report.txt linguist-generated=true
+.secrets.baseline linguist-generated=true
+
+# Generated Reports
+# =================================================
+# Benchmark and evaluation reports (HTML, CSV, JSON)
+reports/*.html linguist-generated=true
+reports/*.csv linguist-generated=true
+reports/*.json linguist-generated=true
+reports/** linguist-generated=true
+
+# Temporary and Cache Files
+# =================================================
+# Temporary analysis files and cache directories
+tmp_cleanup/** linguist-generated=true
+.tmp-*.md linguist-generated=true
+__pycache__/** linguist-generated=true
+.pytest_cache/** linguist-generated=true
+.mypy_cache/** linguist-generated=true
+.ruff_cache/** linguist-generated=true
+.benchmark_cache/** linguist-generated=true
+.hypothesis/** linguist-generated=true
+.tox/** linguist-generated=true
+.nox/** linguist-generated=true
+
+# Generated Analysis Documents
+# =================================================
+# Temporary analysis, review, and progress tracking files
+*_ANALYSIS.md linguist-generated=true
+*_REVIEW.md linguist-generated=true
+*_PROGRESS.md linguist-generated=true
+
+# Log Files
+# =================================================
+# Runtime logs and debug output
+*.log linguist-generated=true
+logs/** linguist-generated=true
+npm-debug.log* linguist-generated=true
+yarn-debug.log* linguist-generated=true
+lerna-debug.log* linguist-generated=true
+pip-log.txt linguist-generated=true
+
+# Virtual Environments
+# =================================================
+# Python virtual environment directories
+.env/** linguist-generated=true
+.venv/** linguist-generated=true
+env/** linguist-generated=true
+venv/** linguist-generated=true
+ENV/** linguist-generated=true
+
+# Documentation Build
+# =================================================
+# MkDocs and other documentation build outputs
+site/** linguist-generated=true
+_build/** linguist-generated=true
+_static/** linguist-generated=true
+
+# Backup and Archive Files
+# =================================================
+backup/** linguist-generated=true
+backup_*/** linguist-generated=true
+*.bak linguist-generated=true
+*.orig linguist-generated=true
+*.rej linguist-generated=true
+*_old linguist-generated=true
+*_OLD linguist-generated=true
+*conflicted* linguist-generated=true
+
+# Image Assets
+# =================================================
+# Large binary image files (unless design assets requiring review)
+*.png linguist-generated=true
+*.jpg linguist-generated=true
+*.jpeg linguist-generated=true
+*.gif linguist-generated=true
+*.ico linguist-generated=true
+*.svg linguist-generated=true
+*.webp linguist-generated=true
+
+# Compressed Archives
+# =================================================
+*.zip linguist-generated=true
+*.tar.gz linguist-generated=true
+*.tgz linguist-generated=true
+*.rar linguist-generated=true
+*.7z linguist-generated=true
+
+# Database Files
+# =================================================
+*.db linguist-generated=true
+*.sqlite linguist-generated=true
+*.sqlite3 linguist-generated=true
+
+# Minified Files
+# =================================================
+# Minified JavaScript/CSS (generated by build tools)
+*.min.js linguist-generated=true
+*.min.css linguist-generated=true
+
+# Vendor Dependencies
+# =================================================
+# Third-party vendored code
+vendor/** linguist-vendored=true
+node_modules/** linguist-vendored=true
+jspm_packages/** linguist-vendored=true
+bower_components/** linguist-vendored=true
+
+# IDE and Editor Files
+# =================================================
+.vscode/** linguist-generated=true
+.idea/** linguist-generated=true
+*.sublime-workspace linguist-generated=true
+.DS_Store linguist-generated=true
+Thumbs.db linguist-generated=true
+
+# Generated Configuration
+# =================================================
+# Auto-generated configuration files
+*.tsbuildinfo linguist-generated=true
+.eslintcache linguist-generated=true
+
+# Notes for Maintenance
+# =================================================
+# Review this file when:
+# 1. New benchmark datasets are added
+# 2. New build tools generate new artifact types
+# 3. New testing frameworks create new report formats
+# 4. Repository structure changes significantly
+#
+# To validate exclusions:
+# 1. Create a test PR with typical changes
+# 2. Check WTD summary token usage in dashboard
+# 3. Review "Files analyzed" section in WTD output
+# 4. Add patterns for unexpected generated files

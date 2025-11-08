@@ -388,6 +388,23 @@ class MarkerParser(BaseParser):
         # Enable/disable fallback
         self.enable_fallback = os.getenv("MARKER_ENABLE_FALLBACK", "true").lower() == "true"
 
+        # Rate limiting configuration
+        # #CRITICAL: Rate Limit Compliance: OpenRouter enforces 20 RPM for :free models
+        # #VERIFY: Must rate limit to avoid 429 errors and API blocks
+        from data_ingestor.core.config import Settings
+        from data_ingestor.utils.rate_limiter import OpenRouterRateLimiter
+
+        settings = Settings()
+        self.enable_rate_limiting = settings.openrouter_enable_rate_limiting
+        self.rate_limit_timeout = settings.openrouter_rate_limit_timeout
+        self.openrouter_tier = settings.openrouter_tier
+
+        # Initialize rate limiter if enabled
+        self.rate_limiter: OpenRouterRateLimiter | None = None
+        if self.enable_rate_limiting and self.use_llm:
+            self.rate_limiter = OpenRouterRateLimiter(tier=self.openrouter_tier)  # type: ignore[arg-type]
+            logger.info(f"OpenRouter rate limiting enabled ({self.openrouter_tier} tier)")
+
         if self.use_llm:
             if not self.openrouter_api_key:
                 logger.warning("MARKER_USE_LLM enabled but OPENROUTER_API_KEY not found. Disabling LLM.")
@@ -516,23 +533,58 @@ class MarkerParser(BaseParser):
 
                 except Exception as e:
                     # Check if it's an API-related error that warrants fallback
+                    # #CRITICAL: Error Classification: Distinguish OpenRouter vs downstream provider errors
+                    # #VERIFY: Different error codes have different retry/fallback strategies
                     error_str = str(e).lower()
-                    is_api_error = any(
+
+                    # Categorize error types
+                    is_rate_limit_error = any(
                         keyword in error_str
-                        for keyword in [
-                            "api",
-                            "connection",
-                            "timeout",
-                            "rate limit",
-                            "unavailable",
-                            "endpoint",
-                            "403",
-                            "429",
-                            "500",
-                            "502",
-                            "503",
-                            "504",
-                        ]
+                        for keyword in ["rate limit", "429", "too many requests"]
+                    )
+
+                    is_auth_error = any(
+                        keyword in error_str
+                        for keyword in ["auth", "authentication", "401", "403", "unauthorized", "forbidden"]
+                    )
+
+                    is_downstream_provider_error = any(
+                        keyword in error_str
+                        for keyword in ["400", "bad request", "invalid request", "model not found", "model unavailable"]
+                    )
+
+                    is_server_error = any(
+                        keyword in error_str
+                        for keyword in ["500", "502", "503", "504", "internal server error", "gateway"]
+                    )
+
+                    is_connection_error = any(
+                        keyword in error_str
+                        for keyword in ["connection", "timeout", "network", "unreachable"]
+                    )
+
+                    # Log detailed error classification
+                    if is_rate_limit_error:
+                        logger.warning(f"Rate limit error detected (429): {e}")
+                    elif is_auth_error:
+                        logger.error(f"Authentication error (401/403): Check OPENROUTER_API_KEY. Error: {e}")
+                    elif is_downstream_provider_error:
+                        logger.warning(
+                            f"Downstream provider error (400/model unavailable): "
+                            f"Likely from OpenAI/model provider, not OpenRouter. Error: {e}"
+                        )
+                    elif is_server_error:
+                        logger.warning(f"Server error (5xx): Temporary issue. Error: {e}")
+                    elif is_connection_error:
+                        logger.warning(f"Connection error: Network issue. Error: {e}")
+
+                    # Determine if we should fallback
+                    is_api_error = (
+                        is_rate_limit_error
+                        or is_auth_error
+                        or is_downstream_provider_error
+                        or is_server_error
+                        or is_connection_error
                     )
 
                     if is_api_error and self.enable_fallback:
@@ -642,6 +694,9 @@ class MarkerParser(BaseParser):
     def _process_with_llm(self, source_path: str, model_dict: dict, config: dict, llm_model: str) -> Any:
         """Process PDF with LLM enhancement using specified model.
 
+        # #CRITICAL: Rate Limiting: Must acquire rate limit permission before API call
+        # #VERIFY: Implement exponential backoff on 429 errors
+
         Args:
             source_path: Path to PDF file
             model_dict: Marker model dictionary
@@ -652,10 +707,34 @@ class MarkerParser(BaseParser):
             MarkdownOutput object from Marker
 
         Raises:
-            Exception: If processing fails
+            Exception: If processing fails or rate limit exceeded
         """
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter
+
+        # Acquire rate limit permission if enabled
+        if self.rate_limiter is not None:
+            logger.info(f"Acquiring rate limit permission for {llm_model}...")
+            try:
+                acquired = self.rate_limiter.acquire(
+                    model=llm_model,
+                    timeout=self.rate_limit_timeout,
+                )
+                if not acquired:
+                    raise ValueError(
+                        f"Rate limit timeout ({self.rate_limit_timeout}s) exceeded. "
+                        "Too many concurrent requests or daily limit reached."
+                    )
+                logger.info("✓ Rate limit permission acquired")
+
+                # Log rate limiter stats
+                stats = self.rate_limiter.get_stats()
+                logger.debug(f"Rate limiter stats: {stats}")
+
+            except ValueError as e:
+                # Daily limit exceeded or timeout
+                logger.error(f"Rate limit error: {e}")
+                raise
 
         logger.info(f"Configuring LLM enhancement with model: {llm_model}")
         config["use_llm"] = True
@@ -673,8 +752,37 @@ class MarkerParser(BaseParser):
             llm_service=config_parser.get_llm_service(),
         )
 
-        # Convert PDF
-        return converter(source_path)
+        # Convert PDF (with exponential backoff on rate limit errors)
+        max_retries = 3
+        base_delay = 1.0
+
+        for attempt in range(max_retries):
+            try:
+                return converter(source_path)
+
+            except Exception as e:
+                error_str = str(e).lower()
+
+                # Check if it's a rate limit error (429)
+                if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: 1s, 2s, 4s
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(
+                            f"Rate limit error (429) on attempt {attempt + 1}/{max_retries}. "
+                            f"Retrying in {delay}s..."
+                        )
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error("Rate limit error persists after retries")
+                        raise
+
+                # Non-rate-limit error, re-raise immediately
+                raise
+
+        # Should not reach here
+        raise RuntimeError("Unexpected code path in rate limiting retry logic")
 
     def _process_without_llm(self, source_path: str, model_dict: dict, config: dict) -> Any:
         """Process PDF without LLM enhancement.

@@ -153,6 +153,7 @@ backup_*/
 *_old
 *_OLD
 *conflicted*
+tmp_cleanup/
 
 # Local Development
 *.env.zen-vm.template
@@ -235,6 +236,7 @@ data/readoc/
 data/doclaynet/
 data/pubtables/
 data/wind_docs/
+data/benchmarks_unsorted/
 
 # Test outputs and results
 test_output/
@@ -251,3 +253,19 @@ reports/*.json
 .benchmark_cache/
 *.benchmark
 *.evaluation
+
+# Fuzzing & Security Testing
+# =================================
+# ClusterFuzzLite outputs
+out/
+artifacts/
+sarif/
+crash-*
+leak-*
+timeout-*
+oom-*
+
+# Fuzzing corpus and crash inputs
+fuzz/corpus/
+fuzz/crash-*/
+fuzz/*.log

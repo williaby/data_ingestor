@@ -548,9 +548,9 @@ Standard Digital PDFs:
 
 ### Phase 1b: Performance Benchmarking & Baseline Establishment (Week 3.5-4.5)
 
-**Objective**: Establish comprehensive benchmarking infrastructure and baseline metrics using industry-standard datasets
+**Objective**: Establish benchmarking infrastructure and baseline metrics using DocLayNet dataset
 
-**Duration**: 1.5 weeks (10 working days)
+**Duration**: 1 week (5-7 working days)
 
 **Rationale**: Before implementing Phase 2 enhancements (Intelligent OCR, Docling integration), we need:
 1. Baseline metrics to measure improvements against
@@ -558,87 +558,216 @@ Standard Digital PDFs:
 3. Regression detection to prevent quality degradation
 4. Performance benchmarks to validate ~5x speedup claims
 
+**Scope Changes** (2025-11-04):
+- **Focused on DocLayNet only** for Phase 1 baseline (81,471 documents available)
+- **ReadOC dropped** - dataset not accessible
+- **PubTables-1M moved to Phase 2** - will evaluate with Docling TableFormer
+
 **Requirements**:
-- [ ] **Dataset Setup & Validation** (Day 1-2)
-  - [ ] Download ReadOC dataset (500 samples)
-  - [ ] Download DocLayNet dataset (1,000 samples)
-  - [ ] Download PubTables-1M dataset (500 samples)
+- [x] **Dataset Setup & Validation** (Day 1)
+  - [x] DocLayNet dataset extracted (81,471 documents)
   - [ ] Validate dataset integrity and ground truth annotations
   - [ ] Create dataset configuration file (`data/benchmarks/config.yaml`)
   - [ ] Generate dataset statistics and diversity analysis
 
-- [ ] **Evaluation Framework Implementation** (Day 3-5)
-  - [ ] Implement `BaseEvaluator` abstract class
-  - [ ] Implement `ReadOCEvaluator` (PDF→Markdown structure fidelity)
-  - [ ] Implement `DocLayNetEvaluator` (layout and reading order)
-  - [ ] Implement `PubTablesEvaluator` (table structure extraction)
-  - [ ] Unit tests for each evaluator (80% coverage)
+- [x] **Evaluation Framework Implementation** (Day 2-3)
+  - [x] Implement `BaseEvaluator` abstract class
+  - [x] Implement `DocLayNetEvaluator` (layout and reading order)
+  - [ ] Unit tests for evaluator (currently 14-19% coverage, target 80%)
 
-- [ ] **Metric Calculators** (Day 5-6)
-  - [ ] Text fidelity metrics (CER, BLEU, chrF)
-  - [ ] Structure metrics (Section F1, Reading order F1, Kendall tau)
-  - [ ] Table metrics (TEDS, Cell exact match, Header F1)
-  - [ ] Layout metrics (mAP for 11 classes)
+- [x] **Metric Calculators** (Day 3-4)
+  - [x] Text fidelity metrics (CER, BLEU, chrF)
+  - [x] Structure metrics (Section F1, Reading order F1, Kendall tau)
+  - [x] Layout metrics (mAP for 11 classes)
   - [ ] Validation tests against reference implementations
 
-- [ ] **Orchestration & Integration** (Day 6-7)
-  - [ ] Implement `BenchmarkOrchestrator`
-  - [ ] Integrate with existing `DocumentRouter`
-  - [ ] Parallel processing support (4 workers)
-  - [ ] CLI commands: `benchmark`, `benchmark-report`
-  - [ ] Integration tests
+- [x] **Orchestration & Integration** (Day 4-5)
+  - [x] Implement `BenchmarkOrchestrator`
+  - [x] Integrate with existing `DocumentRouter`
+  - [x] CLI commands: `benchmark`, `benchmark-report`
+  - [ ] Integration tests for orchestrator
 
-- [ ] **Baseline Execution** (Day 8)
-  - [ ] Run full benchmark with Phase 1 parsers (PyMuPDF, PyMuPDF4LLM)
-  - [ ] Process 2,000 documents (500 + 1,000 + 500)
+- [ ] **Baseline Execution** (Day 5-6)
+  - [ ] Run benchmark with Phase 1 parsers (PyMuPDF, PyMuPDF4LLM)
+  - [ ] Process DocLayNet sample (start with 1,000 documents)
   - [ ] Generate comprehensive metrics
   - [ ] Identify failure cases and edge cases
 
-- [ ] **Report Generation** (Day 9)
+- [ ] **Report Generation** (Day 6)
   - [ ] HTML report with visualizations
   - [ ] JSON report for programmatic access
   - [ ] CSV export for analysis
   - [ ] Parser comparison charts
   - [ ] Failure analysis and categorization
 
-- [ ] **Documentation & CI/CD Integration** (Day 10)
-  - [ ] Complete [PERFORMANCE_BENCHMARKING_GUIDE.md](PERFORMANCE_BENCHMARKING_GUIDE.md)
-  - [ ] Add GitHub Actions workflow for automated benchmarks
-  - [ ] Set up regression detection
+- [ ] **Testing & Documentation** (Day 7)
+  - [ ] Write unit tests for evaluation framework (to 80% coverage)
+  - [ ] Update [PERFORMANCE_BENCHMARKING_GUIDE.md](PERFORMANCE_BENCHMARKING_GUIDE.md)
   - [ ] Document baseline metrics for Phase 2 comparison
 
 **Deliverables**:
-- Fully functional benchmarking framework
+- Functional benchmarking framework with DocLayNet
 - Baseline metrics report for Phase 1 parsers
-- Automated benchmark execution in CI/CD
-- [PERFORMANCE_BENCHMARKING_GUIDE.md](PERFORMANCE_BENCHMARKING_GUIDE.md) documentation
+- Updated documentation
 
 **Exit Criteria**:
-- [ ] All three datasets downloaded and validated (2,000 documents total)
-- [ ] Benchmark framework processes all documents with <1% failures
+- [x] DocLayNet dataset downloaded and validated (81,471 documents)
+- [ ] Benchmark framework processes sample documents with <5% failures
 - [ ] Baseline metrics established:
-  - ReadOC: Section F1 > 0.75 (baseline for comparison)
   - DocLayNet: mAP > 0.70 (baseline for comparison)
-  - PubTables: TEDS > 0.75 (baseline for comparison)
   - Overall text accuracy > 85%
+  - Layout detection accuracy > 80%
 - [ ] HTML and JSON reports generated successfully
-- [ ] CI/CD integration functional
-- [ ] Regression detection automated
-- [ ] Documentation complete and reviewed
+- [ ] Test coverage for evaluation framework > 80%
+- [ ] Documentation updated
 
 **Integration with Phase 2**:
 After Phase 2 implementation (Intelligent OCR, Docling), re-run benchmarks to validate:
 - Average speedup > 4x vs. Phase 1 baseline
-- ReadOC Section F1 > 0.85 (improvement or maintenance)
-- PubTables TEDS > 0.95 (97.9% target with Docling TableFormer)
+- DocLayNet mAP improvement or maintenance
+- PubTables TEDS > 0.95 (97.9% target with Docling TableFormer - Phase 2 addition)
 - Routing accuracy > 90%
 - No quality regression on any metric
 
 **Reference Documentation**:
 - [PERFORMANCE_BENCHMARKING_GUIDE.md](PERFORMANCE_BENCHMARKING_GUIDE.md) - Complete benchmarking guide
-- [datasets.md](datasets.md) - Dataset catalog and metadata
 
-### Phase 2: Enhanced Intelligence & Format Expansion (Week 5-10)
+### Phase 1c: PDF Resolution Pre-processing (Week 4.5-5)
+
+**Objective**: Improve OCR quality by upscaling low-resolution PDFs before Marker processing
+
+**Duration**: 3-4 working days
+
+**Rationale**:
+Low-resolution PDFs (< 300dpi) often produce poor OCR results. By analyzing PDF resolution during pre-flight and upscaling when necessary, we can significantly improve OCR accuracy without processing every document.
+
+**Requirements**:
+- [ ] **Resolution Analysis** (Day 1)
+  - [ ] Implement PDF resolution detection in `DocumentAnalyzer`
+  - [ ] Extract DPI metadata from PDF images
+  - [ ] Calculate average/minimum resolution per document
+  - [ ] Add resolution metrics to pre-flight analysis
+
+- [ ] **OpenCV Upscaling Integration** (Day 2)
+  - [ ] Implement image upscaling using OpenCV
+  - [ ] Configure upscaling target (300dpi)
+  - [ ] Support multiple upscaling algorithms (bicubic, Lanczos)
+  - [ ] Preserve original file if upscaling fails
+  - [ ] Handle memory constraints for large files
+
+- [ ] **Pre-flight Integration** (Day 3)
+  - [ ] Add resolution check to `DocumentAnalyzer` workflow
+  - [ ] Implement conditional upscaling (< 300dpi threshold)
+  - [ ] Update `IntelligentOCRRouter` to use upscaled versions
+  - [ ] Add configuration flags to enable/disable upscaling
+  - [ ] Track upscaling metrics (time, memory, before/after size)
+
+- [ ] **Testing & Validation** (Day 4)
+  - [ ] Unit tests for resolution detection
+  - [ ] Integration tests with low-resolution PDFs
+  - [ ] Validate OCR quality improvement
+  - [ ] Benchmark performance impact
+  - [ ] Document upscaling configuration
+
+**Deliverables**:
+- Resolution detection integrated into `DocumentAnalyzer`
+- OpenCV upscaling module
+- Configuration options for upscaling
+- Unit and integration tests
+- Documentation on resolution handling
+
+**Exit Criteria**:
+- [ ] Resolution detection works on 100+ test PDFs
+- [ ] Upscaling improves OCR quality on low-res documents (>10% accuracy gain)
+- [ ] Performance overhead <500ms per upscaled document
+- [ ] No quality regression on high-res documents
+- [ ] Memory usage stays within limits (<2GB per worker)
+
+**Integration with Phase 2**:
+Resolution pre-processing will be part of the pre-flight analysis pipeline and feed into the Intelligent OCR routing decisions.
+
+### Phase 1d: Scanning Options Testing & Baseline Framework (Week 5-5.5)
+
+**Objective**: Create comprehensive framework to test and compare different scanning configurations with hardware-specific baselines
+
+**Duration**: 3-4 working days
+
+**Rationale**:
+Published benchmarks don't reflect performance on our specific hardware and dataset. We need a systematic way to test different parser configurations (Marker with/without LLM, with/without force OCR, etc.) and track their performance to make data-driven routing decisions.
+
+**Requirements**:
+- [ ] **Configuration Testing Framework** (Day 1-2)
+  - [ ] Implement `ParserConfigurationTester` class
+  - [ ] Support Marker configuration variants:
+    - [ ] With/without LLM enhancement
+    - [ ] With/without force OCR
+    - [ ] With/without batch processing
+    - [ ] Different language models
+  - [ ] Support Docling configuration variants:
+    - [ ] With/without TableFormer
+    - [ ] Different pipeline configurations
+    - [ ] GPU vs CPU comparison
+  - [ ] Support backup parser testing:
+    - [ ] PyMuPDF4LLM configurations
+    - [ ] PyMuPDF configurations
+  - [ ] Configurable test suite definition (YAML/JSON)
+
+- [ ] **Baseline Recording & Tracking** (Day 2-3)
+  - [ ] Hardware fingerprinting (CPU, GPU, memory)
+  - [ ] Dataset fingerprinting (document types, sizes, complexity)
+  - [ ] Performance metrics storage (JSON/SQLite)
+  - [ ] Track metrics per configuration:
+    - [ ] Processing time (per page, per document)
+    - [ ] Memory usage (peak, average)
+    - [ ] Quality scores (text accuracy, structure preservation)
+    - [ ] GPU utilization (if available)
+    - [ ] Cost estimates (API calls, compute time)
+  - [ ] Versioning for reproducibility
+
+- [ ] **Comparative Analysis** (Day 3-4)
+  - [ ] Generate comparison reports (HTML/JSON)
+  - [ ] Visualize performance trade-offs (speed vs accuracy)
+  - [ ] Statistical significance testing
+  - [ ] Identify optimal configurations per document type
+  - [ ] Cost-benefit analysis
+  - [ ] Recommendation engine for routing decisions
+
+- [ ] **CLI Integration** (Day 4)
+  - [ ] `benchmark-configs` command to run configuration tests
+  - [ ] `compare-configs` command to analyze results
+  - [ ] `baseline-create` command to establish new baseline
+  - [ ] `baseline-compare` command to compare against baselines
+  - [ ] Progress tracking and ETA for long-running tests
+
+**Deliverables**:
+- `ParserConfigurationTester` framework
+- Hardware and dataset fingerprinting
+- Baseline storage and versioning system
+- Comparative analysis reports
+- CLI commands for testing and comparison
+- Documentation on testing methodology
+
+**Exit Criteria**:
+- [ ] Framework supports all Marker configuration variants
+- [ ] Framework supports Docling and backup parsers
+- [ ] Baselines recorded for at least 100 test documents
+- [ ] Comparative reports identify best configurations per document type
+- [ ] Statistical analysis shows significant performance differences
+- [ ] Documentation includes testing best practices
+- [ ] Integration with existing benchmarking framework (Phase 1b)
+
+**Integration with Phase 2**:
+Testing results will inform the `IntelligentOCRRouter` decision logic and help optimize parser selection for different document characteristics.
+
+**Example Use Cases**:
+1. Test Marker with LLM vs without on scanned documents
+2. Compare Marker force OCR vs intelligent routing
+3. Evaluate Docling TableFormer accuracy on table-heavy PDFs
+4. Benchmark GPU acceleration benefits for Docling
+5. Identify fastest configuration for simple digital PDFs
+6. Establish cost-per-document baselines for API-based parsers
+
+### Phase 2: Enhanced Intelligence & Format Expansion (Week 5.5-10.5)
 
 **Objective**: Intelligent OCR routing, Docling integration, comprehensive format support
 

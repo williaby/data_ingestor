@@ -5704,7 +5704,7 @@ version = "4.11.0.86"
 description = "Wrapper package for OpenCV python bindings."
 optional = false
 python-versions = ">=3.6"
-groups = ["advanced-pdf"]
+groups = ["main", "advanced-pdf"]
 files = [
     {file = "opencv-python-headless-4.11.0.86.tar.gz", hash = "sha256:996eb282ca4b43ec6a3972414de0e2331f5d9cda2b41091a49739c19fb843798"},
     {file = "opencv_python_headless-4.11.0.86-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:48128188ade4a7e517237c8e1e11a9cdf5c282761473383e77beb875bb1e61ca"},
@@ -11016,4 +11016,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "b3ff1a49f6afac2e3ab74d85f6fcc974c74fde62ec5e8f41b4d5542ea361de33"
+content-hash = "f1c24a91ff1e956456d21233d998f796fdc0c108a5314c522332f17998219b41"

@@ -1,6 +1,7 @@
 """Command-line interface for document processing."""
 
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,15 +19,18 @@ from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, Py
 from data_ingestor.pipeline.router import DocumentRouter
 from data_ingestor.benchmarking import BenchmarkOrchestrator, BenchmarkReporter
 
-console = Console()
 
-
-def setup_logging(debug: bool = False) -> None:
-    """Set up logging configuration.
+def setup_logging(debug: bool = False) -> Console:
+    """Set up logging configuration and return console instance.
 
     Args:
         debug: Enable debug logging
+
+    Returns:
+        Console instance for this CLI invocation
     """
+    # Create console per invocation for thread-safety
+    console = Console()
     level = logging.DEBUG if debug else logging.INFO
 
     logging.basicConfig(
@@ -35,6 +39,8 @@ def setup_logging(debug: bool = False) -> None:
         datefmt="[%X]",
         handlers=[RichHandler(console=console, rich_tracebacks=True)],
     )
+
+    return console
 
 
 @click.group()
@@ -45,10 +51,11 @@ def cli(ctx: click.Context, debug: bool) -> None:
 
     Process documents (PDF, DOCX, Web, Video) into RAG-ready chunks.
     """
-    setup_logging(debug)
+    console = setup_logging(debug)
     ctx.ensure_object(dict)
     ctx.obj["debug"] = debug
     ctx.obj["settings"] = Settings()
+    ctx.obj["console"] = console
 
 
 @cli.command()
@@ -96,6 +103,7 @@ def process(
         data-ingestor process document.pdf --format both --output document
     """
     settings: Settings = ctx.obj["settings"]
+    console: Console = ctx.obj["console"]
     exporter = DocumentExporter()
 
     try:
@@ -103,12 +111,21 @@ def process(
         router = DocumentRouter(settings)
 
         # Register PDF parsers (in priority order: Marker → PyMuPDF4LLM → PyMuPDF)
-        marker_parser = MarkerParser(settings.get_parser_config("marker"))
+        # Skip Marker parser in test environment to avoid slow PyTorch loading
+        skip_marker = os.getenv("SKIP_MARKER_PARSER", "").lower() in ("1", "true", "yes")
+
+        if not skip_marker:
+            try:
+                marker_parser = MarkerParser(settings.get_parser_config("marker"))
+                # Marker has priority 10 (highest quality, optional)
+                router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
+            except Exception:
+                # Marker is optional, gracefully skip if unavailable
+                pass
+
         pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
         pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
 
-        # Marker has priority 10 (highest quality, optional)
-        router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
         # PyMuPDF4LLM has priority 100 (LLM-optimized, reliable)
         router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
         # PyMuPDF has priority 100 (fast fallback)
@@ -177,7 +194,7 @@ def process(
                     console.print(f"\n[bold green]✓[/bold green] Output saved to {output}")
         else:
             # Display preview
-            _display_preview(document)
+            _display_preview(document, console)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
@@ -191,15 +208,25 @@ def process(
 def health(ctx: click.Context) -> None:
     """Check health of all parsers."""
     settings: Settings = ctx.obj["settings"]
+    console: Console = ctx.obj["console"]
 
     router = DocumentRouter(settings)
 
     # Register all PDF parsers
-    marker_parser = MarkerParser(settings.get_parser_config("marker"))
+    # Skip Marker parser in test environment to avoid slow PyTorch loading
+    skip_marker = os.getenv("SKIP_MARKER_PARSER", "").lower() in ("1", "true", "yes")
+
+    if not skip_marker:
+        try:
+            marker_parser = MarkerParser(settings.get_parser_config("marker"))
+            router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
+        except Exception:
+            # Marker is optional, gracefully skip if unavailable
+            pass
+
     pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
     pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
 
-    router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
     router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
     router.parser_registry.register(pymupdf_parser, [DocumentFormat.PDF])
 
@@ -235,7 +262,7 @@ def health(ctx: click.Context) -> None:
     "--datasets",
     "-d",
     multiple=True,
-    help="Datasets to benchmark (readoc, doclaynet, pubtables). Default: all",
+    help="Datasets to benchmark (doclaynet only in Phase 1b). Default: doclaynet",
 )
 @click.option(
     "--parsers",
@@ -271,21 +298,23 @@ def benchmark(
     output: str | None,
     output_dir: str,
 ) -> None:
-    """Run comprehensive benchmark across datasets.
+    """Run comprehensive benchmark on DocLayNet dataset (Phase 1b baseline).
 
     Examples:
-        # Run all benchmarks
+        # Run benchmark on DocLayNet
         data-ingestor benchmark
 
-        # Benchmark specific datasets
-        data-ingestor benchmark -d readoc -d doclaynet
+        # Benchmark with specific dataset
+        data-ingestor benchmark -d doclaynet
 
         # Test specific parsers
         data-ingestor benchmark -p pymupdf -p pymupdf4llm
 
         # Custom configuration
-        data-ingestor benchmark -d readoc -p pymupdf -w 8 -o baseline.json
+        data-ingestor benchmark -d doclaynet -p pymupdf -w 8 -o baseline.json
     """
+    console: Console = ctx.obj["console"]
+
     try:
         console.print("\n[bold blue]🚀 Starting Benchmark Run[/bold blue]\n")
 
@@ -367,6 +396,8 @@ def benchmark_report(
         # Custom output location
         data-ingestor benchmark-report results/baseline.json -o reports/my_report.html
     """
+    console: Console = ctx.obj["console"]
+
     try:
         console.print(f"\n[bold blue]📊 Generating Report[/bold blue]\n")
         console.print(f"[cyan]Input:[/cyan] {results_file}")
@@ -419,11 +450,12 @@ def benchmark_report(
         sys.exit(1)
 
 
-def _display_preview(document: Any) -> None:
+def _display_preview(document: Any, console: Console) -> None:
     """Display document preview in console.
 
     Args:
         document: Document to display
+        console: Console instance for output
     """
     console.print("\n[bold]Document Preview:[/bold]\n")
 

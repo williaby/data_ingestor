@@ -1,0 +1,212 @@
+# Automated Release Workflow using Semantic Release
+# Generates version numbers, changelogs, and GitHub releases from conventional commits
+# Publishes to PyPI on main branch pushes
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Skip release if commit message contains [skip ci] or [skip release]
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skip release]')
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            uploads.github.com:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            install.python-poetry.org:443
+
+      - name: Checkout Repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry Dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            .venv
+            ~/.cache/pypoetry
+          key: release-poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            release-poetry-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install --with dev --no-interaction
+
+      - name: Run Tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest -v \
+            --cov=src \
+            --cov-report=term-missing \
+            -m "not slow and not performance"
+
+      - name: Build Package
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry build
+          ls -lh dist/
+
+      - name: Setup Node.js for Semantic Release
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: 'lts/*'
+
+      - name: Install Semantic Release
+        run: |
+          npm install -g \
+            semantic-release@23 \
+            @semantic-release/changelog \
+            @semantic-release/git \
+            @semantic-release/github \
+            @semantic-release/exec
+
+      - name: Create .releaserc.json
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main"],
+            "plugins": [
+              ["@semantic-release/commit-analyzer", {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  {"type": "feat", "release": "minor"},
+                  {"type": "fix", "release": "patch"},
+                  {"type": "perf", "release": "patch"},
+                  {"type": "revert", "release": "patch"},
+                  {"type": "docs", "release": false},
+                  {"type": "style", "release": false},
+                  {"type": "refactor", "release": "patch"},
+                  {"type": "test", "release": false},
+                  {"type": "build", "release": "patch"},
+                  {"type": "ci", "release": false},
+                  {"type": "chore", "release": false},
+                  {"breaking": true, "release": "major"}
+                ]
+              }],
+              ["@semantic-release/release-notes-generator", {
+                "preset": "conventionalcommits",
+                "presetConfig": {
+                  "types": [
+                    {"type": "feat", "section": "Features"},
+                    {"type": "fix", "section": "Bug Fixes"},
+                    {"type": "perf", "section": "Performance Improvements"},
+                    {"type": "revert", "section": "Reverts"},
+                    {"type": "refactor", "section": "Code Refactoring"},
+                    {"type": "build", "section": "Build System"},
+                    {"type": "docs", "section": "Documentation", "hidden": false},
+                    {"type": "style", "section": "Styles", "hidden": true},
+                    {"type": "chore", "section": "Miscellaneous", "hidden": true},
+                    {"type": "test", "section": "Tests", "hidden": true},
+                    {"type": "ci", "section": "CI/CD", "hidden": true}
+                  ]
+                }
+              }],
+              ["@semantic-release/changelog", {
+                "changelogFile": "CHANGELOG.md",
+                "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file."
+              }],
+              ["@semantic-release/exec", {
+                "prepareCmd": "poetry version ${nextRelease.version}"
+              }],
+              ["@semantic-release/github", {
+                "assets": [
+                  {"path": "dist/*.tar.gz", "label": "Source Distribution"},
+                  {"path": "dist/*.whl", "label": "Python Wheel"}
+                ]
+              }],
+              ["@semantic-release/git", {
+                "assets": ["CHANGELOG.md", "pyproject.toml"],
+                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+              }]
+            ]
+          }
+          EOF
+
+      - name: Run Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx semantic-release
+
+      - name: Upload Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: python-package-distributions
+          path: dist/
+          retention-days: 30
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: release
+    runs-on: ubuntu-latest
+    if: success()
+    environment:
+      name: pypi
+      url: https://pypi.org/project/data-ingestor/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+          allowed-endpoints: >
+            pypi.org:443
+            upload.pypi.org:443
+            files.pythonhosted.org:443
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450 # v1.8.14
+        with:
+          print-hash: true
+          verbose: true

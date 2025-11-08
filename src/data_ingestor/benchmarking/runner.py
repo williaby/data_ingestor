@@ -13,7 +13,10 @@ from typing import List
 
 from tqdm import tqdm
 
+from data_ingestor.core.config import Settings
+from data_ingestor.core.models import DocumentFormat
 from data_ingestor.pipeline.router import DocumentRouter
+from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.evaluation.base import BaseEvaluator
 from data_ingestor.evaluation.models import EvaluationResult
 
@@ -54,10 +57,28 @@ class BenchmarkRunner:
         self.batch_size = batch_size
         self.timeout = timeout
 
-        # Initialize DocumentRouter
+        # Initialize settings and DocumentRouter
         # #ASSUME: DocumentRouter can be shared across workers
         # #VERIFY: Router is thread-safe or process-safe
-        self.router = DocumentRouter()
+        settings = Settings()
+        self.router = DocumentRouter(settings)
+
+        # Register PDF parsers for benchmark
+        # Priority order: Marker (optional, highest quality) → PyMuPDF4LLM → PyMuPDF
+        try:
+            marker_parser = MarkerParser(settings.get_parser_config("marker"))
+            self.router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
+            logger.info("Registered MarkerParser for PDF processing")
+        except Exception as e:
+            logger.warning(f"Could not register MarkerParser: {e}")
+
+        pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
+        self.router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
+        logger.info("Registered PyMuPDF4LLMParser for PDF processing")
+
+        pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
+        self.router.parser_registry.register(pymupdf_parser, [DocumentFormat.PDF])
+        logger.info("Registered PyMuPDFParser for PDF processing")
 
         logger.info(f"Benchmark runner initialized with {workers} workers")
 

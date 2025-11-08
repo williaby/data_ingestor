@@ -9,8 +9,10 @@ Metrics:
 - Kendall tau: Rank correlation for element ordering
 """
 
+import json
+import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from data_ingestor.core.models import Document
 from data_ingestor.evaluation.base import BaseEvaluator
@@ -20,6 +22,8 @@ from data_ingestor.evaluation.metrics import (
     calculate_map,
     calculate_reading_order_f1,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DocLayNetEvaluator(BaseEvaluator):
@@ -46,6 +50,17 @@ class DocLayNetEvaluator(BaseEvaluator):
             ground_truth_dir: Path to DocLayNet ground truth annotations (JSON)
         """
         super().__init__("doclaynet", ground_truth_dir)
+
+        # Cache for COCO JSON data (loaded once for efficiency)
+        # #ASSUME: COCO files are in ground_truth_dir/coco/
+        # #VERIFY: All three splits (train, val, test) are available
+        self._coco_data = {}
+        self._coco_dir = self.ground_truth_dir / "coco"
+
+        if not self._coco_dir.exists():
+            logger.warning(f"COCO directory not found: {self._coco_dir}")
+        else:
+            self._load_coco_data()
 
     def evaluate_document(
         self,
@@ -81,20 +96,28 @@ class DocLayNetEvaluator(BaseEvaluator):
             pred_boxes = self._elements_to_boxes(predicted)
             gt_boxes = self._annotations_to_boxes(gt_layout)
 
-            # Calculate mAP for layout detection
-            map_score = calculate_map(pred_boxes, gt_boxes, iou_threshold=0.5)
+            # Calculate mAP for layout detection (only if parser provides bounding boxes)
+            # #ASSUME: Parsers without layout detection don't provide bounding boxes
+            # #VERIFY: PyMuPDF/PyMuPDF4LLM will have 0 predicted boxes
+            if pred_boxes:
+                map_score = calculate_map(pred_boxes, gt_boxes, iou_threshold=0.5)
 
-            result.metrics.append(
-                MetricScore(
-                    name=MetricType.MAP,
-                    value=map_score,
-                    metadata={
-                        "iou_threshold": 0.5,
-                        "pred_boxes": len(pred_boxes),
-                        "gt_boxes": len(gt_boxes),
-                    },
+                result.metrics.append(
+                    MetricScore(
+                        name=MetricType.MAP,
+                        value=map_score,
+                        metadata={
+                            "iou_threshold": 0.5,
+                            "pred_boxes": len(pred_boxes),
+                            "gt_boxes": len(gt_boxes),
+                        },
+                    )
                 )
-            )
+            else:
+                logger.info(
+                    f"Skipping mAP calculation for {doc_id}: "
+                    f"Parser does not provide bounding boxes"
+                )
 
             # Calculate reading order metrics
             pred_order = self._extract_reading_order(predicted)
@@ -143,9 +166,10 @@ class DocLayNetEvaluator(BaseEvaluator):
 
         for i, element in enumerate(document.elements):
             # Extract bounding box from metadata
-            # #ASSUME: Elements have bounding box coordinates in metadata
+            # #ASSUME: Elements have bounding box coordinates in metadata or legacy bbox field
             # #VERIFY: Bounding box format is [x1, y1, x2, y2]
-            bbox = element.metadata.get("bbox", element.metadata.get("coordinates"))
+            # #CRITICAL: ElementMetadata is Pydantic model, use attribute access not .get()
+            bbox = element.metadata.coordinates or element.bbox
 
             if bbox:
                 boxes.append(
@@ -233,3 +257,131 @@ class DocLayNetEvaluator(BaseEvaluator):
             MetricType.READING_ORDER_F1: 0.85,
             MetricType.KENDALL_TAU: 0.80,
         }
+
+    def _load_coco_data(self) -> None:
+        """
+        Load COCO JSON files and build mapping structures.
+
+        Loads train.json, val.json, test.json and creates:
+        - filename → image_id mapping
+        - image_id → annotations mapping
+        - category_id → category_name mapping
+        """
+        logger.info("Loading DocLayNet COCO annotations...")
+
+        for split in ["train", "val", "test"]:
+            coco_file = self._coco_dir / f"{split}.json"
+
+            if not coco_file.exists():
+                logger.warning(f"COCO file not found: {coco_file}")
+                continue
+
+            with open(coco_file, "r") as f:
+                coco_data = json.load(f)
+
+            # Build filename → image mapping
+            filename_map = {}
+            for img in coco_data.get("images", []):
+                filename_map[img["file_name"]] = img
+
+            # Build image_id → annotations mapping
+            image_annotations = {}
+            for ann in coco_data.get("annotations", []):
+                image_id = ann["image_id"]
+                if image_id not in image_annotations:
+                    image_annotations[image_id] = []
+                image_annotations[image_id].append(ann)
+
+            # Build category_id → category_name mapping
+            category_map = {}
+            for cat in coco_data.get("categories", []):
+                category_map[cat["id"]] = cat["name"]
+
+            self._coco_data[split] = {
+                "filename_map": filename_map,
+                "image_annotations": image_annotations,
+                "category_map": category_map,
+                "images_count": len(filename_map),
+                "annotations_count": len(coco_data.get("annotations", [])),
+            }
+
+            logger.info(
+                f"Loaded {split}.json: "
+                f"{self._coco_data[split]['images_count']} images, "
+                f"{self._coco_data[split]['annotations_count']} annotations"
+            )
+
+    def load_ground_truth(self, document_id: str) -> Optional[Dict]:
+        """
+        Load ground truth for a DocLayNet document from COCO annotations.
+
+        Converts PDF document ID to PNG filename, finds matching image in COCO,
+        extracts annotations, and returns in expected format.
+
+        Args:
+            document_id: Document identifier (PDF filename without extension)
+
+        Returns:
+            Dict with 'layout' key containing 'annotations', or None if not found
+        """
+        if not self._coco_data:
+            logger.error("COCO data not loaded")
+            return None
+
+        # Convert PDF doc_id to PNG filename
+        # #ASSUME: PNG filename matches PDF filename (both use same hash)
+        # #VERIFY: Document exists in one of the COCO splits
+        png_filename = f"{document_id}.png"
+
+        # Search all splits for this document
+        for split in ["train", "val", "test"]:
+            if split not in self._coco_data:
+                continue
+
+            split_data = self._coco_data[split]
+            filename_map = split_data["filename_map"]
+
+            if png_filename not in filename_map:
+                continue
+
+            # Found the image!
+            image = filename_map[png_filename]
+            image_id = image["id"]
+
+            # Get annotations for this image
+            annotations = split_data["image_annotations"].get(image_id, [])
+            category_map = split_data["category_map"]
+
+            if not annotations:
+                logger.warning(
+                    f"No annotations found for {document_id} (image_id={image_id})"
+                )
+                return None
+
+            # Convert to expected format
+            formatted_annotations = []
+            for ann in annotations:
+                formatted_annotations.append(
+                    {
+                        "id": ann["id"],
+                        "bbox": ann["bbox"],  # [x, y, width, height]
+                        "category": category_map.get(
+                            ann["category_id"], "unknown"
+                        ),
+                        "category_id": ann["category_id"],
+                        "area": ann.get("area", 0),
+                        # Note: DocLayNet doesn't have explicit reading_order
+                        # Evaluator will fall back to y-coordinate sorting
+                    }
+                )
+
+            logger.debug(
+                f"Found {len(formatted_annotations)} annotations for "
+                f"{document_id} in {split}.json"
+            )
+
+            return {"layout": {"annotations": formatted_annotations}}
+
+        # Not found in any split
+        logger.error(f"Document {document_id} not found in any COCO split")
+        return None

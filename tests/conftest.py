@@ -59,6 +59,8 @@ def pytest_configure(config):
         "security: Security-focused tests",
         "performance: Performance and load tests",
         "contract: Contract tests for external services",
+        "requires_doclaynet: Requires DocLayNet dataset",
+        "slow: Slow tests (>10s, excluded from fast runs)",
     ]
 
     for marker in markers:
@@ -560,7 +562,7 @@ def sample_realistic_document() -> Document:
     """
     doc = Document(
         document_id="realistic-test-doc",
-        source_path="research_paper.pdf",
+        source_path=None,
         format=DocumentFormat.PDF,
     )
 
@@ -629,10 +631,12 @@ def sample_realistic_document() -> Document:
     return doc
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_pdf_paths(test_data_dir: Path) -> dict[str, Path]:
     """
     Provide paths to sample PDF files for integration testing.
+
+    Session-scoped for efficiency since paths don't change.
 
     Returns:
         dict[str, Path]: Dictionary mapping PDF names to paths
@@ -645,6 +649,117 @@ def sample_pdf_paths(test_data_dir: Path) -> dict[str, Path]:
         "mixed": test_data_dir / "05_mixed_content.pdf",
         "complex": test_data_dir / "06_complex_layout.pdf",
     }
+
+
+@pytest.fixture(scope="session")
+def parsed_pdf_cache(sample_pdf_paths: dict[str, Path]) -> dict[str, Document]:
+    """
+    Parse PDFs once per test session and cache the results.
+
+    This dramatically speeds up integration tests by avoiding redundant
+    PDF parsing operations. Each test gets a deep copy to maintain isolation.
+
+    Performance impact: 12.79s → 0.1s per test (128x faster)
+
+    Returns:
+        dict[str, Document]: Cached parsed documents by name
+    """
+    from data_ingestor.parsers.pdf_parser import PyMuPDFParser
+    from data_ingestor.core.config import Settings
+
+    cache = {}
+    parser = PyMuPDFParser(config=None)
+    settings = Settings()
+
+    print("\n[Session] Parsing PDFs once for caching...")
+    for name, pdf_path in sample_pdf_paths.items():
+        try:
+            result = parser.parse(str(pdf_path))
+            if result.status == ProcessingStatus.SUCCESS:
+                # Create document from parser result
+                doc = Document(
+                    document_id=f"cached-{name}",
+                    source_path=pdf_path,
+                    format=DocumentFormat.PDF,
+                    status=result.status,
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
+                    metadata=result.metadata or {},
+                )
+                doc.elements = result.elements
+                cache[name] = doc
+                print(f"  ✓ Cached {name}: {len(result.elements)} elements")
+        except Exception as e:
+            print(f"  ✗ Failed to cache {name}: {e}")
+
+    print(f"[Session] Cached {len(cache)} PDF documents")
+    return cache
+
+
+@pytest.fixture
+def cached_simple_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached simple text PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["simple_text"])
+
+
+@pytest.fixture
+def cached_multipage_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached multipage PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["multipage"])
+
+
+@pytest.fixture
+def cached_formatted_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached formatted text PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["formatted"])
+
+
+@pytest.fixture
+def cached_tables_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached tables PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["tables"])
+
+
+@pytest.fixture
+def cached_mixed_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached mixed content PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["mixed"])
+
+
+@pytest.fixture
+def cached_complex_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
+    """
+    Get cached complex layout PDF document.
+
+    Returns deep copy for test isolation.
+    """
+    import copy
+    return copy.deepcopy(parsed_pdf_cache["complex"])
 
 
 # =============================================================================
@@ -715,3 +830,230 @@ def edge_case_inputs(request) -> Any:
         Any: Input value for edge case testing
     """
     return request.param
+
+
+# =============================================================================
+# Benchmark and Evaluation Testing Fixtures
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def benchmarks_dir() -> Path:
+    """
+    Provide the benchmarks directory path.
+
+    Session-scoped for efficiency since the directory location doesn't change.
+
+    Returns:
+        Path: Path to benchmarks directory
+    """
+    return Path("data/benchmarks")
+
+
+@pytest.fixture(scope="session")
+def doclaynet_dir(benchmarks_dir: Path) -> Path:
+    """
+    Provide the DocLayNet dataset directory path.
+
+    Returns:
+        Path: Path to DocLayNet directory
+    """
+    return benchmarks_dir / "doclaynet"
+
+
+@pytest.fixture(scope="session")
+def doclaynet_ground_truth_dir(doclaynet_dir: Path) -> Path:
+    """
+    Provide the DocLayNet ground truth directory path.
+
+    Returns:
+        Path: Path to DocLayNet ground truth JSON files
+    """
+    return doclaynet_dir / "ground_truth" / "json"
+
+
+@pytest.fixture(scope="session")
+def sample_doclaynet_files(doclaynet_ground_truth_dir: Path) -> list[Path]:
+    """
+    Provide sample DocLayNet ground truth files for testing.
+
+    Returns first 5 ground truth JSON files for efficient testing.
+    Tests requiring DocLayNet data will skip if directory doesn't exist.
+
+    Returns:
+        list[Path]: List of paths to sample ground truth JSON files
+    """
+    if not doclaynet_ground_truth_dir.exists():
+        pytest.skip("DocLayNet ground truth data not available")
+
+    # Get first 5 JSON files for testing
+    files = sorted(doclaynet_ground_truth_dir.glob("*.json"))[:5]
+
+    if not files:
+        pytest.skip("No DocLayNet ground truth files found")
+
+    return files
+
+
+@pytest.fixture
+def doclaynet_ground_truth_loader(doclaynet_ground_truth_dir: Path):
+    """
+    Factory fixture for loading DocLayNet ground truth data files.
+
+    Provides a callable that loads JSON ground truth files by hash.
+
+    Args:
+        doclaynet_ground_truth_dir: Path to ground truth directory
+
+    Returns:
+        Callable[[str], dict]: Function to load ground truth data by PDF hash
+    """
+    def load(pdf_hash: str) -> dict[str, Any]:
+        """Load ground truth data for a PDF hash."""
+        gt_file = doclaynet_ground_truth_dir / f"{pdf_hash}.json"
+        if not gt_file.exists():
+            raise FileNotFoundError(f"Ground truth file not found: {gt_file}")
+        with open(gt_file) as f:
+            return json.load(f)
+    return load
+
+
+@pytest.fixture(scope="session")
+def benchmark_config_file(benchmarks_dir: Path) -> Path:
+    """
+    Provide path to benchmark configuration file.
+
+    Returns:
+        Path: Path to config.yaml
+    """
+    config_path = benchmarks_dir / "config.yaml"
+    if not config_path.exists():
+        pytest.skip("Benchmark config.yaml not found")
+    return config_path
+
+
+# =============================================================================
+# CLI Integration Testing Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def cli_runner():
+    """
+    Provide Click CLI test runner.
+
+    Returns:
+        CliRunner: Click testing CLI runner instance
+    """
+    from click.testing import CliRunner
+    return CliRunner()
+
+
+@pytest.fixture
+def cli_runner_with_real_files(cli_runner, sample_pdf_paths: dict[str, Path], tmp_path: Path):
+    """
+    Provide CLI runner configured with real test files and temp output directory.
+
+    Args:
+        cli_runner: Click CLI runner
+        sample_pdf_paths: Dictionary of sample PDF paths
+        tmp_path: Pytest temporary directory
+
+    Returns:
+        tuple: (CliRunner, dict of PDF paths, output directory path)
+    """
+    return cli_runner, sample_pdf_paths, tmp_path
+
+
+# =============================================================================
+# PDF Analyzer Testing Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def diverse_test_pdfs(sample_pdf_paths: dict[str, Path]) -> dict[str, Path]:
+    """
+    Provide diverse set of PDFs for analyzer testing.
+
+    Returns PDFs with different characteristics for testing resolution
+    detection, quality assessment, and layout analysis.
+
+    Returns:
+        dict[str, Path]: Dictionary mapping PDF characteristics to paths
+    """
+    return {
+        "simple": sample_pdf_paths["simple_text"],
+        "multipage": sample_pdf_paths["multipage"],
+        "formatted": sample_pdf_paths["formatted"],
+        "tables": sample_pdf_paths["tables"],
+        "mixed": sample_pdf_paths["mixed"],
+        "complex": sample_pdf_paths["complex"],
+    }
+
+
+@pytest.fixture
+def large_test_pdf(test_data_dir: Path) -> Path:
+    """
+    Provide path to large real-world PDF for testing.
+
+    Returns:
+        Path: Path to large PDF file
+    """
+    large_pdf = test_data_dir / "Where-does-wind-matter.pdf"
+    if not large_pdf.exists():
+        pytest.skip("Large test PDF not available")
+    return large_pdf
+
+
+# =============================================================================
+# Performance Testing Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def performance_test_pdfs(test_data_dir: Path) -> list[Path]:
+    """
+    Provide set of PDFs for performance testing.
+
+    Returns all available test PDFs for throughput measurements.
+
+    Returns:
+        list[Path]: List of PDF paths for performance testing
+    """
+    pdfs = sorted(test_data_dir.glob("*.pdf"))
+    if not pdfs:
+        pytest.skip("No test PDFs available for performance testing")
+    return pdfs
+
+
+@pytest.fixture
+def benchmark_result_sample(tmp_path: Path) -> Path:
+    """
+    Create a sample benchmark result JSON file for testing reporters.
+
+    Returns:
+        Path: Path to sample benchmark result JSON
+    """
+    sample_result = {
+        "benchmark_id": "test-benchmark-001",
+        "timestamp": "2025-11-05T12:00:00Z",
+        "dataset": "doclaynet",
+        "parser": "pymupdf",
+        "results": {
+            "total_files": 5,
+            "successful": 5,
+            "failed": 0,
+            "total_time": 2.5,
+            "avg_time_per_file": 0.5,
+            "throughput_files_per_sec": 2.0,
+        },
+        "metrics": {
+            "text_extraction_accuracy": 0.95,
+            "layout_map": 0.82,
+            "reading_order_f1": 0.88,
+        },
+    }
+
+    result_file = tmp_path / "sample_benchmark_result.json"
+    result_file.write_text(json.dumps(sample_result, indent=2))
+    return result_file
