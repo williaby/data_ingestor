@@ -61,24 +61,15 @@ class BenchmarkRunner:
         # #ASSUME: DocumentRouter can be shared across workers
         # #VERIFY: Router is thread-safe or process-safe
         settings = Settings()
-        self.router = DocumentRouter(settings)
+        self.settings = settings
+        self.workers = workers
 
-        # Register PDF parsers for benchmark
-        # Priority order: Marker (optional, highest quality) → PyMuPDF4LLM → PyMuPDF
-        try:
-            marker_parser = MarkerParser(settings.get_parser_config("marker"))
-            self.router.parser_registry.register(marker_parser, [DocumentFormat.PDF])
-            logger.info("Registered MarkerParser for PDF processing")
-        except Exception as e:
-            logger.warning(f"Could not register MarkerParser: {e}")
-
-        pymupdf4llm_parser = PyMuPDF4LLMParser(settings.get_parser_config("pymupdf4llm"))
-        self.router.parser_registry.register(pymupdf4llm_parser, [DocumentFormat.PDF])
-        logger.info("Registered PyMuPDF4LLMParser for PDF processing")
-
-        pymupdf_parser = PyMuPDFParser(settings.get_parser_config("pymupdf"))
-        self.router.parser_registry.register(pymupdf_parser, [DocumentFormat.PDF])
-        logger.info("Registered PyMuPDFParser for PDF processing")
+        # Store available parsers (don't register yet - will register per benchmark)
+        self.available_parsers = {
+            "marker": MarkerParser,
+            "pymupdf4llm": PyMuPDF4LLMParser,
+            "pymupdf": PyMuPDFParser,
+        }
 
         logger.info(f"Benchmark runner initialized with {workers} workers")
 
@@ -93,12 +84,33 @@ class BenchmarkRunner:
 
         Args:
             document_files: List of document file paths
-            parser_name: Parser to use (e.g., "pymupdf", "pymupdf4llm")
+            parser_name: Parser to use (e.g., "pymupdf", "pymupdf4llm", "marker")
             evaluator: Evaluator instance for this dataset
 
         Returns:
             List of EvaluationResult objects
         """
+        # Create fresh router with ONLY the specified parser
+        # #CRITICAL: Each benchmark run must use isolated parser to ensure accurate results
+        router = DocumentRouter(self.settings)
+
+        # Register only the requested parser
+        if parser_name not in self.available_parsers:
+            raise ValueError(
+                f"Unknown parser: {parser_name}. "
+                f"Available: {', '.join(self.available_parsers.keys())}"
+            )
+
+        parser_class = self.available_parsers[parser_name]
+        parser_config = self.settings.get_parser_config(parser_name)
+
+        try:
+            parser = parser_class(parser_config)
+            router.parser_registry.register(parser, [DocumentFormat.PDF])
+            logger.info(f"Registered {parser_class.__name__} for PDF processing")
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize {parser_name}: {e}")
+
         logger.info(f"Processing {len(document_files)} documents...")
 
         results = []
@@ -108,7 +120,7 @@ class BenchmarkRunner:
         # Phase 2 will add proper multiprocessing with shared state management
         for doc_file in tqdm(document_files, desc=f"  {parser_name}"):
             result = self._process_document(
-                doc_file, parser_name, evaluator
+                doc_file, parser_name, evaluator, router
             )
             results.append(result)
 
@@ -120,6 +132,7 @@ class BenchmarkRunner:
         doc_file: Path,
         parser_name: str,
         evaluator: BaseEvaluator,
+        router: DocumentRouter,
     ) -> EvaluationResult:
         """
         Process single document with timeout and error handling.
@@ -128,6 +141,7 @@ class BenchmarkRunner:
             doc_file: Document file path
             parser_name: Parser name
             evaluator: Evaluator instance
+            router: DocumentRouter with registered parser
 
         Returns:
             EvaluationResult
@@ -140,7 +154,7 @@ class BenchmarkRunner:
             # Parse document
             # #CRITICAL: Document parsing may fail or timeout
             # #VERIFY: Errors are caught and logged
-            document, parse_result = self.router.process_document(
+            document, parse_result = router.process_document(
                 source_path=doc_file,
                 source_url=None,
                 metadata={"doc_id": doc_id, "parser": parser_name},

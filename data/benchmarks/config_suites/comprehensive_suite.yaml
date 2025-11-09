@@ -1,0 +1,69 @@
+# Comprehensive Parser Configuration Suite
+# Phase 1D: Scanning Options Testing & Baseline Framework
+#
+# This suite tests all major parser configuration variants to establish
+# performance baselines and optimize routing decisions for Phase 2.
+
+name: "Comprehensive Parser Configuration Suite"
+description: "Test all major parser configuration variants for Phase 1D baseline"
+version: 1
+
+# Marker parser configurations
+# Tests LLM enhancement and force OCR options
+marker_configs:
+  - name: "marker_default"
+    use_llm: false
+    force_ocr: false
+    languages: ["en"]
+
+  - name: "marker_with_llm"
+    use_llm: true
+    force_ocr: false
+    languages: ["en"]
+
+  - name: "marker_force_ocr"
+    use_llm: false
+    force_ocr: true
+    languages: ["en"]
+
+  - name: "marker_full"
+    use_llm: true
+    force_ocr: true
+    languages: ["en"]
+
+# Docling parser configurations
+# Note: Docling integration planned for Phase 2
+# These configurations are placeholders for future testing
+docling_configs:
+  # - name: "docling_standard"
+  #   use_tableformer: true
+  #   pipeline_mode: "standard"
+  #   use_gpu: true
+
+  # - name: "docling_fast"
+  #   use_tableformer: false
+  #   pipeline_mode: "fast"
+  #   use_gpu: true
+
+  # - name: "docling_cpu"
+  #   use_tableformer: true
+  #   pipeline_mode: "standard"
+  #   use_gpu: false
+
+# PyMuPDF4LLM parser configurations
+# Tests page chunking options
+pymupdf4llm_configs:
+  - name: "pymupdf4llm_default"
+    page_chunks: true
+
+  - name: "pymupdf4llm_no_chunks"
+    page_chunks: false
+
+# PyMuPDF parser configurations
+# Tests different text extraction modes
+pymupdf_configs:
+  - name: "pymupdf_text"
+    get_text_mode: "text"
+
+  - name: "pymupdf_blocks"
+    get_text_mode: "blocks"

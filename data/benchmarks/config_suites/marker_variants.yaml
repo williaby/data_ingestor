@@ -1,0 +1,41 @@
+# Marker Parser Variants Configuration Suite
+# Phase 1D: Focus on Marker LLM and OCR options
+#
+# This suite specifically tests Marker parser configurations to measure
+# the performance impact of LLM enhancement and force OCR settings.
+
+name: "Marker Parser Variants Suite"
+description: "Test Marker parser with different LLM and OCR configurations"
+version: 1
+
+# Marker parser configurations
+# Testing all combinations of use_llm and force_ocr
+marker_configs:
+  # Baseline: No LLM, no force OCR (fastest, lowest quality)
+  - name: "marker_baseline"
+    use_llm: false
+    force_ocr: false
+    languages: ["en"]
+
+  # LLM enhancement only (better quality, moderate speed)
+  - name: "marker_llm_only"
+    use_llm: true
+    force_ocr: false
+    languages: ["en"]
+
+  # Force OCR only (better for scanned docs, slower)
+  - name: "marker_ocr_only"
+    use_llm: false
+    force_ocr: true
+    languages: ["en"]
+
+  # Full power: LLM + force OCR (highest quality, slowest)
+  - name: "marker_llm_and_ocr"
+    use_llm: true
+    force_ocr: true
+    languages: ["en"]
+
+# Empty configurations for other parsers (not tested in this suite)
+docling_configs: []
+pymupdf4llm_configs: []
+pymupdf_configs: []

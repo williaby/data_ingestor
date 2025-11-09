@@ -294,14 +294,30 @@ class BenchmarkOrchestrator:
         """
         dataset_results = {"parsers": {}, "aggregated": {}}
 
-        # Get dataset path
+        # Get dataset path and configuration
         dataset_info = self.dataset_config["datasets"][dataset_name]
-        docs_dir = Path(dataset_info["path"]) / "documents"
+
+        # Get documents directory (prefer PDF subdirectory if specified)
+        if "documents" in dataset_info and "pdf" in dataset_info["documents"]:
+            docs_subdir = dataset_info["documents"]["pdf"]
+            docs_dir = Path(dataset_info["path"]) / docs_subdir
+        else:
+            docs_dir = Path(dataset_info["path"]) / "documents"
+
+        # Get sample size from config (default to all documents if not specified)
+        sample_size = dataset_info.get("sample_size", None)
+        sample_strategy = dataset_info.get("sample_strategy", "random")
+        sample_seed = dataset_info.get("sample_seed", 42)
 
         # Find all documents
         # #ASSUME: Documents directory contains processable files
         # #VERIFY: File extensions match expected formats
-        document_files = self._find_documents(docs_dir)
+        document_files = self._find_documents(
+            docs_dir,
+            sample_size=sample_size,
+            strategy=sample_strategy,
+            seed=sample_seed
+        )
 
         if not document_files:
             logger.warning(f"No documents found in {docs_dir}")
@@ -336,16 +352,27 @@ class BenchmarkOrchestrator:
 
         return dataset_results
 
-    def _find_documents(self, docs_dir: Path) -> List[Path]:
+    def _find_documents(
+        self,
+        docs_dir: Path,
+        sample_size: Optional[int] = None,
+        strategy: str = "random",
+        seed: int = 42
+    ) -> List[Path]:
         """
-        Find all document files in directory.
+        Find all document files in directory with optional sampling.
 
         Args:
             docs_dir: Directory containing documents
+            sample_size: Number of documents to sample (None = all documents)
+            strategy: Sampling strategy ('random', 'sequential', 'stratified')
+            seed: Random seed for reproducibility
 
         Returns:
             List of document file paths
         """
+        import random as rand
+
         if not docs_dir.exists():
             return []
 
@@ -356,7 +383,32 @@ class BenchmarkOrchestrator:
         for ext in extensions:
             documents.extend(docs_dir.glob(f"*{ext}"))
 
-        return sorted(documents)
+        documents = sorted(documents)
+
+        # Apply sampling if requested
+        if sample_size is not None and sample_size < len(documents):
+            logger.info(f"Sampling {sample_size} documents from {len(documents)} using {strategy} strategy")
+
+            if strategy == "random":
+                rand.seed(seed)
+                documents = rand.sample(documents, sample_size)
+            elif strategy == "sequential":
+                documents = documents[:sample_size]
+            elif strategy == "stratified":
+                # For stratified sampling, we'd need category labels
+                # For now, fall back to random sampling
+                logger.warning("Stratified sampling not implemented, using random")
+                rand.seed(seed)
+                documents = rand.sample(documents, sample_size)
+            else:
+                logger.warning(f"Unknown sampling strategy '{strategy}', using random")
+                rand.seed(seed)
+                documents = rand.sample(documents, sample_size)
+
+            # Re-sort after sampling for consistency
+            documents = sorted(documents)
+
+        return documents
 
     def _calculate_overall_stats(
         self,
