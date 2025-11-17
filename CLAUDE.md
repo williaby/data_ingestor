@@ -99,6 +99,107 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. Use `/verify-assumptions-smart` for assumption verification
 5. Use global PR preparation workflow from `~/.claude/CLAUDE.md`
 
+## Architecture Decision Records (ADRs)
+
+**All significant architectural decisions must be documented as ADRs before implementation.**
+
+### What are ADRs?
+
+Architecture Decision Records document the context, options considered, and rationale for significant architectural decisions. They provide a historical record of our architectural thinking and help future developers understand why the system is designed the way it is.
+
+### ADR Location and Format
+
+- **Location**: `docs/adr/`
+- **Format**: MADR (Markdown Any Decision Records)
+- **Template**: `docs/adr/TEMPLATE.md`
+- **Index**: `docs/adr/README.md`
+
+### Naming Convention
+
+ADRs use sequential numbering with descriptive titles:
+- **Filename**: `ADR-XXXX-short-title.md` (e.g., `ADR-0001-clean-slate-migration.md`)
+- **Title**: `ADR-XXXX: Short Title` (e.g., `ADR-0001: Clean Slate Migration Strategy`)
+
+Where `XXXX` is a 4-digit zero-padded number (0001, 0002, etc.).
+
+### When to Create an ADR
+
+Create an ADR **before implementing** decisions about:
+
+**Technology & Architecture:**
+- Technology or framework selection (e.g., "Use Pydantic v2 for schema validation")
+- Architectural patterns or approaches (e.g., "Hybrid deployment model")
+- Parser or model selection (e.g., "Use YOLOv10-doc for layout detection")
+- OCR engine selection (e.g., "Marker + Llama 4 for primary OCR")
+
+**Design & Implementation:**
+- Data models or schema designs (e.g., "DocumentMetadata contract")
+- Integration strategies between components (e.g., "Project A → B interface")
+- Storage strategies (e.g., "GCS for image storage")
+- Test strategies (e.g., "GCS paths + symlinks for fixtures")
+
+**Performance & Security:**
+- Performance trade-offs (e.g., "In-process vs REST API latency")
+- Security considerations (e.g., "GPL-3.0 vs MIT licensing")
+- Deployment models (e.g., "Single-system vs distributed")
+
+**Rule of thumb**: If future developers might ask "why did we do it this way?", write an ADR.
+
+### ADR Status Values
+
+- **Proposed**: Under discussion, not yet decided
+- **Accepted**: Decision has been made and is being implemented
+- **Deprecated**: No longer relevant but kept for historical context
+- **Superseded**: Replaced by a newer ADR (link to the new ADR)
+
+### ADR Creation Workflow
+
+1. **Identify Decision**: Recognize that a significant architectural decision needs to be made
+2. **Research Options**: Investigate alternatives, trade-offs, and implications
+3. **Draft ADR**: Copy `docs/adr/TEMPLATE.md` to `docs/adr/ADR-XXXX-title.md`
+4. **Document Context**: Describe the problem, decision drivers, and constraints
+5. **List Options**: Document all viable alternatives with pros/cons
+6. **Make Decision**: Choose an option and document the rationale
+7. **Review**: Have team members review the ADR (use PR process)
+8. **Update Index**: Add the ADR to `docs/adr/README.md`
+9. **Implement**: Proceed with implementation based on the decision
+
+### Existing ADRs (Phase 0)
+
+Phase 0 architectural decisions are documented in 10 ADRs:
+
+| ADR | Decision | Impact |
+|-----|----------|--------|
+| [ADR-0001](docs/adr/ADR-0001-clean-slate-migration.md) | Clean Slate Migration | New `src/project_b/` directory |
+| [ADR-0002](docs/adr/ADR-0002-pydantic-v2-schema-validation.md) | Pydantic v2 for Schemas | 5-17x faster validation |
+| [ADR-0003](docs/adr/ADR-0003-hybrid-deployment-model.md) | Hybrid Deployment | <5ms in-process latency |
+| [ADR-0004](docs/adr/ADR-0004-docling-office-documents.md) | Docling for Office | 97.9% table accuracy |
+| [ADR-0005](docs/adr/ADR-0005-yolov10-layout-detection.md) | YOLOv10-doc Layout | mAP@0.50 = 0.84 |
+| [ADR-0006](docs/adr/ADR-0006-marker-llama4-primary-ocr.md) | Marker + Llama 4 OCR | CER <3% born-digital |
+| [ADR-0007](docs/adr/ADR-0007-deepseek-ocr-secondary.md) | DeepSeek-OCR Fallback | CER <6% degraded docs |
+| [ADR-0008](docs/adr/ADR-0008-tableformer-table-structure.md) | TableFormer Tables | 97.9% TEDS accuracy |
+| [ADR-0009](docs/adr/ADR-0009-gcs-image-storage.md) | GCS Image Storage | Centralized, scalable |
+| [ADR-0010](docs/adr/ADR-0010-test-fixture-strategy.md) | Test Fixture Strategy | <5GB vs 230GB saved |
+
+**See** `docs/adr/README.md` for the complete ADR index and links to all decision records.
+
+### ADR Best Practices
+
+**DO:**
+- Create ADRs before implementation (not after)
+- Document all viable alternatives considered
+- Include quantitative data (benchmarks, metrics) when available
+- Cross-reference related ADRs and documentation
+- Keep ADRs concise but comprehensive (150-250 lines)
+- Update the ADR index in `docs/adr/README.md`
+
+**DON'T:**
+- Create ADRs for trivial or obvious decisions
+- Skip documenting the alternatives considered
+- Write ADRs after the fact to justify existing code
+- Use ADRs as detailed implementation documentation (use code comments for that)
+- Delete or modify ADRs after they're accepted (create new ADRs that supersede them instead)
+
 ## Essential Commands
 
 > **Reference**: Global quality/testing commands apply. Project-specific commands below.
