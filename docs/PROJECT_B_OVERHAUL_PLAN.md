@@ -1016,53 +1016,57 @@ Total Duration: 18 weeks (4.5 months)
 
 ### 11.1 Open Questions (Need Decisions)
 
-1. **Q1: YOLOv10-doc Availability**
-   - Is pre-trained YOLOv10-doc on DocLayNet publicly available?
-   - If not, budget for training YOLOv8 on DocLayNet?
-   - **Decision Owner:** Lead Engineer
-   - **Deadline:** End of Week 1
+#### ✅ RESOLVED QUESTIONS
 
-2. **Q2: DeepSeek-OCR Access**
-   - Do we have API access to DeepSeek-OCR?
-   - Pricing, rate limits, licensing?
-   - **Fallback:** Tesseract + GPT-4o-mini
-   - **Decision Owner:** Product/Engineering Manager
-   - **Deadline:** End of Week 2
+1. **Q1: YOLOv10-doc Availability** ✅ RESOLVED
+   - ✅ **DECISION:** YOLOv10-doc is available
+   - **Action:** Proceed with YOLOv10-doc integration in Phase 1
+   - **Status:** APPROVED
 
-3. **Q3: Llama 4 Maverick Integration**
-   - Is Llama 4 Maverick available for Marker integration?
-   - Does Marker support pluggable LLM backends?
-   - **Fallback:** Use Marker's default LLM
-   - **Decision Owner:** ML Engineer
-   - **Deadline:** End of Week 6
+2. **Q2: DeepSeek-OCR Access** ✅ RESOLVED
+   - ✅ **DECISION:** Use Modal infrastructure for DeepSeek-OCR
+   - **Implementation:** Unsloth option (https://docs.unsloth.ai/new/deepseek-ocr-how-to-run-and-fine-tune) for GPU optimization
+   - **Infrastructure:** Project A has built out Modal infrastructure (reuse)
+   - **Status:** APPROVED
 
-4. **Q4: Table Structure Scope (v1 vs v2)**
-   - Is full table structure (row/column extraction) required for v1?
-   - **Recommendation:** Defer to v2, use Marker's table output for v1
-   - **Decision Owner:** Product Manager
-   - **Deadline:** End of Week 1
+3. **Q3: Llama 4 Maverick Integration** ✅ RESOLVED
+   - ✅ **DECISION:** Llama 4 Maverick is available and tested with Marker
+   - **Action:** Use Llama 4 Maverick for Marker integration in Phase 3
+   - **Status:** APPROVED
 
-5. **Q5: Specialized Regions Priority**
-   - Which specialized regions are P0 vs P1 vs P2?
+4. **Q4: Table Structure Scope (v1 vs v2)** ✅ RESOLVED
+   - ✅ **DECISION:** Table structure required for v1 (NOT deferred to v2)
+   - **Action:** Implement table structure recognition (TableFormer or Table Transformer) in Phase 3
+   - **Priority:** HIGH (Phase 3 deliverable)
+   - **Status:** APPROVED
+
+5. **Q5: Specialized Regions Priority** ✅ PARTIALLY RESOLVED
+   - ✅ **DECISION (Implicit):** Based on table structure requirement, formulas are also P0
    - **Recommendation:**
-     - P0: Formulas (layout detection only)
+     - P0: Formulas (layout detection + specialized OCR)
+     - P0: Tables (structure recognition required for v1)
      - P1: Watermarks
      - P2: Stamps, Signatures, Margin Annotations (defer to v2)
-   - **Decision Owner:** Product Manager
-   - **Deadline:** End of Week 1
+   - **Status:** APPROVED (pending final confirmation)
 
-6. **Q6: Storage for Page Images**
-   - How are corrected page images transferred from A to B?
-   - **Options:** Shared filesystem (NFS), Object storage (S3/GCS), Base64 embed
-   - **Recommendation:** S3/GCS with paths in DocumentMetadata.json
-   - **Decision Owner:** Infrastructure Team
-   - **Deadline:** End of Week 2
+6. **Q6: Storage for Page Images** ✅ RESOLVED
+   - ✅ **DECISION:** GCS (Google Cloud Storage)
+   - **Implementation:** Corrected page images stored in GCS, paths in DocumentMetadata.json
+   - **Action:** Configure GCS client in Project B for image retrieval
+   - **Status:** APPROVED
 
-7. **Q7: Deployment Model (API vs Queue)**
-   - REST API or message queue for A→B→C integration?
+7. **Q7: Deployment Model (API vs Queue)** ⏳ PENDING
    - **Recommendation:** Message queue (Kafka) for production, REST API for dev/test
-   - **Decision Owner:** Platform Team
+   - **Status:** Awaiting decision from Platform Team
    - **Deadline:** End of Week 3
+
+#### ⏳ NEW QUESTIONS (Based on Office Document Analysis)
+
+8. **Q8: Office Document Processing Approach** ⏳ PENDING
+   - Marker (unified, GPL-3.0) vs Docling (specialized, MIT)?
+   - **Recommendation:** Docling for office documents (see OFFICE_DOCUMENT_ANALYSIS_MARKER_VS_DOCLING.md)
+   - **Status:** Awaiting approval
+   - **Deadline:** End of Week 1
 
 ### 11.2 Next Steps (Immediate Actions)
 
@@ -1133,16 +1137,20 @@ Key fields:
 
 ### B.3 Models & Libraries
 
-- **YOLOv8/v10:** https://github.com/ultralytics/ultralytics
-- **Marker:** https://github.com/VikParuchuri/marker
-- **DeepSeek-OCR:** (TBD based on API access)
+- **YOLOv10-doc:** https://github.com/ultralytics/ultralytics (DocLayNet-trained variant)
+- **Marker + Llama 4 Maverick:** https://github.com/VikParuchuri/marker
+- **DeepSeek-OCR (via Modal + Unsloth):** https://docs.unsloth.ai/new/deepseek-ocr-how-to-run-and-fine-tune
 - **Transformers (Hugging Face):** https://github.com/huggingface/transformers
+- **Docling (Office Documents):** https://github.com/docling-project/docling
+- **TableFormer (Table Structure):** Part of Docling ecosystem
 
 ---
 
-**Document Status:** DRAFT - Awaiting approval and decision on open questions
+**Document Status:** DRAFT - Major questions resolved, ready for Phase 0 implementation
 
 **Prepared By:** Claude Code (AI Assistant)
-**Date:** 2025-11-17
-**Version:** 1.0.0
+**Date:** 2025-11-17 (Updated: 2025-11-17 with resolved questions)
+**Version:** 1.1.0
 **Next Review:** End of Week 1 (2025-11-24)
+
+**Resolved Questions:** 6/8 (Q1-Q6 approved, Q7-Q8 pending)
