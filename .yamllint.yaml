@@ -1,0 +1,50 @@
+# Yamllint configuration
+# See https://yamllint.readthedocs.io/en/stable/rules.html
+
+extends: default
+
+rules:
+  # Line length - set to 120 to match project standards
+  line-length:
+    max: 120
+    level: warning
+
+  # Document start (---) - not required
+  document-start: disable
+
+  # Indentation - 2 spaces
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+  # Empty lines
+  empty-lines:
+    max: 2
+
+  # Key duplicates
+  key-duplicates: enable
+
+  # Truthy values (yes/no vs true/false)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+
+ignore: |
+  .venv/
+  venv/
+  .nox/
+  build/
+  dist/
+  *.egg-info/
+  __pycache__/
+  .git/
+  .github/workflows/*.yml
+  poetry.lock
+  uv.lock

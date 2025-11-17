@@ -1,0 +1,44 @@
+# Markdownlint configuration
+# See https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Default state for all rules
+default: true
+
+# MD013/line-length - Line length
+MD013:
+  line_length: 120
+  code_blocks: false
+  tables: false
+
+# MD033/no-inline-html - Inline HTML
+MD033: false  # Allow HTML for badges, tables, etc.
+
+# MD041/first-line-heading/first-line-h1 - First line in a file should be a top-level heading
+MD041: false  # Allow front matter, badges, etc. before heading
+
+# MD029/ol-prefix - Ordered list item prefix
+MD029:
+  style: "ordered"  # Allow 1. 2. 3. style
+
+# MD024/no-duplicate-heading - Multiple headings with the same content
+MD024:
+  siblings_only: true  # Allow same heading text in different sections
+
+# MD046/code-block-style - Code block style
+MD046:
+  style: "fenced"  # Prefer ```code``` over indented
+
+# MD007/ul-indent - Unordered list indentation
+MD007:
+  indent: 2
+
+# MD030/list-marker-space - Spaces after list markers
+MD030:
+  ul_single: 1
+  ul_multi: 1
+  ol_single: 1
+  ol_multi: 1
+
+# MD012/no-multiple-blanks - Multiple consecutive blank lines
+MD012:
+  maximum: 2

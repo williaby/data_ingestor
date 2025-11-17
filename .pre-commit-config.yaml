@@ -1,0 +1,171 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+ci:
+  autoupdate_schedule: monthly
+  autofix_prs: true
+
+repos:
+  # General file checks (from cookiecutter template)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=10000']  # 10MB limit
+      - id: check-merge-conflict
+      - id: check-case-conflict  # Requested: Detect case-insensitive file conflicts
+      - id: detect-private-key  # Requested: Prevent committing private keys
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 24.10.0  # Match pyproject.toml version
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  # Python linting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.3  # Match pyproject.toml version
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+      - id: ruff-format
+
+  # Python type checking with MyPy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0  # Match pyproject.toml version
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.11.0
+          - types-pyyaml
+          - types-python-dateutil
+          - types-aiofiles
+          - types-cachetools
+        args: ['--ignore-missing-imports', '--python-version=3.11']
+        exclude: ^tests/.*
+
+  # Markdown linting (Requested: matching generated projects)
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041']
+
+  # YAML linting (Requested: YAML file linting)
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-d', '{extends: default, rules: {line-length: {max: 120}}}']
+
+  # Python docstring coverage with interrogate (Requested: Python docstring coverage)
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0
+    hooks:
+      - id: interrogate
+        args:
+          - '-vv'
+          - '--fail-under=80'
+          - '--ignore-init-method'
+          - '--ignore-init-module'
+          - '--ignore-magic'
+          - '--ignore-module'
+          - '--ignore-nested-functions'
+          - '--ignore-private'
+          - '--ignore-property-decorators'
+          - '--ignore-semiprivate'
+          - '--exclude=tests'
+          - '--exclude=scripts'
+          - '--exclude=noxfile.py'
+          - 'src/'
+        pass_filenames: false
+
+  # Security scanning with Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7  # Match pyproject.toml version
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+        exclude: ^tests/.*
+
+  # Detect secrets with detect-secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+              poetry.lock|
+              uv.lock|
+              .*\.ipynb|
+              .*test.*\.py
+          )$
+
+  # Code complexity check
+  - repo: local
+    hooks:
+      - id: check-complexity
+        name: Check code complexity
+        entry: bash -c 'uv run radon cc src -a -nb || true'
+        language: system
+        pass_filenames: false
+        stages: [manual]  # Run manually with: pre-commit run check-complexity --hook-stage manual
+
+  # Spell checking
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=crate,nd,rouge,compiletime,intoto,ure,hist,datas
+          - --skip=poetry.lock,uv.lock,*.ipynb,*.min.js,*.min.css
+        exclude: |
+          (?x)^(
+              \.git/|
+              \.venv/|
+              build/|
+              dist/|
+              .*\.lock
+          )$
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+      \.git/|
+      \.venv/|
+      venv/|
+      build/|
+      dist/|
+      .*\.egg-info/|
+      __pycache__/|
+      \.mypy_cache/|
+      \.pytest_cache/|
+      \.ruff_cache/|
+      \.nox/|
+      \.mutmut-cache/|
+      data/|
+      models/|
+      benchmarks/|
+      tmp_cleanup/|
+      dast-reports/|
+      .*\.pyc|
+      .*\.pyo|
+      .*\.lock|
+      poetry.lock|
+      uv.lock|
+      pyproject.toml.poetry|
+      pyproject.toml.poetry-backup|
+      .*\.backup
+  )$
