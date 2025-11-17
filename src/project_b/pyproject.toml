@@ -1,0 +1,153 @@
+[tool.poetry]
+name = "project-b"
+version = "0.1.0"
+description = "Project B: Layout, OCR & Structural Extraction Engine for RAG Pipeline"
+authors = ["RAG Pipeline Team"]
+readme = "README.md"
+packages = [{include = "project_b", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# Core dependencies
+pydantic = "^2.0"
+pydantic-settings = "^2.0"
+
+# Layout detection
+ultralytics = "^8.0"  # YOLOv10-doc
+onnxruntime-gpu = {version = "^1.16", optional = true}
+onnxruntime = "^1.16"
+opencv-python = "^4.8"
+pillow = "^10.0"
+
+# Reading order
+networkx = "^3.0"
+numpy = "^1.24"
+
+# OCR engines
+marker-pdf = "^0.2"  # Marker + Llama 4
+transformers = "^4.35"  # For DeepSeek-OCR, Llama 4
+torch = {version = "^2.1", optional = true}
+
+# Office documents
+docling = "^2.0"  # For DOCX/XLSX/PPTX
+
+# Utilities
+google-cloud-storage = "^2.10"  # GCS for image retrieval
+requests = "^2.31"
+click = "^8.1"  # CLI framework
+rich = "^13.0"  # Rich console output
+structlog = "^23.0"  # Structured logging
+
+# Testing
+pytest = "^7.4"
+pytest-cov = "^4.1"
+pytest-mock = "^3.12"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.0"
+ruff = "^0.1"
+mypy = "^1.7"
+pre-commit = "^3.5"
+
+[tool.poetry.group.gpu.dependencies]
+# GPU-specific dependencies
+onnxruntime-gpu = "^1.16"
+torch = {version = "^2.1+cu118", source = "pytorch"}
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
+[tool.poetry.extras]
+gpu = ["onnxruntime-gpu", "torch"]
+
+[tool.poetry.scripts]
+project-b = "project_b.cli.main:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+
+# Ruff configuration
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function call in argument defaults
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__.py
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=project_b",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "unit: Unit-level tests",
+    "component: Component-level tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow tests (excluded from CI)",
+    "gpu: Tests requiring GPU",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["project_b"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
