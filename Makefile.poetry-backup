@@ -5,7 +5,7 @@
 
 # Python interpreter
 PYTHON := python3.11
-UV := uv
+POETRY := poetry
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
@@ -13,62 +13,62 @@ help: ## Show this help message
 	@echo "Targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: ## Install dependencies with UV
-	$(UV) sync
+install: ## Install dependencies with Poetry
+	$(POETRY) install --sync
 
 setup: install ## Complete development setup
-	$(UV) run pre-commit install
+	$(POETRY) run pre-commit install
 	./scripts/generate_requirements.sh
-	$(UV) run python src/utils/encryption.py
+	$(POETRY) run python src/utils/encryption.py
 	@echo "Development environment ready!"
 
 test: ## Run tests with coverage (parallelized)
-	$(UV) run pytest -v -n auto --cov=src --cov-report=html --cov-report=term-missing
+	$(POETRY) run pytest -v -n auto --cov=src --cov-report=html --cov-report=term-missing
 
 test-serial: ## Run tests without parallelization (for debugging)
-	$(UV) run pytest -v --cov=src --cov-report=html --cov-report=term-missing
+	$(POETRY) run pytest -v --cov=src --cov-report=html --cov-report=term-missing
 
 test-fast: ## Run fast tests for development (< 10 seconds, parallelized)
-	$(UV) run pytest tests/unit/ -m "not slow and not performance and not stress" -n auto --maxfail=3 --tb=short
+	$(POETRY) run pytest tests/unit/ -m "not slow and not performance and not stress" -n auto --maxfail=3 --tb=short
 
 test-integration: ## Run integration tests (parallelized, excludes slow)
-	$(UV) run pytest tests/integration/ -m "not slow and not performance" -n auto -v
+	$(POETRY) run pytest tests/integration/ -m "not slow and not performance" -n auto -v
 
 test-integration-all: ## Run ALL integration tests (includes slow tests)
-	$(UV) run pytest tests/integration/ -n auto -v
+	$(POETRY) run pytest tests/integration/ -n auto -v
 
 test-pre-commit: ## Run pre-commit validation tests (< 30 seconds, parallelized)
-	$(UV) run pytest tests/unit/ tests/integration/ -m "not slow and not performance and not stress and not contract" -n auto --maxfail=5
+	$(POETRY) run pytest tests/unit/ tests/integration/ -m "not slow and not performance and not stress and not contract" -n auto --maxfail=5
 
 test-pr: ## Run PR validation tests (< 2 minutes, parallelized)
-	$(UV) run pytest -m "not slow and not performance and not stress" -n auto --maxfail=10
+	$(POETRY) run pytest -m "not slow and not performance and not stress" -n auto --maxfail=10
 
 test-performance: ## Run performance tests only
-	$(UV) run pytest tests/performance/ -m "performance or stress" --tb=line
+	$(POETRY) run pytest tests/performance/ -m "performance or stress" --tb=line
 
 test-smoke: ## Run smoke tests for basic functionality
-	$(UV) run pytest tests/unit/ -m "smoke or fast" -n auto --maxfail=1 -x
+	$(POETRY) run pytest tests/unit/ -m "smoke or fast" -n auto --maxfail=1 -x
 
 test-with-timing: ## Run tests with detailed timing analysis (serial for accurate timing)
-	$(UV) run pytest --durations=20 --tb=short
+	$(POETRY) run pytest --durations=20 --tb=short
 
 test-debug: ## Run tests in debug mode (serial, verbose, stop on first failure)
-	$(UV) run pytest -xvs --tb=short --pdb
+	$(POETRY) run pytest -xvs --tb=short --pdb
 
 lint: ## Run linting checks
-	$(UV) run black --check .
-	$(UV) run ruff check .
-	$(UV) run mypy src
+	$(POETRY) run black --check .
+	$(POETRY) run ruff check .
+	$(POETRY) run mypy src
 	markdownlint **/*.md
 	yamllint .
 
 format: ## Format code
-	$(UV) run black .
-	$(UV) run ruff check --fix .
+	$(POETRY) run black .
+	$(POETRY) run ruff check --fix .
 
 security: ## Run security checks
-	$(UV) run safety check
-	$(UV) run bandit -r src
+	$(POETRY) run safety check
+	$(POETRY) run bandit -r src
 
 dev: ## Start development environment with all services
 	docker-compose -f docker-compose.zen-vm.yaml up -d
@@ -78,7 +78,7 @@ dev: ## Start development environment with all services
 	@echo "- External Qdrant Dashboard: http://192.168.1.16:6333/dashboard"
 
 pre-commit: ## Run all pre-commit hooks manually
-	$(UV) run pre-commit run --all-files
+	$(POETRY) run pre-commit run --all-files
 
 lint-docs: ## Lint documentation files with Claude Code commands
 	@echo "Use Claude Code slash commands for document linting:"
