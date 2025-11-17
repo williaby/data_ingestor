@@ -1064,13 +1064,20 @@ Total Duration: 18 weeks (4.5 months)
    - **Details:** See DEPLOYMENT_MODEL_ANALYSIS.md
    - **Status:** APPROVED
 
-#### ⏳ NEW QUESTIONS (Based on Office Document Analysis)
-
-8. **Q8: Office Document Processing Approach** ⏳ PENDING
-   - Marker (unified, GPL-3.0) vs Docling (specialized, MIT)?
-   - **Recommendation:** Docling for office documents (see OFFICE_DOCUMENT_ANALYSIS_MARKER_VS_DOCLING.md)
-   - **Status:** Awaiting approval
-   - **Deadline:** End of Week 1
+8. **Q8: Office Document Processing Approach** ✅ RESOLVED
+   - ✅ **DECISION:** Docling for office documents (MIT license)
+   - **Implementation:**
+     - PDFs: Marker + Llama 4 + YOLOv10-doc + DeepSeek-OCR
+     - Office (DOCX/XLSX/PPTX): Docling → OCRDocument.json
+     - Both paths produce consistent OCRDocument.json schema
+   - **Rationale:**
+     - Direct schema alignment (DocLayNet, COCO bboxes)
+     - MIT license (no GPL-3.0 contamination risk)
+     - 97.9% table accuracy with TableFormer
+     - Native office format parsing (no OCR needed for digital text)
+     - Clear Project A/B boundary separation
+   - **Details:** See OFFICE_DOCUMENT_ANALYSIS_MARKER_VS_DOCLING.md
+   - **Status:** APPROVED
 
 #### 📋 APPROVED MIGRATION STRATEGY
 
@@ -1160,11 +1167,11 @@ Key fields:
 
 ---
 
-**Document Status:** DRAFT - Major questions resolved, ready for Phase 0 implementation
+**Document Status:** APPROVED - All questions resolved, Phase 0 in progress
 
 **Prepared By:** Claude Code (AI Assistant)
-**Date:** 2025-11-17 (Updated: 2025-11-17 with resolved questions)
-**Version:** 1.1.0
-**Next Review:** End of Week 1 (2025-11-24)
+**Date:** 2025-11-17 (Updated: 2025-11-17 with all questions resolved)
+**Version:** 1.2.0
+**Next Review:** End of Phase 0 (Week 2)
 
-**Resolved Questions:** 6/8 (Q1-Q6 approved, Q7-Q8 pending)
+**Resolved Questions:** 9/9 (ALL APPROVED) ✅
