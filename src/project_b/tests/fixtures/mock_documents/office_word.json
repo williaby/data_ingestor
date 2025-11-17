@@ -1,0 +1,137 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "test-office-001",
+  "source_path": "gs://test-bucket/documents/report.docx",
+  "source_mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "ingested_at": "2025-11-17T10:45:00Z",
+  "document_type": "office_word",
+  "pdf_type": null,
+  "languages": ["en"],
+  "has_non_latin": false,
+  "page_count": 5,
+  "pre_ocr_risk": 0.10,
+  "dqs": {
+    "degradation_score": 0.00,
+    "structural_complexity_score": 0.60
+  },
+  "ocr_routing_recommendation": "ocr_fast",
+  "page_layout_summary": [
+    {
+      "page_index": 0,
+      "layout_type": "single_column",
+      "has_tables": false,
+      "has_figures": true,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": false,
+        "watermark": false,
+        "colorful_background": false
+      }
+    },
+    {
+      "page_index": 1,
+      "layout_type": "single_column",
+      "has_tables": true,
+      "has_figures": false,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": false,
+        "watermark": false,
+        "colorful_background": false
+      }
+    },
+    {
+      "page_index": 2,
+      "layout_type": "multi_column",
+      "has_tables": false,
+      "has_figures": true,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": false,
+        "watermark": false,
+        "colorful_background": false
+      }
+    },
+    {
+      "page_index": 3,
+      "layout_type": "single_column",
+      "has_tables": true,
+      "has_figures": false,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": false,
+        "watermark": false,
+        "colorful_background": false
+      }
+    },
+    {
+      "page_index": 4,
+      "layout_type": "single_column",
+      "has_tables": false,
+      "has_figures": false,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": false,
+        "watermark": false,
+        "colorful_background": false
+      }
+    }
+  ],
+  "pages": [
+    {
+      "page_index": 0,
+      "width_px": 816,
+      "height_px": 1056,
+      "dpi": 96,
+      "has_text": true,
+      "text_detection_confidence": 1.0,
+      "iqa_metrics": {},
+      "transform_history": []
+    },
+    {
+      "page_index": 1,
+      "width_px": 816,
+      "height_px": 1056,
+      "dpi": 96,
+      "has_text": true,
+      "text_detection_confidence": 1.0,
+      "iqa_metrics": {},
+      "transform_history": []
+    },
+    {
+      "page_index": 2,
+      "width_px": 816,
+      "height_px": 1056,
+      "dpi": 96,
+      "has_text": true,
+      "text_detection_confidence": 1.0,
+      "iqa_metrics": {},
+      "transform_history": []
+    },
+    {
+      "page_index": 3,
+      "width_px": 816,
+      "height_px": 1056,
+      "dpi": 96,
+      "has_text": true,
+      "text_detection_confidence": 1.0,
+      "iqa_metrics": {},
+      "transform_history": []
+    },
+    {
+      "page_index": 4,
+      "width_px": 816,
+      "height_px": 1056,
+      "dpi": 96,
+      "has_text": true,
+      "text_detection_confidence": 1.0,
+      "iqa_metrics": {},
+      "transform_history": []
+    }
+  ]
+}

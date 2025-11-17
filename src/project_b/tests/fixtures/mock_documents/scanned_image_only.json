@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "test-scanned-001",
+  "source_path": "gs://test-bucket/documents/scanned_document.pdf",
+  "source_mime_type": "application/pdf",
+  "ingested_at": "2025-11-17T10:30:00Z",
+  "document_type": "pdf",
+  "pdf_type": "image_only",
+  "languages": ["en"],
+  "has_non_latin": false,
+  "page_count": 2,
+  "pre_ocr_risk": 0.65,
+  "dqs": {
+    "degradation_score": 0.55,
+    "structural_complexity_score": 0.40
+  },
+  "ocr_routing_recommendation": "vision_structured",
+  "page_layout_summary": [
+    {
+      "page_index": 0,
+      "layout_type": "single_column",
+      "has_tables": false,
+      "has_figures": false,
+      "has_dense_math": false,
+      "has_handwriting": true,
+      "page_attributes": {
+        "fuzzy_scan": true,
+        "watermark": false,
+        "colorful_background": false
+      }
+    },
+    {
+      "page_index": 1,
+      "layout_type": "single_column",
+      "has_tables": true,
+      "has_figures": false,
+      "has_dense_math": false,
+      "has_handwriting": false,
+      "page_attributes": {
+        "fuzzy_scan": true,
+        "watermark": false,
+        "colorful_background": false
+      }
+    }
+  ],
+  "pages": [
+    {
+      "page_index": 0,
+      "width_px": 595,
+      "height_px": 842,
+      "dpi": 150,
+      "has_text": true,
+      "text_detection_confidence": 0.72,
+      "learned_quality": {
+        "overall_quality": 0.55,
+        "sharpness_score": 0.50,
+        "color_fidelity_score": 0.60
+      },
+      "iqa_metrics": {
+        "blur_score": 0.50,
+        "contrast_score": 0.55,
+        "noise_score": 0.45,
+        "illumination_score": 0.60,
+        "skew_angle_deg": 2.5,
+        "perspective_score": 0.70,
+        "warping_score": 0.25,
+        "binarization_score": 0.65,
+        "bleed_through_score": 0.30
+      },
+      "transform_history": [
+        {
+          "action": "deskew",
+          "timestamp": "2025-11-17T10:30:01Z",
+          "parameters": {"angle": -2.5},
+          "skipped": false
+        },
+        {
+          "action": "denoise",
+          "timestamp": "2025-11-17T10:30:02Z",
+          "parameters": {"method": "fastNlMeans", "h": 15},
+          "skipped": false
+        },
+        {
+          "action": "sharpen",
+          "timestamp": "2025-11-17T10:30:03Z",
+          "parameters": {"amount": 1.5},
+          "skipped": false
+        },
+        {
+          "action": "binarize",
+          "timestamp": "2025-11-17T10:30:04Z",
+          "parameters": {"method": "otsu"},
+          "skipped": true,
+          "skip_reason": "Image quality degraded after binarization"
+        }
+      ]
+    },
+    {
+      "page_index": 1,
+      "width_px": 595,
+      "height_px": 842,
+      "dpi": 150,
+      "has_text": true,
+      "text_detection_confidence": 0.68,
+      "learned_quality": {
+        "overall_quality": 0.52,
+        "sharpness_score": 0.48,
+        "color_fidelity_score": 0.55
+      },
+      "iqa_metrics": {
+        "blur_score": 0.48,
+        "contrast_score": 0.50,
+        "noise_score": 0.50
+      },
+      "transform_history": [
+        {
+          "action": "deskew",
+          "timestamp": "2025-11-17T10:30:05Z",
+          "parameters": {"angle": -3.1},
+          "skipped": false
+        },
+        {
+          "action": "clahe",
+          "timestamp": "2025-11-17T10:30:06Z",
+          "parameters": {"clip_limit": 4.0, "tile_grid_size": [8, 8]},
+          "skipped": false
+        }
+      ]
+    }
+  ]
+}
