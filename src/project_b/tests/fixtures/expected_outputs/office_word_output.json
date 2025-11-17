@@ -1,0 +1,535 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "test-office-004",
+  "source_document_metadata_id": null,
+  "page_count": 5,
+  "layout_model_name": "docling-layout-analyzer",
+  "ocr_engines": ["marker"],
+  "pages": [
+    {
+      "page_index": 0,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_0_0",
+          "class_label": "title",
+          "bbox": [72.0, 144.0, 468.0, 64.0],
+          "confidence": 0.99,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_0_1",
+          "class_label": "text",
+          "bbox": [72.0, 240.0, 468.0, 40.0],
+          "confidence": 0.98,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_0_2",
+          "class_label": "text",
+          "bbox": [72.0, 300.0, 468.0, 40.0],
+          "confidence": 0.98,
+          "reading_order_index": 2
+        }
+      ],
+      "reading_order": ["block_0_0", "block_0_1", "block_0_2"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_0_0",
+          "page_index": 0,
+          "layout_block_id": "block_0_0",
+          "heading_path": [],
+          "structural_role": "title",
+          "reading_order_index": 0,
+          "ocr_engines": {
+            "marker": {
+              "text": "Business Proposal: Digital Transformation Initiative",
+              "confidence": 0.99
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_1",
+          "page_index": 0,
+          "layout_block_id": "block_0_1",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "body_text",
+          "reading_order_index": 1,
+          "ocr_engines": {
+            "marker": {
+              "text": "Author: Jane Smith\nDate: January 15, 2024",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_2",
+          "page_index": 0,
+          "layout_block_id": "block_0_2",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "body_text",
+          "reading_order_index": 2,
+          "ocr_engines": {
+            "marker": {
+              "text": "Department: Technology Strategy",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        }
+      ]
+    },
+    {
+      "page_index": 1,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_1_0",
+          "class_label": "section_header",
+          "bbox": [72.0, 72.0, 468.0, 36.0],
+          "confidence": 0.98,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_1_1",
+          "class_label": "text",
+          "bbox": [72.0, 120.0, 468.0, 280.0],
+          "confidence": 0.97,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_1_2",
+          "class_label": "section_header",
+          "bbox": [72.0, 420.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 2
+        },
+        {
+          "block_id": "block_1_3",
+          "class_label": "list_item",
+          "bbox": [72.0, 468.0, 468.0, 180.0],
+          "confidence": 0.96,
+          "reading_order_index": 3
+        }
+      ],
+      "reading_order": ["block_1_0", "block_1_1", "block_1_2", "block_1_3"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_1_0",
+          "page_index": 1,
+          "layout_block_id": "block_1_0",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 3,
+          "ocr_engines": {
+            "marker": {
+              "text": "1. Executive Summary",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_1_1",
+          "page_index": 1,
+          "layout_block_id": "block_1_1",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "1. Executive Summary"],
+          "structural_role": "body_text",
+          "reading_order_index": 4,
+          "ocr_engines": {
+            "marker": {
+              "text": "This proposal outlines a comprehensive digital transformation initiative designed to modernize our document processing infrastructure. The project leverages advanced OCR, layout analysis, and machine learning technologies to improve efficiency, accuracy, and scalability.\n\nKey benefits include reduced processing time, improved data quality, and enhanced accessibility of historical archives.",
+              "confidence": 0.97
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_1_2",
+          "page_index": 1,
+          "layout_block_id": "block_1_2",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 5,
+          "ocr_engines": {
+            "marker": {
+              "text": "2. Objectives",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_1_3",
+          "page_index": 1,
+          "layout_block_id": "block_1_3",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "2. Objectives"],
+          "structural_role": "body_text",
+          "reading_order_index": 6,
+          "ocr_engines": {
+            "marker": {
+              "text": "• Implement intelligent OCR routing system\n• Achieve 95%+ accuracy on diverse document types\n• Reduce processing time by 80%\n• Enable real-time document processing pipeline\n• Support multimodal content (text, tables, figures)",
+              "confidence": 0.96
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        }
+      ]
+    },
+    {
+      "page_index": 2,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_2_0",
+          "class_label": "section_header",
+          "bbox": [72.0, 72.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_2_1",
+          "class_label": "text",
+          "bbox": [72.0, 116.0, 468.0, 200.0],
+          "confidence": 0.97,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_2_2",
+          "class_label": "table",
+          "bbox": [72.0, 340.0, 468.0, 240.0],
+          "confidence": 0.96,
+          "reading_order_index": 2
+        },
+        {
+          "block_id": "block_2_3",
+          "class_label": "caption",
+          "bbox": [72.0, 590.0, 468.0, 24.0],
+          "confidence": 0.95,
+          "reading_order_index": 3
+        }
+      ],
+      "reading_order": ["block_2_0", "block_2_1", "block_2_2", "block_2_3"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_2_0",
+          "page_index": 2,
+          "layout_block_id": "block_2_0",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 7,
+          "ocr_engines": {
+            "marker": {
+              "text": "3. Technical Architecture",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_2_1",
+          "page_index": 2,
+          "layout_block_id": "block_2_1",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "3. Technical Architecture"],
+          "structural_role": "body_text",
+          "reading_order_index": 8,
+          "ocr_engines": {
+            "marker": {
+              "text": "The proposed system employs a four-project RAG pipeline architecture. Project A handles preprocessing and quality assessment. Project B (this system) performs layout analysis and OCR. Project C manages fusion and chunking. Project D handles embedding and retrieval.",
+              "confidence": 0.97
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_2_2",
+          "page_index": 2,
+          "layout_block_id": "block_2_2",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "3. Technical Architecture"],
+          "structural_role": "table_context",
+          "reading_order_index": 9,
+          "ocr_engines": {
+            "marker": {
+              "text": "| Component | Technology | Performance Target |\n|-----------|------------|--------------------|\n| Layout Detection | YOLOv10-doc | 95% mAP |\n| OCR Primary | Marker + Llama 4 | 98% accuracy |\n| OCR Secondary | DeepSeek-OCR | 97% accuracy |\n| Table Extraction | TableFormer | 97.9% TEDS |\n| Office Formats | Docling | 99% fidelity |",
+              "confidence": 0.96
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": true,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_2_3",
+          "page_index": 2,
+          "layout_block_id": "block_2_3",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "3. Technical Architecture"],
+          "structural_role": "caption",
+          "reading_order_index": 10,
+          "ocr_engines": {
+            "marker": {
+              "text": "Table 1: Technology stack and performance targets",
+              "confidence": 0.95
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": true,
+          "has_handwriting": false
+        }
+      ]
+    },
+    {
+      "page_index": 3,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_3_0",
+          "class_label": "section_header",
+          "bbox": [72.0, 72.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_3_1",
+          "class_label": "text",
+          "bbox": [72.0, 116.0, 468.0, 240.0],
+          "confidence": 0.97,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_3_2",
+          "class_label": "section_header",
+          "bbox": [72.0, 380.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 2
+        },
+        {
+          "block_id": "block_3_3",
+          "class_label": "list_item",
+          "bbox": [72.0, 428.0, 468.0, 200.0],
+          "confidence": 0.96,
+          "reading_order_index": 3
+        }
+      ],
+      "reading_order": ["block_3_0", "block_3_1", "block_3_2", "block_3_3"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_3_0",
+          "page_index": 3,
+          "layout_block_id": "block_3_0",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 11,
+          "ocr_engines": {
+            "marker": {
+              "text": "4. Implementation Timeline",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_3_1",
+          "page_index": 3,
+          "layout_block_id": "block_3_1",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "4. Implementation Timeline"],
+          "structural_role": "body_text",
+          "reading_order_index": 12,
+          "ocr_engines": {
+            "marker": {
+              "text": "The project will be executed in five phases over 12 months. Phase 0 establishes foundation and planning. Phase 1 implements core PDF processing. Phase 2 adds intelligent OCR routing. Phase 3 integrates office formats. Phase 4 enables multimodal processing for video and audio content.\n\nEach phase includes comprehensive testing, benchmarking, and validation against industry-standard datasets.",
+              "confidence": 0.97
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_3_2",
+          "page_index": 3,
+          "layout_block_id": "block_3_2",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 13,
+          "ocr_engines": {
+            "marker": {
+              "text": "5. Budget and Resources",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_3_3",
+          "page_index": 3,
+          "layout_block_id": "block_3_3",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "5. Budget and Resources"],
+          "structural_role": "body_text",
+          "reading_order_index": 14,
+          "ocr_engines": {
+            "marker": {
+              "text": "• Development team: 3 senior engineers, 2 ML specialists\n• Infrastructure: GPU compute resources, cloud storage\n• Software licenses: Docling (MIT), Marker (GPL-3.0)\n• Dataset access: DocLayNet, PubTables-1M\n• Total estimated budget: $480,000 over 12 months",
+              "confidence": 0.96
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        }
+      ]
+    },
+    {
+      "page_index": 4,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_4_0",
+          "class_label": "section_header",
+          "bbox": [72.0, 72.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_4_1",
+          "class_label": "text",
+          "bbox": [72.0, 116.0, 468.0, 280.0],
+          "confidence": 0.97,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_4_2",
+          "class_label": "section_header",
+          "bbox": [72.0, 420.0, 468.0, 32.0],
+          "confidence": 0.98,
+          "reading_order_index": 2
+        },
+        {
+          "block_id": "block_4_3",
+          "class_label": "text",
+          "bbox": [72.0, 464.0, 468.0, 120.0],
+          "confidence": 0.97,
+          "reading_order_index": 3
+        }
+      ],
+      "reading_order": ["block_4_0", "block_4_1", "block_4_2", "block_4_3"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_4_0",
+          "page_index": 4,
+          "layout_block_id": "block_4_0",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 15,
+          "ocr_engines": {
+            "marker": {
+              "text": "6. Risk Assessment",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_4_1",
+          "page_index": 4,
+          "layout_block_id": "block_4_1",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "6. Risk Assessment"],
+          "structural_role": "body_text",
+          "reading_order_index": 16,
+          "ocr_engines": {
+            "marker": {
+              "text": "Key risks include GPU resource availability, third-party API dependencies, and dataset licensing constraints. Mitigation strategies include CPU fallback paths, multi-engine redundancy, and careful license compliance.\n\nThe project maintains strict adherence to open-source licensing requirements. Marker uses GPL-3.0, requiring careful isolation. Docling uses MIT license, enabling flexible integration.",
+              "confidence": 0.97
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_4_2",
+          "page_index": 4,
+          "layout_block_id": "block_4_2",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative"],
+          "structural_role": "section_header",
+          "reading_order_index": 17,
+          "ocr_engines": {
+            "marker": {
+              "text": "7. Conclusion",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_4_3",
+          "page_index": 4,
+          "layout_block_id": "block_4_3",
+          "heading_path": ["Business Proposal: Digital Transformation Initiative", "7. Conclusion"],
+          "structural_role": "body_text",
+          "reading_order_index": 18,
+          "ocr_engines": {
+            "marker": {
+              "text": "This digital transformation initiative represents a strategic investment in our document processing capabilities. The proposed architecture balances performance, accuracy, and maintainability while providing a clear path to future multimodal enhancements.",
+              "confidence": 0.97
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        }
+      ]
+    }
+  ]
+}

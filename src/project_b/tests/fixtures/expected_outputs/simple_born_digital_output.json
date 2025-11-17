@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "test-simple-001",
+  "source_document_metadata_id": null,
+  "page_count": 1,
+  "layout_model_name": "yolov10x-doclaynet",
+  "ocr_engines": ["marker"],
+  "pages": [
+    {
+      "page_index": 0,
+      "width_px": 612,
+      "height_px": 792,
+      "layout_blocks": [
+        {
+          "block_id": "block_0_0",
+          "class_label": "title",
+          "bbox": [72.0, 72.0, 468.0, 36.0],
+          "confidence": 0.98,
+          "reading_order_index": 0
+        },
+        {
+          "block_id": "block_0_1",
+          "class_label": "text",
+          "bbox": [72.0, 120.0, 468.0, 180.0],
+          "confidence": 0.95,
+          "reading_order_index": 1
+        },
+        {
+          "block_id": "block_0_2",
+          "class_label": "section_header",
+          "bbox": [72.0, 320.0, 468.0, 24.0],
+          "confidence": 0.96,
+          "reading_order_index": 2
+        },
+        {
+          "block_id": "block_0_3",
+          "class_label": "text",
+          "bbox": [72.0, 356.0, 468.0, 120.0],
+          "confidence": 0.94,
+          "reading_order_index": 3
+        },
+        {
+          "block_id": "block_0_4",
+          "class_label": "page_footer",
+          "bbox": [72.0, 720.0, 468.0, 24.0],
+          "confidence": 0.92,
+          "reading_order_index": 4
+        }
+      ],
+      "reading_order": ["block_0_0", "block_0_1", "block_0_2", "block_0_3", "block_0_4"],
+      "paragraphs": [
+        {
+          "paragraph_id": "para_0_0",
+          "page_index": 0,
+          "layout_block_id": "block_0_0",
+          "heading_path": [],
+          "structural_role": "title",
+          "reading_order_index": 0,
+          "ocr_engines": {
+            "marker": {
+              "text": "Sample Document Title",
+              "confidence": 0.98
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_1",
+          "page_index": 0,
+          "layout_block_id": "block_0_1",
+          "heading_path": ["Sample Document Title"],
+          "structural_role": "body_text",
+          "reading_order_index": 1,
+          "ocr_engines": {
+            "marker": {
+              "text": "This is a simple born-digital PDF document with clean text extraction. The document demonstrates typical single-page layout with a title, body paragraphs, section headers, and footer.",
+              "confidence": 0.95
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_2",
+          "page_index": 0,
+          "layout_block_id": "block_0_2",
+          "heading_path": ["Sample Document Title"],
+          "structural_role": "section_header",
+          "reading_order_index": 2,
+          "ocr_engines": {
+            "marker": {
+              "text": "Introduction",
+              "confidence": 0.96
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_3",
+          "page_index": 0,
+          "layout_block_id": "block_0_3",
+          "heading_path": ["Sample Document Title", "Introduction"],
+          "structural_role": "body_text",
+          "reading_order_index": 3,
+          "ocr_engines": {
+            "marker": {
+              "text": "Born-digital PDFs contain embedded text that can be extracted directly without OCR. This results in high accuracy and fast processing times.",
+              "confidence": 0.94
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        },
+        {
+          "paragraph_id": "para_0_4",
+          "page_index": 0,
+          "layout_block_id": "block_0_4",
+          "heading_path": ["Sample Document Title", "Introduction"],
+          "structural_role": "other",
+          "reading_order_index": 4,
+          "ocr_engines": {
+            "marker": {
+              "text": "Page 1",
+              "confidence": 0.92
+            }
+          },
+          "languages": ["en"],
+          "has_math": false,
+          "has_table_ref": false,
+          "has_handwriting": false
+        }
+      ]
+    }
+  ]
+}
