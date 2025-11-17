@@ -25,6 +25,25 @@ from data_ingestor.evaluation.metrics import (
 
 logger = logging.getLogger(__name__)
 
+# Mapping from internal element types to DocLayNet COCO categories
+# #CRITICAL: This mapping must cover all element types produced by parsers
+# #VERIFY: All 11 DocLayNet categories are represented
+ELEMENT_TYPE_TO_COCO = {
+    "narrative_text": "Text",
+    "text": "Text",
+    "list_item": "List-item",
+    "table": "Table",
+    "title": "Title",
+    "section_header": "Section-header",
+    "caption": "Caption",
+    "footnote": "Footnote",
+    "formula": "Formula",
+    "page_header": "Page-header",
+    "page_footer": "Page-footer",
+    "picture": "Picture",
+    "image": "Picture",
+}
+
 
 class DocLayNetEvaluator(BaseEvaluator):
     """
@@ -119,8 +138,14 @@ class DocLayNetEvaluator(BaseEvaluator):
                     f"Parser does not provide bounding boxes"
                 )
 
-            # Calculate reading order metrics
-            pred_order = self._extract_reading_order(predicted)
+            # Calculate reading order metrics using bbox matching
+            # Match predicted elements to ground truth annotations via IoU
+            element_to_annotation_map = self._match_elements_to_annotations(
+                predicted, gt_layout, iou_threshold=0.3
+            )
+
+            # Extract reading orders (use matched IDs for predicted elements)
+            pred_order = self._extract_reading_order(predicted, element_to_annotation_map)
             gt_order = self._extract_ground_truth_order(gt_layout)
 
             if pred_order and gt_order:
@@ -172,10 +197,14 @@ class DocLayNetEvaluator(BaseEvaluator):
             bbox = element.metadata.coordinates or element.bbox
 
             if bbox:
+                # Map internal element type to COCO category
+                element_type = element.element_type.value
+                coco_category = ELEMENT_TYPE_TO_COCO.get(element_type, element_type)
+
                 boxes.append(
                     {
-                        "id": f"{element.category}_{i}",
-                        "class": element.type,
+                        "id": f"{element_type}_{i}",
+                        "class": coco_category,  # Use COCO category for matching
                         "bbox": bbox,
                         "confidence": 1.0,  # Default confidence
                     }
@@ -213,18 +242,84 @@ class DocLayNetEvaluator(BaseEvaluator):
 
         return boxes
 
-    def _extract_reading_order(self, document: Document) -> List[str]:
+    def _match_elements_to_annotations(
+        self, document: Document, gt_layout: Dict, iou_threshold: float = 0.3
+    ) -> Dict[int, str]:
+        """
+        Match predicted elements to ground truth annotations using bbox IoU.
+
+        Args:
+            document: Parsed document with elements
+            gt_layout: Ground truth layout annotations
+            iou_threshold: Minimum IoU for considering a match
+
+        Returns:
+            Dict mapping element index to annotation ID
+        """
+        from data_ingestor.evaluation.metrics.layout_metrics import _calculate_iou
+
+        element_to_annotation = {}
+        annotations = gt_layout.get("annotations", [])
+
+        for i, element in enumerate(document.elements):
+            # Get element bbox
+            bbox = element.metadata.coordinates or element.bbox
+            if not bbox:
+                continue
+
+            # Find best matching annotation
+            best_iou = 0.0
+            best_annotation_id = None
+
+            for ann in annotations:
+                gt_bbox = ann.get("bbox", [])
+                if len(gt_bbox) != 4:
+                    continue
+
+                # Convert COCO format [x, y, w, h] to [x1, y1, x2, y2]
+                x, y, w, h = gt_bbox
+                gt_bbox_converted = [x, y, x + w, y + h]
+
+                iou = _calculate_iou(bbox, gt_bbox_converted)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_annotation_id = str(ann.get("id"))
+
+            # Map if IoU exceeds threshold
+            if best_iou >= iou_threshold and best_annotation_id:
+                element_to_annotation[i] = best_annotation_id
+
+        logger.debug(
+            f"Matched {len(element_to_annotation)}/{len(document.elements)} "
+            f"elements to annotations (IoU >= {iou_threshold})"
+        )
+
+        return element_to_annotation
+
+    def _extract_reading_order(
+        self, document: Document, element_to_annotation_map: Optional[Dict[int, str]] = None
+    ) -> List[str]:
         """
         Extract reading order from document elements.
 
         Args:
             document: Parsed document
+            element_to_annotation_map: Optional mapping from element index to annotation ID
 
         Returns:
             List of element IDs in reading order
         """
-        # Elements are assumed to be in reading order from parser
-        return [f"{elem.category}_{i}" for i, elem in enumerate(document.elements)]
+        # If we have a mapping from bbox matching, use annotation IDs
+        if element_to_annotation_map:
+            return [
+                element_to_annotation_map[i]
+                for i in range(len(document.elements))
+                if i in element_to_annotation_map
+            ]
+
+        # Fallback: use element type and index
+        # #ASSUME: This will likely produce 0.0 metrics without bbox matching
+        return [f"{elem.element_type.value}_{i}" for i, elem in enumerate(document.elements)]
 
     def _extract_ground_truth_order(self, layout: Dict) -> List[str]:
         """
