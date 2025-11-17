@@ -1,0 +1,32 @@
+# Read the Docs configuration file for Data Ingestor
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Build documentation in the docs/ directory with MkDocs
+mkdocs:
+  configuration: mkdocs.yml
+  fail_on_warning: false  # Warnings about repo root links are expected
+
+# Build configuration
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.11"
+
+# Python configuration
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - dev  # Includes all documentation dependencies (mkdocs, mkdocstrings, etc.)
+
+# Formats to build (PDF/EPUB disabled for MkDocs)
+formats: []
+
+# Submodules configuration
+submodules:
+  include: []
+  recursive: false

@@ -1,0 +1,127 @@
+---
+# Pre-commit hooks configuration for Data Ingestor
+# See https://pre-commit.com for more information
+
+# pre-commit.ci configuration
+ci:
+  autoupdate_schedule: monthly
+  autofix_prs: true
+  skip: []  # No local-only hooks currently
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^mkdocs\.yml$
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=10000']  # 10MB limit
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python linting and formatting with Ruff
+  # Replaces: Black (formatting), Flake8 (linting), isort (imports)
+  # Compatible with pyproject.toml ruff configuration
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.4
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+        exclude: ^(notebooks/|scripts/legacy/)
+      - id: ruff-format
+        exclude: ^(notebooks/|scripts/legacy/)
+
+  # Python type checking with MyPy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0.0
+          - types-python-dateutil
+          - types-PyYAML
+          - types-requests
+        args: ['--ignore-missing-imports', '--python-version=3.11']
+        # Exclude tests, benchmarks, evaluation, scripts, and temporary files
+        exclude: |
+          (?x)^(
+              tests/.*|
+              benchmarks/.*|
+              evaluation/.*|
+              scripts/.*|
+              tmp_cleanup/.*|
+              test_output/.*|
+              htmlcov/.*|
+              \.nox/.*
+          )$
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041']
+        exclude: ^tmp_cleanup/
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-d', '{extends: default, rules: {line-length: {max: 120}}}']
+        exclude: ^(\.github/security-exceptions\.yml|tmp_cleanup/)
+
+  # Python docstring coverage with interrogate
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0
+    hooks:
+      - id: interrogate
+        args: ['-v', '-c', 'pyproject.toml', 'src/']
+        pass_filenames: false
+
+  # Security scanning with Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+        exclude: ^tests/
+
+  # Dependency scanning with Safety
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.3
+    hooks:
+      - id: python-safety-dependencies-check
+        files: pyproject.toml
+
+# Exclude patterns (don't run hooks on these)
+exclude: |
+  (?x)^(
+      \.git/.*|
+      \.venv/.*|
+      venv/.*|
+      build/.*|
+      dist/.*|
+      .*\.egg-info/.*|
+      __pycache__/.*|
+      \.mypy_cache/.*|
+      \.pytest_cache/.*|
+      \.ruff_cache/.*|
+      \.nox/.*|
+      data/.*|
+      models/.*|
+      notebooks/.*|
+      tmp_cleanup/.*|
+      test_output/.*|
+      htmlcov/.*|
+      .*\.pyc
+  )$

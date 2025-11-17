@@ -1,0 +1,115 @@
+# REUSE Software Bill of Materials
+# https://reuse.software/
+# This file provides centralized licensing information for the data_ingestor project
+# avoiding the need for SPDX headers in individual files.
+
+version = 1
+SPDX-PackageName = "data-ingestor"
+SPDX-PackageSupplier = "Byron Williams"
+SPDX-PackageDownloadLocation = "https://github.com/williaby/data_ingestor"
+
+# Source code (Python, parsers, pipelines, tests) - Apache-2.0
+[[annotations]]
+path = [
+    "src/**",
+    "tests/**",
+    "benchmarks/**/*.py",
+    "evaluation/**/*.py",
+    "scripts/**/*.py",
+    "*.py",
+    "noxfile.py",
+]
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Documentation - CC-BY-4.0
+[[annotations]]
+path = [
+    "docs/**",
+    "*.md",
+    "tmp_cleanup/**/*.md",  # Temporary reference files
+    "benchmarks/*.md",
+    "!LICENSES/*.txt",  # Exclude actual license text files
+]
+SPDX-License-Identifier = "CC-BY-4.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Configuration files - CC0-1.0 (public domain dedication)
+[[annotations]]
+path = [
+    "*.toml",
+    "*.yml",
+    "*.yaml",
+    ".github/**",
+    ".gitignore",
+    ".gitattributes",
+    ".pre-commit-config.yaml",
+    ".readthedocs.yaml",
+    "mkdocs.yml",
+    "poetry.lock",
+    "requirements/**/*.txt",
+    "benchmarks/config.yaml",
+    "benchmarks/**/*.yaml",
+    ".zenodo.json",
+]
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Benchmark data and evaluation datasets - ODbL-1.0 (Open Database License)
+[[annotations]]
+path = [
+    "data/**",
+    "models/**",
+    "benchmarks/data/**",
+]
+SPDX-License-Identifier = "ODbL-1.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Build artifacts and generated files - excluded from licensing
+[[annotations]]
+path = [
+    "build/**",
+    "dist/**",
+    "site/**",
+    "*.egg-info/**",
+    "__pycache__/**",
+    ".venv/**",
+    "venv/**",
+    ".nox/**",
+    ".mypy_cache/**",
+    ".pytest_cache/**",
+    ".ruff_cache/**",
+    "*.pyc",
+    "*.pyo",
+    "htmlcov/**",
+    "test_output/**",
+    ".coverage",
+    "coverage.xml",
+]
+precedence = "override"
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Additional configuration and temporary files - CC0-1.0
+[[annotations]]
+path = [
+    ".claude/settings.local.json",
+    "renovate.json",
+    "scripts/**/*.sh",
+    "tmp_cleanup/**/*.txt",
+    "Makefile",
+    ".env.example",
+]
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
+
+# Benchmark reports and generated results - CC0-1.0
+[[annotations]]
+path = [
+    "benchmarks/reports/**/*.json",
+    "benchmarks/reports/**/*.md",
+    "benchmarks/results/**",
+    "evaluation/results/**",
+]
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2025 Byron Williams"
