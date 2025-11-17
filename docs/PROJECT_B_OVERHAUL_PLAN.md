@@ -1055,10 +1055,14 @@ Total Duration: 18 weeks (4.5 months)
    - **Action:** Configure GCS client in Project B for image retrieval
    - **Status:** APPROVED
 
-7. **Q7: Deployment Model (API vs Queue)** ⏳ PENDING
-   - **Recommendation:** Message queue (Kafka) for production, REST API for dev/test
-   - **Status:** Awaiting decision from Platform Team
-   - **Deadline:** End of Week 3
+7. **Q7: Deployment Model (API vs Queue)** ✅ RESOLVED
+   - ✅ **DECISION:** Hybrid Approach (In-Process Primary + Optional Queue)
+   - **Phase 1 (MVP):** In-process function calls (< 5ms latency, single Python process)
+   - **Phase 2 (Optional):** Redis-based queue for batch processing
+   - **Phase 3 (Future):** REST API for monitoring/external integrations
+   - **Rationale:** All projects on same system → in-process optimal for interactive use
+   - **Details:** See DEPLOYMENT_MODEL_ANALYSIS.md
+   - **Status:** APPROVED
 
 #### ⏳ NEW QUESTIONS (Based on Office Document Analysis)
 
@@ -1067,6 +1071,16 @@ Total Duration: 18 weeks (4.5 months)
    - **Recommendation:** Docling for office documents (see OFFICE_DOCUMENT_ANALYSIS_MARKER_VS_DOCLING.md)
    - **Status:** Awaiting approval
    - **Deadline:** End of Week 1
+
+#### 📋 APPROVED MIGRATION STRATEGY
+
+9. **Migration Approach** ✅ APPROVED
+   - **DECISION:** Option 1 - Clean Slate
+   - Create new `src/project_b/` directory
+   - Selectively migrate reusable components from `src/data_ingestor/`
+   - Tag current code as `v1.0-legacy`
+   - Preserve legacy in `legacy/data-ingestor-v1` branch
+   - **Status:** APPROVED
 
 ### 11.2 Next Steps (Immediate Actions)
 
