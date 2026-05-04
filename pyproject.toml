@@ -110,7 +110,7 @@ kombu = "^5.4.0"
 # CLI
 click = "^8.1.7"
 # Chunking and text processing
-langchain-text-splitters = "^0.3.0"
+langchain-text-splitters = "^1.0.0"
 # Language detection
 langdetect = "^1.0.9"
 # PDF table extraction
