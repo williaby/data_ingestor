@@ -160,7 +160,7 @@ tiktoken = ">=0.8.0,<1.0.0"
 numpy = ">=1.26.1,<2.0.0"
 pandas = "^2.2.0"
 spacy = ">=3.7.0,<4.0.0"
-nltk = ">=3.8.0,<4.0.0"
+nltk = ">=3.5,<4.0.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.0"
