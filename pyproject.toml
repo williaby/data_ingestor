@@ -151,7 +151,7 @@ datasets = "^4.4.0"
 
 [tool.poetry.group.azure.dependencies]
 azure-identity = "^1.15.0"
-azure-keyvault-secrets = "^4.8.0"
+azure-keyvault-secrets = "^4.11.0"
 azure-storage-blob = "^12.19.0"
 
 [tool.poetry.group.ml.dependencies]
