@@ -99,7 +99,7 @@ python-docx = "^1.1.0"
 docx2python = "^3.1.2"
 # Web scraping
 beautifulsoup4 = "^4.12.0"
-lxml = "^5.0.0"
+lxml = "^6.0.0"
 playwright = "^1.48.0"
 # Video/Audio transcription
 faster-whisper = "^1.0.0"
