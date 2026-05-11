@@ -163,7 +163,7 @@ spacy = ">=3.7.0,<4.0.0"
 nltk = ">=3.8.0,<4.0.0"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
+mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.32"
 mkdocstrings = {extras = ["python"], version = "^0.24.0"}
 
