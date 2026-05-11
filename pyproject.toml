@@ -146,7 +146,7 @@ mutmut = "^3.3.0"
 locust = "^2.0.0"
 pip-audit = "^2.9.0"
 types-cachetools = "^6.1.0.20250717"
-isort = "^6.0.1"
+isort = "^6.1.0"
 datasets = "^4.4.0"
 
 [tool.poetry.group.azure.dependencies]
