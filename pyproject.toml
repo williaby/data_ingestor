@@ -183,7 +183,7 @@ optional = true
 # Security vs Feature tradeoff: Choose based on deployment needs
 # - For production: Skip this group and upgrade regex to >=2025.2.10
 # - For advanced PDF: Install this group, accept vulnerability, use input validation
-marker-pdf = "^1.9.3"
+marker-pdf = "^1.10.2"
 
 
 [[tool.poetry.source]]
