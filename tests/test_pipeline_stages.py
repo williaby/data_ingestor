@@ -38,6 +38,7 @@ from data_ingestor.core.models import (
     ProcessingStatus,
 )
 from data_ingestor.parsers.pdf_parser import PyMuPDFParser
+from data_ingestor.pipeline.pdf_analyzer import PDFPreflightResult
 from data_ingestor.pipeline.router import DocumentRouter
 
 
@@ -75,6 +76,7 @@ class _PDFOnlyParser(BaseParser):
 # =============================================================================
 
 
+@pytest.mark.component
 class TestFileValidationStage:
     """Contract tests for :meth:`BaseParser.validate_document`.
 
@@ -176,6 +178,7 @@ class TestFileValidationStage:
 # =============================================================================
 
 
+@pytest.mark.component
 class TestPDFExtractionStage:
     """Contract tests for :meth:`PyMuPDFParser.parse`."""
 
@@ -261,6 +264,7 @@ def _doc_with_text(text: str) -> Document:
     return doc
 
 
+@pytest.mark.component
 class TestChunkingStage:
     """Boundary tests for :meth:`TokenChunker.chunk_document`."""
 
@@ -480,21 +484,27 @@ def pdf_document_path(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def router_without_preflight(monkeypatch: pytest.MonkeyPatch) -> DocumentRouter:
-    """Router with PDF pre-flight disabled.
+    """Router whose PDF pre-flight is short-circuited to a no-op.
 
-    The pre-flight stage can write/delete temp files and depends on
-    OpenCV; disabling it keeps these orchestration tests focused on
-    exception propagation through the parser chain.
+    The real pre-flight stage can write/delete temp files and depends
+    on OpenCV; we replace its ``analyze`` method with one that returns
+    a :class:`PDFPreflightResult` indicating "no upscaling needed".
+    The router will therefore skip the upscaling branch and the
+    orchestration tests can focus on parser-chain behaviour without
+    triggering real I/O or OpenCV side effects.
     """
+    def _noop_analyze(*_args: Any, **_kwargs: Any) -> PDFPreflightResult:
+        return PDFPreflightResult(
+            needs_upscaling=False,
+            resolution_analysis={"reason": "stubbed by test fixture"},
+        )
+
     router = DocumentRouter()
-    monkeypatch.setattr(router.pdf_analyzer, "analyze",
-                        lambda *_a, **_kw: pytest.fail(
-                            "pre-flight should not run in this test"))
-    # Make the format PDF branch skip pre-flight entirely.
-    router.pdf_analyzer = None  # type: ignore[assignment]
+    monkeypatch.setattr(router.pdf_analyzer, "analyze", _noop_analyze)
     return router
 
 
+@pytest.mark.component
 class TestPipelineOrchestration:
     """Exception-propagation contract for :class:`DocumentRouter`."""
 
@@ -607,6 +617,7 @@ def _block_real_network_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(requests.Session, "send", _boom)
 
 
+@pytest.mark.unit
 def test_network_guard_is_installed() -> None:
     """Smoke check that the autouse guard actually replaces send().
 
