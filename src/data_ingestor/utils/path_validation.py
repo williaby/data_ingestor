@@ -42,8 +42,10 @@ def validate_output_path(
     candidate_path = Path(candidate)
     if not candidate_path.is_absolute():
         candidate_path = base_resolved / candidate_path
-    # strict=False so the file itself need not exist yet (we're about to
-    # create it), but its resolved parents must.
+    # strict=False so the path is normalized (".." segments collapsed,
+    # existing symlink components followed) without requiring that the
+    # candidate or its parents already exist — callers typically invoke
+    # this just before creating the file.
     resolved = candidate_path.resolve(strict=False)
     try:
         resolved.relative_to(base_resolved)
