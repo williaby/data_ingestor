@@ -22,7 +22,11 @@ jobs:
       contents: write       # semantic-release pushes tags and CHANGELOG commits
       issues: write         # semantic-release/github comments on resolved issues
       pull-requests: write  # semantic-release/github comments on released PRs
-      id-token: write       # required for OIDC if release-time signing is added
+      # id-token: write — intentionally NOT granted. The release job uses
+      # GITHUB_TOKEN for semantic-release, not OIDC. The publish-pypi job
+      # below requests id-token: write at its own job scope (PyPI Trusted
+      # Publishing); add this back here only when release-time signing
+      # (Sigstore/cosign) is actually wired up.
     # Skip release if commit message contains [skip ci] or [skip release]
     if: |
       !contains(github.event.head_commit.message, '[skip ci]') &&
@@ -30,7 +34,7 @@ jobs:
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
         with:
           egress-policy: audit
           allowed-endpoints: >
@@ -193,7 +197,7 @@ jobs:
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
         with:
           egress-policy: audit
           allowed-endpoints: >

@@ -14,6 +14,10 @@ from data_ingestor.utils.format_detector import FormatDetector
 
 logger = logging.getLogger(__name__)
 
+# Streaming SHA-256 read size for dedup hashing. 1 MiB keeps memory bounded
+# regardless of file size while still amortizing syscall overhead.
+HASH_CHUNK_SIZE_BYTES = 1024 * 1024
+
 
 class ParserRegistry:
     """Registry for managing document parsers with fallback chains."""
@@ -182,7 +186,7 @@ class DocumentRouter:
             # (default 500 MB) into memory just to compute a dedup hash.
             hasher = hashlib.sha256()
             with path.open("rb") as f:
-                for block in iter(lambda: f.read(1024 * 1024), b""):
+                for block in iter(lambda: f.read(HASH_CHUNK_SIZE_BYTES), b""):
                     hasher.update(block)
             file_hash = hasher.hexdigest()
 

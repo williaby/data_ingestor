@@ -15,22 +15,22 @@ A finding rated lower than the audit's initial impression is annotated with
 | # | Area | Finding | Severity | Status |
 |---|------|---------|----------|--------|
 | 1 | Resource limits | `f.read()` loads whole file into memory for SHA-256 dedup | **High** | Fixed |
-| 2 | PDF injection | Unbounded / unsanitized PDF metadata fields propagate to JSON / YAML output | **High** | Fixed |
-| 3 | Temp files | Predictable `time.time()`-based temp filename for upscaled PDFs (TOCTOU on shared host) | Medium | Fixed |
+| 2 | PDF injection | Unbounded/unsanitized PDF metadata flows to JSON/YAML output | **High** | Fixed |
+| 3 | Temp files | Predictable `time.time()` temp name for upscaled PDFs (TOCTOU) | Medium | Fixed |
 | 4 | Temp files | Temp PNG leaks if `insert_image()` raises during page upscale | Medium | Fixed |
-| 5 | File-type detection | Silent fallback to extension-only detection when libmagic / mimetypes fail | Medium | Fixed (warn) |
+| 5 | File-type detection | Silent fallback to extension-only when libmagic/mimetypes fail | Medium | Fixed (warn) |
 | 6 | Path traversal | No `validate_output_path()` helper for future API endpoints | Low | Helper added |
-| 7 | GH Actions | `google/clusterfuzzlite/actions/{build,run}_fuzzers@v1` pinned to mutable tag | **High** | Fixed (SHA pin) |
-| 8 | GH Actions | `ByronWilliamsCPA/.github/.../python-qlty-coverage.yml@main` mutable ref | Medium | Fixed (SHA pin) |
-| 9 | GH Actions | `ByronWilliamsCPA/.github/.../python-slsa.yml@main` mutable ref | Medium | Fixed (SHA pin) |
+| 7 | GH Actions | `clusterfuzzlite/.../{build,run}_fuzzers@v1` mutable tag | **High** | SHA-pinned |
+| 8 | GH Actions | `ByronWilliamsCPA/.../qlty-coverage.yml@main` mutable ref | Medium | SHA-pinned |
+| 9 | GH Actions | `ByronWilliamsCPA/.../python-slsa.yml@main` mutable ref | Medium | SHA-pinned |
 | 10 | GH Actions | `fips-compatibility.yml` missing `harden-runner` step | Low | Fixed |
-| 11 | GH Actions | `release.yml` top-level `permissions: write-all` (broader than any single job needs) | Medium | Fixed (scoped to job) |
-| 12 | GH Actions | `slsa-provenance.yml` top-level `permissions: contents: write` (build job doesn't need it) | Medium | Fixed (scoped to job) |
-| 13 | GH Actions | No `dependabot.yml` (Renovate covers Python deps; nothing covered actions) | Low | Fixed (added) |
-| F1 | PDF injection | "YAML injection via PDF metadata" | — | **False positive** (see below) |
-| F2 | API | API server binds `0.0.0.0`, no auth | N/A | **No HTTP server exists** — deferred |
-| F3 | Bug | `datetime.now()` used in `cli/main.py` without `from datetime import datetime` | Critical bug, not security | Out of scope (separate PR) |
-| F4 | Storage | Extracted content written to plaintext files at user-chosen paths | By design | Documented, no change |
+| 11 | GH Actions | `release.yml` top-level `write-all` (broader than needed) | Medium | Scoped to job |
+| 12 | GH Actions | `slsa-provenance.yml` top-level `contents: write` not needed | Medium | Scoped to job |
+| 13 | GH Actions | No `dependabot.yml` covering actions/docker | Low | Added |
+| F1 | PDF injection | "YAML injection via PDF metadata" (claimed CRITICAL) | — | False positive |
+| F2 | API | API server binds `0.0.0.0`, no auth | N/A | No server yet |
+| F3 | Bug | `datetime.now()` in `cli/main.py` without `datetime` import | Functional | Out of scope |
+| F4 | Storage | Extracted content written to plaintext at user-chosen paths | By design | Documented |
 
 ## Fixes applied
 
@@ -113,12 +113,12 @@ classic supply-chain footgun, since the owning org can republish those tags
 to point at malicious commits. All three resolved via `git ls-remote` and
 pinned, with the human-readable tag/branch preserved in a trailing comment:
 
-| File | Before | After |
-|------|--------|-------|
-| `.github/workflows/cifuzzy.yml` | `google/clusterfuzzlite/actions/build_fuzzers@v1` | `@82652fb49e77bc29c35da1167bb286e93c6bcc05 # v1` |
-| `.github/workflows/cifuzzy.yml` | `google/clusterfuzzlite/actions/run_fuzzers@v1` | `@82652fb49e77bc29c35da1167bb286e93c6bcc05 # v1` |
-| `.github/workflows/coverage.yml` | `ByronWilliamsCPA/.github/.github/workflows/python-qlty-coverage.yml@main` | `@e067cdb7294f6221dbde74ef1f4c3ca735eed570 # main` |
-| `.github/workflows/slsa-provenance.yml` | `ByronWilliamsCPA/.github/.github/workflows/python-slsa.yml@main` | `@e067cdb7294f6221dbde74ef1f4c3ca735eed570 # main` |
+| File                                    | Action / reusable workflow            | Before | After (SHA + comment)  |
+|-----------------------------------------|---------------------------------------|--------|------------------------|
+| `.github/workflows/cifuzzy.yml`         | `clusterfuzzlite/.../build_fuzzers`   | `@v1`  | `@82652fb4… # v1`      |
+| `.github/workflows/cifuzzy.yml`         | `clusterfuzzlite/.../run_fuzzers`     | `@v1`  | `@82652fb4… # v1`      |
+| `.github/workflows/coverage.yml`        | `ByronWilliamsCPA/.../qlty-coverage`  | `@main`| `@e067cdb7… # main`    |
+| `.github/workflows/slsa-provenance.yml` | `ByronWilliamsCPA/.../python-slsa`    | `@main`| `@e067cdb7… # main`    |
 
 (Comment on the old workflow saying "cannot pin to SHA, maintained by Google"
 was incorrect — `git ls-remote` resolves the `v1` tag fine.)
@@ -136,8 +136,13 @@ direct steps; their callee workflows are responsible for runner hardening.
 
 ### 11-12. Least-privilege workflow permissions
 
-- `release.yml` top-level was `contents: write / issues: write / pull-requests: write / id-token: write`. Only the `release` job actually needs those. Top-level reduced to `contents: read`; per-job block restored on the release job (with comments explaining why each scope is needed); `publish-pypi` already had its own per-job block.
-- `slsa-provenance.yml` top-level was `contents: write / id-token: write / attestations: write`. The `build` job only needs `id-token: write` and `attestations: write` (for `actions/attest-build-provenance`); the `slsa` reusable-workflow call already declares its own permissions block. Top-level reduced to `contents: read`; per-job permissions added.
+- `release.yml` top-level was `contents: write / issues: write / pull-requests: write / id-token: write`.
+  Only the `release` job actually needs `contents/issues/pull-requests: write` (for semantic-release).
+  `id-token: write` is dropped from the `release` job since it doesn't use OIDC today (PyPI's job has
+  its own per-job scope). Top-level reduced to `contents: read`.
+- `slsa-provenance.yml` top-level was `contents: write / id-token: write / attestations: write`.
+  The `build` job only needs `id-token: write` and `attestations: write` for `attest-build-provenance`;
+  the `slsa` reusable workflow declares its own block. Top-level reduced to `contents: read`.
 
 ### 13. `dependabot.yml` (Low)
 

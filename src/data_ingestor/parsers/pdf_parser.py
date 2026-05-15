@@ -145,13 +145,18 @@ class PyMuPDFParser(BaseParser):
     def _sanitize_metadata_value(cls, value: Any) -> str:
         if not isinstance(value, str):
             return ""
-        # Strip C0/C1 control chars (keep tab/newline) — PDF metadata can
-        # contain binary that breaks YAML/JSON consumers.
+        # Strip C0 (0x00-0x1F), DEL (0x7F), and C1 (0x80-0x9F) control chars —
+        # PDF metadata can contain binary that breaks YAML/JSON consumers.
+        # Keep tab and newline only.
         cleaned = "".join(
-            ch for ch in value if ch in ("\t", "\n") or (ord(ch) >= 0x20 and ord(ch) != 0x7F)
+            ch
+            for ch in value
+            if ch in ("\t", "\n") or (0x20 <= ord(ch) < 0x7F) or ord(ch) >= 0xA0
         )
         if len(cleaned) > cls._METADATA_MAX_LEN:
-            cleaned = cleaned[: cls._METADATA_MAX_LEN] + "...[truncated]"
+            suffix = "...[truncated]"
+            # Reserve room for the suffix so the total never exceeds _METADATA_MAX_LEN.
+            cleaned = cleaned[: cls._METADATA_MAX_LEN - len(suffix)] + suffix
         return cleaned
 
     def _extract_metadata(self, pdf_doc: fitz.Document) -> dict[str, Any]:

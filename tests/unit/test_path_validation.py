@@ -7,6 +7,7 @@ import pytest
 from data_ingestor.utils.path_validation import UnsafePathError, validate_output_path
 
 
+@pytest.mark.unit
 class TestValidateOutputPath:
     def test_relative_path_inside_base(self, tmp_path: Path) -> None:
         result = validate_output_path("report.json", tmp_path)
