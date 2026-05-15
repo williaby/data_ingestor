@@ -63,16 +63,51 @@ class BaseParser(ABC):
         """
 
     def validate_document(self, document: Document) -> bool:
-        """Validate that document can be processed by this parser.
+        """File validation stage: check whether this parser can ingest the document.
 
-        # #CRITICAL: Data Integrity: Assumes document validation prevents processing failures
-        # #VERIFY: Must validate file format, size limits, and accessibility
+        This is the pipeline's **file-validation stage**. It runs
+        immediately before :meth:`parse` for every parser in the
+        fallback chain. Validation is intentionally lightweight and
+        non-throwing: it returns ``False`` so the router can move on to
+        the next parser rather than aborting the pipeline.
+
+        **Accepted file types:** Whatever the concrete subclass returns
+        ``True`` for from :meth:`supports_format`. The base format
+        taxonomy is :class:`DocumentFormat` (PDF, DOCX, HTML, VIDEO,
+        AUDIO).
+
+        **Path constraints:** ``Document.source_path`` -- if set --
+        must resolve to an existing regular file (not a directory or
+        symlink-to-missing). Path traversal is bounded at the
+        :class:`Document` boundary: its field validator rejects paths
+        that do not exist, so by the time validation reaches here the
+        path has already been canonicalised via ``Path.resolve()`` in
+        :meth:`DocumentRouter.create_document`.
+
+        **Size limits:** When the parser config dictionary contains a
+        ``max_file_size_mb`` key, files whose size exceeds that limit
+        (computed as ``size_bytes / (1024 * 1024)``) are rejected.
+        Files with size exactly equal to the limit are accepted. The
+        default :class:`Settings.max_file_size_mb` is 500 MB.
+
+        **Failure modes (all return False, none raise):**
+
+        * Unsupported format -> :meth:`supports_format` returned False.
+        * Missing file -> ``source_path`` exists in the model but the
+          file does not exist on disk, or the path points at a
+          directory.
+        * Oversized file -> ``size_mb > config["max_file_size_mb"]``.
+
+        Note: this stage *does not* raise. Hard errors (path traversal
+        rejection, schema violations) are raised earlier at the
+        :class:`Document` boundary as :class:`ValueError`.
 
         Args:
-            document: Document to validate
+            document: Document candidate to validate.
 
         Returns:
-            True if document is valid, False otherwise
+            True if the document satisfies format, existence, and size
+            constraints; False otherwise.
         """
         # Check format support
         if not self.supports_format(document.format):
