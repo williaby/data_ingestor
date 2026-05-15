@@ -1,4 +1,26 @@
-"""Document export service for JSON, Markdown, and other formats."""
+"""Document export service for JSON, Markdown, and other formats.
+
+This module implements the pipeline's **storage / persistence stage**.
+The current implementation targets the local filesystem only -- cloud
+storage backends (S3, Azure Blob, GCS) are tracked on the roadmap but
+not yet wired in. Callers wanting a hosted store should layer that on
+top of the artefacts written by :class:`DocumentExporter`.
+
+**Target store:** local filesystem. Files are written via
+``Path.open`` / ``Path.write_text`` with ``encoding="utf-8"``.
+
+**Key / ID format:** the caller chooses the output path. When
+``OutputFormat.BOTH`` is requested, the exporter strips the extension
+and writes ``<stem>.json`` and ``<stem>.md`` side by side.
+:class:`Document` retains its own UUID ``document_id`` which is
+embedded in both artefacts.
+
+**Idempotency:** Writes are unconditional overwrites. Re-exporting the
+same document to the same path replaces the previous artefact byte-
+for-byte (modulo ``updated_at`` timestamp changes). There is no append
+mode, no delta logic, and no locking; if two processes export to the
+same path concurrently the result is undefined.
+"""
 
 import json
 from enum import Enum
@@ -35,18 +57,44 @@ class DocumentExporter:
         format: OutputFormat,  # noqa: A002
         output_path: str | Path | None = None,
     ) -> dict[str, Any] | str | tuple[dict[str, Any], str]:
-        """Export document in specified format.
+        """Storage stage: serialise and optionally write a document.
+
+        **Target store:** local filesystem. The exporter does **not**
+        upload to S3, GCS, or any cloud blob store -- those backends
+        are deferred to the storage roadmap.
+
+        **Key / ID format:** ``output_path`` is the storage key. For
+        :attr:`OutputFormat.BOTH` the path is treated as a stem: the
+        extension is stripped and ``.json`` + ``.md`` siblings are
+        written. The document's ``document_id`` (a UUID4) is
+        round-tripped into both artefacts as the canonical record id.
+
+        **Side effects:** When ``output_path`` is provided the
+        corresponding file(s) are created (or overwritten) on disk.
+        Parent directories are *not* created automatically; callers
+        must ensure the target directory exists.
+
+        **Idempotency:** Writes are blind overwrites. Calling this
+        method twice with identical inputs produces identical files
+        (except for ``Document.updated_at``-style timestamps embedded
+        in the output). No two-phase or atomic-write semantics are
+        provided.
 
         Args:
-            document: Document to export
-            format: Output format
-            output_path: Optional output file path (for BOTH format, will create .json and .md)
+            document: Document to serialise.
+            format: One of :class:`OutputFormat`.
+            output_path: Optional filesystem path. When None the
+                serialised content is returned without writing.
 
         Returns:
-            Exported data in requested format
+            * :attr:`OutputFormat.JSON` -> dict
+            * :attr:`OutputFormat.MARKDOWN` / :attr:`OutputFormat.TEXT`
+              -> str
+            * :attr:`OutputFormat.BOTH` -> (dict, str)
 
         Raises:
-            ValueError: If format is unsupported
+            ValueError: ``format`` is not a recognised
+                :class:`OutputFormat` member.
         """
         if format == OutputFormat.JSON:
             json_result = self.to_json(document)

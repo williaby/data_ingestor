@@ -1,4 +1,45 @@
-"""Document router for selecting appropriate parsers."""
+"""Document router for selecting appropriate parsers.
+
+This module implements the top-level **pipeline orchestrator** for the
+data-ingestor RAG pipeline. The orchestrator is responsible for:
+
+1. Creating a :class:`~data_ingestor.core.models.Document` from a source
+   path or URL (format detection happens here).
+2. Performing a SHA-256-based deduplication check against an in-memory
+   cache so the same source file is not processed twice within a single
+   process lifetime.
+3. Running an optional PDF pre-flight stage (resolution analysis and
+   upscaling).
+4. Dispatching the document to the highest-priority parser registered
+   for its format, with automatic fallback to lower-priority parsers if
+   higher-priority ones fail.
+
+The orchestrator does not write to any external storage and does not
+call any LLM or cloud APIs directly; downstream chunking and export
+stages are invoked by callers (typically the CLI in
+:mod:`data_ingestor.cli.main`).
+
+Pipeline sequence (per call to
+:meth:`DocumentRouter.process_document`)::
+
+    create_document  ->  is_duplicate  ->  route_document
+                                              |
+                                              v
+                                      PDF pre-flight (PDFs only)
+                                              |
+                                              v
+                                      Parser fallback chain
+                                              |
+                                              v
+                                      ParserResult returned
+
+Idempotency: A second call with the same ``source_path`` within the
+same router instance returns a cached :class:`ParserResult` with
+``metadata={"cached": True, "duplicate": True}`` and does **not**
+invoke any parser. The cache is in-memory only; restarting the process
+clears it. Callers needing durable idempotency should layer their own
+content-addressed storage on top.
+"""
 
 import hashlib
 import logging
@@ -191,22 +232,54 @@ class DocumentRouter:
             return False
 
     def route_document(self, document: Document) -> ParserResult:
-        """Route document to appropriate parser and process it.
+        """Route a document through the parser fallback chain.
 
-        # #CRITICAL: Parser Failures: Must implement fallback chain for reliability
-        # #VERIFY: Try all available parsers before failing
+        For PDFs this also runs a **pre-flight stage** that analyzes
+        page-image resolution and may upscale the PDF to improve OCR
+        quality (see
+        :class:`~data_ingestor.pipeline.pdf_analyzer.PDFDocumentAnalyzer`).
+        The upscaled artifact is a temporary file that is removed
+        before this method returns.
 
-        # Phase 1c: Perform PDF pre-flight analysis and upscaling if needed
+        Parsers are tried in priority order (lower
+        :meth:`BaseParser.get_priority` wins). For each parser the
+        document is first validated via
+        :meth:`BaseParser.validate_document`; only if validation passes
+        is :meth:`BaseParser.parse` invoked. A parser that returns a
+        :class:`ParserResult` with ``success=False`` or that raises an
+        exception is recorded in ``errors`` and the next parser in the
+        chain is tried.
+
+        **Side effects:**
+
+        * On success: mutates ``document.status``,
+          ``document.parser_used``, ``document.processing_time``,
+          ``document.elements``, and merges parser metadata into
+          ``document.metadata``.
+        * On failure: sets ``document.status`` to
+          :attr:`ProcessingStatus.FAILED`.
+        * For PDFs: may write and then delete a temporary upscaled file
+          beneath the system temp directory.
 
         Args:
-            document: Document to process
+            document: A :class:`Document` whose ``format`` and
+                ``source_path`` are already populated. The document is
+                mutated in place.
 
         Returns:
-            ParserResult from successful parser
+            The :class:`ParserResult` produced by the first parser that
+            reports ``success=True``.
 
         Raises:
-            UnsupportedFormatError: If no parsers available for format
-            ParserError: If all parsers fail
+            UnsupportedFormatError: No parser is registered for
+                ``document.format``. Raised *before* any parser is
+                invoked.
+            ParserError: Every registered parser failed. The
+                exception's ``details["errors"]`` lists the per-parser
+                error message; ``parser_name`` is ``"all"`` to
+                indicate exhaustion of the fallback chain. The
+                exception is *propagated*, not swallowed, so upstream
+                stages cannot silently continue.
         """
         # Phase 1c: Perform pre-flight analysis for PDFs
         preflight_result: PDFPreflightResult | None = None
@@ -320,21 +393,84 @@ class DocumentRouter:
         metadata: dict[str, Any] | None = None,
         skip_duplicate_check: bool = False,
     ) -> tuple[Document, ParserResult]:
-        """Process a document end-to-end.
+        """Run the full ingestion pipeline for a single document.
+
+        This is the **public orchestrator entry point**. It is triggered
+        by the CLI (``data-ingestor process``), the future REST API,
+        and any programmatic caller. The orchestrator runs the
+        following stages in order:
+
+        1. **Create document** -- detect the format and build a
+           :class:`Document` model (calls
+           :meth:`create_document`).
+        2. **Deduplicate** -- unless ``skip_duplicate_check`` is True,
+           hash the file contents (SHA-256) and short-circuit if the
+           hash has already been seen by this router instance.
+        3. **Route + parse** -- dispatch to the parser fallback chain
+           via :meth:`route_document`. For PDFs this also runs the
+           pre-flight upscaling stage.
+
+        **Input schema:** Exactly one of ``source_path`` or
+        ``source_url`` MUST be provided. ``source_path`` must exist on
+        the local filesystem (validated by
+        :class:`Document`'s field validator); ``source_url`` is treated
+        as opaque and is not fetched here.
+
+        **Output schema:** Returns ``(Document, ParserResult)``. The
+        :class:`Document` has its ``status`` set to
+        :attr:`ProcessingStatus.COMPLETED` on success or
+        :attr:`ProcessingStatus.FAILED` on failure, and its
+        ``elements`` field is populated. The :class:`ParserResult`
+        carries the raw extraction result (success flag, elements,
+        metadata, timing). For duplicates the returned
+        :class:`ParserResult` has ``parser_name="cache"`` and
+        ``metadata={"cached": True, "duplicate": True}``.
+
+        **Side effects:**
+
+        * Mutates the router's in-memory deduplication cache.
+        * For PDFs, may write a temporary upscaled PDF under the system
+          temp directory; this file is unlinked before this method
+          returns regardless of success or failure.
+        * Mutates the :class:`Document` passed through internally
+          (status, ``parser_used``, ``processing_time``, ``elements``,
+          ``metadata``).
+
+        **Idempotency:** Two calls with the same ``source_path`` within
+        the lifetime of one ``DocumentRouter`` instance are idempotent
+        at the dedup layer (second call returns the cached short-circuit
+        result without re-parsing). The cache is process-local and does
+        not persist across restarts; pass
+        ``skip_duplicate_check=True`` to force re-processing.
 
         Args:
-            source_path: Path to source file
-            source_url: URL to source content
-            metadata: Optional metadata dictionary
-            skip_duplicate_check: Skip deduplication check
+            source_path: Path to a local source file. Mutually exclusive
+                with ``source_url``.
+            source_url: URL identifying the source. Mutually exclusive
+                with ``source_path``. URL-based fetching is not
+                implemented in this stage; the URL is recorded on the
+                document for downstream stages.
+            metadata: Optional initial metadata merged into
+                ``Document.metadata``.
+            skip_duplicate_check: When True, bypass the SHA-256 dedup
+                cache and always run the full parse chain.
 
         Returns:
-            Tuple of (Document, ParserResult)
+            Tuple of (``Document``, ``ParserResult``). Both reflect the
+            outcome of the pipeline; on duplicate hits the result is
+            synthesized and no parser is invoked.
 
         Raises:
-            ValueError: If neither path nor URL provided
-            UnsupportedFormatError: If format not supported
-            ParserError: If processing fails
+            ValueError: Neither ``source_path`` nor ``source_url`` was
+                provided, or ``source_path`` does not exist.
+            UnsupportedFormatError: Format detection returned
+                :attr:`DocumentFormat.UNKNOWN` or no parser is
+                registered for the detected format. The pipeline does
+                **not** silently downgrade -- it raises so callers can
+                surface the problem.
+            ParserError: Every parser in the fallback chain failed.
+                ``details["errors"]`` contains the per-parser error
+                messages so callers can diagnose the failure mode.
         """
         # Create document
         document = self.create_document(source_path=source_path, source_url=source_url, metadata=metadata)
