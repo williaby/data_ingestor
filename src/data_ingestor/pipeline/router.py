@@ -272,8 +272,12 @@ class DocumentRouter:
 
         Raises:
             UnsupportedFormatError: No parser is registered for
-                ``document.format``. Raised *before* any parser is
-                invoked.
+                ``document.format``. Raised before any parser is
+                **invoked**, but note that the parser-availability
+                check happens *after* format-specific pre-flight
+                (e.g. the PDF pre-flight may have already analysed
+                the file and written/cleaned up a temp upscaled
+                artefact before this exception fires).
             ParserError: Every registered parser failed. The
                 exception's ``details["errors"]`` lists the per-parser
                 error message; ``parser_name`` is ``"all"`` to
