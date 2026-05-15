@@ -1,5 +1,6 @@
 """Format detection utilities for identifying document types."""
 
+import logging
 import mimetypes
 from pathlib import Path
 from typing import Any, ClassVar
@@ -7,6 +8,8 @@ from typing import Any, ClassVar
 import magic
 
 from data_ingestor.core.models import DocumentFormat
+
+logger = logging.getLogger(__name__)
 
 
 class FormatDetector:
@@ -93,10 +96,19 @@ class FormatDetector:
             if format_detected:
                 return format_detected
 
-        # Stage 3: Fall back to file extension
+        # Stage 3: Fall back to file extension. This is the weakest signal —
+        # an attacker can rename arbitrary content to .pdf — so log a warning
+        # so operators can detect when content inspection is silently failing.
         extension = path.suffix.lower()
         format_detected = self.EXTENSION_MAP.get(extension)
         if format_detected:
+            logger.warning(
+                "Format detected from extension only (libmagic/mimetypes "
+                "returned no match): path=%s extension=%s format=%s",
+                path.name,
+                extension,
+                format_detected.value,
+            )
             return format_detected
 
         # #ASSUME: Format Detection: Unknown formats default to UNKNOWN
