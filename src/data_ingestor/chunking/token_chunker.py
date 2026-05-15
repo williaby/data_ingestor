@@ -50,15 +50,26 @@ class TokenChunker:
 
         **Parameters controlling chunk size:**
 
-        * ``chunk_size`` (constructor arg, default 1000): maximum
-          tokens per chunk, measured with the configured tiktoken
-          encoding.
+        * ``chunk_size`` (constructor arg, default 1000): **soft**
+          target / cap for tokens per chunk, measured with the
+          configured tiktoken encoding. The chunker seals a chunk
+          *before* the element that would overflow it is added, but
+          two documented exceptions can produce chunks larger than
+          ``chunk_size``:
+
+          1. Overlap content from the previous chunk is seeded into
+             the new chunk's buffer *before* the next element is
+             added, so a chunk's final token count can be up to
+             ``chunk_size + chunk_overlap`` (minus one element).
+          2. Tables emitted under ``preserve_tables=True`` are
+             standalone chunks regardless of their own token count.
         * ``chunk_overlap`` (constructor arg, default 200): target
           number of overlapping tokens between consecutive chunks
           within the same element-flush boundary.
         * ``preserve_tables`` (constructor arg, default True): when
           True, :attr:`ElementType.TABLE` elements are emitted as
-          standalone chunks regardless of their token count.
+          standalone chunks regardless of their token count -- one
+          of the two exceptions to the soft ``chunk_size`` cap above.
 
         **How overlap is calculated:** When a chunk is sealed because
         adding the next element would exceed ``chunk_size``, the

@@ -410,21 +410,27 @@ class DocumentRouter:
            via :meth:`route_document`. For PDFs this also runs the
            pre-flight upscaling stage.
 
-        **Input schema:** Exactly one of ``source_path`` or
-        ``source_url`` MUST be provided. ``source_path`` must exist on
-        the local filesystem (validated by
-        :class:`Document`'s field validator); ``source_url`` is treated
-        as opaque and is not fetched here.
+        **Input schema:** At least one of ``source_path`` or
+        ``source_url`` MUST be provided. If both are supplied the
+        method accepts them and ``source_path`` takes precedence for
+        format detection and on-disk lookup; ``source_url`` is still
+        recorded on the resulting :class:`Document` for downstream
+        stages but is not fetched here. ``source_path`` must exist on
+        the local filesystem (validated by :class:`Document`'s field
+        validator); ``source_url`` is treated as opaque.
 
-        **Output schema:** Returns ``(Document, ParserResult)``. The
-        :class:`Document` has its ``status`` set to
-        :attr:`ProcessingStatus.COMPLETED` on success or
-        :attr:`ProcessingStatus.FAILED` on failure, and its
+        **Output schema (success or duplicate paths only):** Returns
+        ``(Document, ParserResult)``. The :class:`Document` has its
+        ``status`` set to :attr:`ProcessingStatus.COMPLETED` and its
         ``elements`` field is populated. The :class:`ParserResult`
         carries the raw extraction result (success flag, elements,
         metadata, timing). For duplicates the returned
         :class:`ParserResult` has ``parser_name="cache"`` and
-        ``metadata={"cached": True, "duplicate": True}``.
+        ``metadata={"cached": True, "duplicate": True}``. Failure
+        paths do **not** return -- they raise (see Raises below); the
+        internal :class:`Document` is mutated to
+        :attr:`ProcessingStatus.FAILED` for the all-parsers-failed
+        case but is not handed back to the caller.
 
         **Side effects:**
 
@@ -444,12 +450,12 @@ class DocumentRouter:
         ``skip_duplicate_check=True`` to force re-processing.
 
         Args:
-            source_path: Path to a local source file. Mutually exclusive
-                with ``source_url``.
-            source_url: URL identifying the source. Mutually exclusive
-                with ``source_path``. URL-based fetching is not
-                implemented in this stage; the URL is recorded on the
-                document for downstream stages.
+            source_path: Path to a local source file. May be combined
+                with ``source_url``; when both are present
+                ``source_path`` is the canonical input.
+            source_url: URL identifying the source. URL-based fetching
+                is not implemented in this stage; the URL is recorded
+                on the document for downstream stages.
             metadata: Optional initial metadata merged into
                 ``Document.metadata``.
             skip_duplicate_check: When True, bypass the SHA-256 dedup
