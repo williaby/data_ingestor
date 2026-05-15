@@ -65,9 +65,13 @@ class ByTitleChunker:
         """Chunking stage: section-aware (by_title) chunking.
 
         **Strategy:** Semantic / section-aware. Title and heading
-        elements act as hard boundaries -- chunks never span across
-        them. Within each section, elements are packed into chunks up
-        to ``chunk_size`` tokens; oversized elements form standalone
+        elements act as section boundaries; chunks never span them
+        **unless** ``combine_text_under_n_chars`` is set, in which
+        case consecutive small sections are merged *before* chunking
+        and the resulting combined chunk may contain more than one
+        title/heading boundary by design. Within each (possibly
+        merged) section, elements are packed into chunks up to
+        ``chunk_size`` tokens; oversized elements form standalone
         chunks tagged ``oversized_element: True``.
 
         **Parameters controlling chunk size:**
@@ -106,7 +110,9 @@ class ByTitleChunker:
             document: Parsed document with populated ``elements``.
 
         Returns:
-            List of :class:`Chunk`, never spanning a title boundary.
+            List of :class:`Chunk`. Each chunk respects section
+            boundaries except where ``combine_text_under_n_chars``
+            triggered an explicit small-section merge.
         """
         if not document.elements:
             logger.warning(f"Document {document.document_id} has no elements to chunk")

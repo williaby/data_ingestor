@@ -577,27 +577,48 @@ class TestPipelineOrchestration:
 # =============================================================================
 # 5. External-call isolation guard
 # =============================================================================
+#
+# The autouse fixture below installs a network kill-switch for *every*
+# test in this module. If any code path covered here ever starts
+# making real HTTP calls (e.g. a cloud-storage upload or LLM API
+# request quietly added to a stage), the patched send() raises
+# loudly so the regression is caught in CI instead of silently
+# hitting the network.
 
 
-def test_no_real_external_calls_via_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Sanity guard: tests in this file must never reach the network.
+@pytest.fixture(autouse=True)
+def _block_real_network_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Autouse fixture: patch HTTP client send paths to fail loudly.
 
-    If anyone ever wires HTTP into a stage covered here, this will
-    blow up in CI rather than silently making real calls.
+    Patches both ``requests.Session.send`` (synchronous) and
+    ``urllib.request.urlopen`` (stdlib) for the duration of every test
+    in this module. Per-test monkeypatches stack on top, so individual
+    tests can still install their own mocks; what they cannot do is
+    accidentally reach the real network.
     """
-    # We assert by attempting to import ``requests`` (a transitive
-    # dependency in this project) and patching ``Session.send`` to
-    # raise if invoked. We then run nothing that could trigger HTTP
-    # and confirm the guard is in place.
-    requests = pytest.importorskip("requests")
-
     def _boom(*_args: Any, **_kwargs: Any) -> None:  # pragma: no cover
         raise AssertionError("network call attempted in unit tests")
 
+    import urllib.request
+
+    monkeypatch.setattr(urllib.request, "urlopen", _boom)
+
+    requests = pytest.importorskip("requests")
     monkeypatch.setattr(requests.Session, "send", _boom)
 
-    # If anything in the import-time path of data_ingestor opened a
-    # network connection we'd already have hit _boom. The assertion
-    # here is that the guard is *settable*; the real value is in
-    # leaving it installed for the rest of the module.
-    assert requests.Session.send is _boom
+
+def test_network_guard_is_installed() -> None:
+    """Smoke check that the autouse guard actually replaces send().
+
+    A pinhole test: confirms the autouse fixture is wired in so future
+    refactors that drop the fixture get caught here.
+    """
+    requests = pytest.importorskip("requests")
+
+    # The guard replaces send() with an inner function whose qualname
+    # we can detect without invoking it.
+    send_fn = requests.Session.send
+    assert "_boom" in getattr(send_fn, "__qualname__", ""), (
+        "expected the autouse network guard to have patched "
+        "requests.Session.send, but it is still the original"
+    )

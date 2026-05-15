@@ -84,11 +84,18 @@ class BaseParser(ABC):
         path has already been canonicalised via ``Path.resolve()`` in
         :meth:`DocumentRouter.create_document`.
 
-        **Size limits:** When the parser config dictionary contains a
-        ``max_file_size_mb`` key, files whose size exceeds that limit
-        (computed as ``size_bytes / (1024 * 1024)``) are rejected.
-        Files with size exactly equal to the limit are accepted. The
-        default :class:`Settings.max_file_size_mb` is 500 MB.
+        **Size limits:** The size cap is **opt-in**. It applies only
+        when the parser's own ``config`` dictionary contains a
+        ``max_file_size_mb`` key; :meth:`__init__` replaces a ``None``
+        config with ``{}``, so a parser built with no config enforces
+        **no** size limit by default. Callers that want the 500 MB
+        project-wide default from
+        :class:`~data_ingestor.core.config.Settings` must thread it
+        through explicitly -- typically via
+        :meth:`Settings.get_parser_config`. When the key is present,
+        files whose size exceeds the limit (computed as
+        ``size_bytes / (1024 * 1024)``) are rejected; a size exactly
+        equal to the limit is accepted.
 
         **Failure modes (all return False, none raise):**
 
