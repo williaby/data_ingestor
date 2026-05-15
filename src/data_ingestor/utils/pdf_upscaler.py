@@ -154,14 +154,19 @@ class PDFUpscaler:
                     new_page = new_doc.new_page(width=page_width, height=page_height)
 
                     # Insert upscaled image
-                    # Create a temporary PNG to insert
-                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_img:
+                    # Create a temporary PNG to insert. Use try/finally so the
+                    # temp file is cleaned up even if insert_image() raises —
+                    # otherwise page images leak in /tmp on every failure.
+                    tmp_img = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                    try:
+                        tmp_img.close()
                         img_pil.save(tmp_img.name, format="PNG")
                         new_page.insert_image(
                             new_page.rect,
                             filename=tmp_img.name,
                         )
-                        Path(tmp_img.name).unlink()  # Clean up temp file
+                    finally:
+                        Path(tmp_img.name).unlink(missing_ok=True)
 
                     pages_processed += 1
                     logger.debug(f"Upscaled page {page_num + 1}/{len(doc)}")

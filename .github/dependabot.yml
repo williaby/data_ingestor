@@ -1,0 +1,38 @@
+version: 2
+updates:
+  # Keep all GitHub Actions pinned to current SHAs. Renovate already handles
+  # Python deps via renovate.json; this entry exists so that action SHAs (the
+  # supply-chain risk surface for CI) get separate, auditable PRs.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+      - github-actions
+      - security
+    commit-message:
+      prefix: "chore(actions)"
+
+  # Catch new Docker base-image CVEs.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - docker
+      - security
+    commit-message:
+      prefix: "chore(docker)"
