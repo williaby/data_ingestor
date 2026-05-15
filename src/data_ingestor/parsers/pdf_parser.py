@@ -136,6 +136,24 @@ class PyMuPDFParser(BaseParser):
                 error_message=error_msg,
             )
 
+    # PDF metadata is attacker-controlled; an oversized field would balloon
+    # JSON/YAML output and could DoS downstream parsers. Cap to a sane size
+    # and strip ASCII control chars that would corrupt text consumers.
+    _METADATA_MAX_LEN = 1024
+
+    @classmethod
+    def _sanitize_metadata_value(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        # Strip C0/C1 control chars (keep tab/newline) — PDF metadata can
+        # contain binary that breaks YAML/JSON consumers.
+        cleaned = "".join(
+            ch for ch in value if ch in ("\t", "\n") or (ord(ch) >= 0x20 and ord(ch) != 0x7F)
+        )
+        if len(cleaned) > cls._METADATA_MAX_LEN:
+            cleaned = cleaned[: cls._METADATA_MAX_LEN] + "...[truncated]"
+        return cleaned
+
     def _extract_metadata(self, pdf_doc: fitz.Document) -> dict[str, Any]:
         """Extract metadata from PDF document.
 
@@ -146,16 +164,17 @@ class PyMuPDFParser(BaseParser):
             Dictionary with metadata
         """
         metadata = pdf_doc.metadata or {}
+        s = self._sanitize_metadata_value
 
         return {
-            "title": metadata.get("title", ""),
-            "author": metadata.get("author", ""),
-            "subject": metadata.get("subject", ""),
-            "keywords": metadata.get("keywords", ""),
-            "creator": metadata.get("creator", ""),
-            "producer": metadata.get("producer", ""),
-            "creation_date": metadata.get("creationDate", ""),
-            "modification_date": metadata.get("modDate", ""),
+            "title": s(metadata.get("title", "")),
+            "author": s(metadata.get("author", "")),
+            "subject": s(metadata.get("subject", "")),
+            "keywords": s(metadata.get("keywords", "")),
+            "creator": s(metadata.get("creator", "")),
+            "producer": s(metadata.get("producer", "")),
+            "creation_date": s(metadata.get("creationDate", "")),
+            "modification_date": s(metadata.get("modDate", "")),
             "page_count": len(pdf_doc),
         }
 

@@ -178,8 +178,13 @@ class DocumentRouter:
             return False
 
         try:
+            # Stream the file in chunks so we don't load up to max_file_size_mb
+            # (default 500 MB) into memory just to compute a dedup hash.
+            hasher = hashlib.sha256()
             with path.open("rb") as f:
-                file_hash = hashlib.sha256(f.read()).hexdigest()
+                for block in iter(lambda: f.read(1024 * 1024), b""):
+                    hasher.update(block)
+            file_hash = hasher.hexdigest()
 
             if file_hash in self._deduplication_cache:
                 return True

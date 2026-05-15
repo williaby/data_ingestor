@@ -11,16 +11,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write       # semantic-release pushes tags and CHANGELOG commits
+      issues: write         # semantic-release/github comments on resolved issues
+      pull-requests: write  # semantic-release/github comments on released PRs
+      id-token: write       # required for OIDC if release-time signing is added
     # Skip release if commit message contains [skip ci] or [skip release]
     if: |
       !contains(github.event.head_commit.message, '[skip ci]') &&
