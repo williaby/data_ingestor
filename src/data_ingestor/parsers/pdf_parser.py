@@ -38,19 +38,60 @@ class PyMuPDFParser(BaseParser):
         return document_format == DocumentFormat.PDF
 
     def parse(self, document: Document) -> ParserResult:
-        """Parse PDF document and extract text and structure.
+        """PDF extraction stage: extract text + structure with PyMuPDF.
 
-        # #CRITICAL: Memory Management: Large PDFs can exhaust memory
-        # #VERIFY: Process page-by-page to limit memory usage
+        **Library:** PyMuPDF (``fitz``). Pages are walked one at a time
+        via ``page.get_text("dict")`` so memory usage stays bounded
+        regardless of document length.
+
+        **Text normalisation applied:** Each span's text is collected
+        unmodified within a line; the assembled line text is then
+        ``.strip()``-ed before being emitted as an element. Whitespace
+        within a line (between spans) is preserved. Empty/whitespace-
+        only lines are dropped. No Unicode normalisation, ligature
+        replacement, or hyphenation joining is performed at this stage
+        -- callers needing those transforms should apply them in a
+        downstream cleanup pass.
+
+        **Element classification:** Each emitted span line becomes a
+        :class:`DocumentElement` whose ``element_type`` is decided by
+        :meth:`_classify_text_block` (font size + ALL CAPS heuristic).
+        Bounding box and page number are populated; images are *not*
+        extracted, only counted (a warning is recorded per page that
+        contains them).
+
+        **Partial extraction handling:** This parser never returns a
+        half-extracted document. Any exception raised by PyMuPDF
+        (corrupted file, password-protected file, malformed XREF, etc.)
+        is caught at the top level; the method returns a
+        :class:`ParserResult` with ``success=False`` and the exception
+        message in ``error_message`` so the
+        :class:`~data_ingestor.pipeline.router.DocumentRouter` fallback
+        chain can try the next parser. The only condition under which
+        this method *raises* is when ``document.source_path`` is None
+        -- a misuse of the API rather than a parse failure.
+
+        **Output schema:** :class:`ParserResult` with:
+
+        * ``success``: True on extraction, False on caught error.
+        * ``elements``: list of :class:`DocumentElement` in
+          page-then-block order.
+        * ``metadata``: dict from :meth:`_extract_metadata` -- title,
+          author, subject, keywords, creator, producer, creation_date,
+          modification_date, page_count.
+        * ``warnings``: per-page notes for un-extracted images.
+        * ``processing_time``: wall-clock seconds.
 
         Args:
-            document: Document to parse
+            document: Document with a populated ``source_path``
+                pointing to a readable PDF.
 
         Returns:
-            ParserResult with extracted elements
+            :class:`ParserResult` describing the extraction outcome.
 
         Raises:
-            ParserError: If parsing fails
+            ParserError: ``document.source_path`` is None. All other
+                failures are reported via ``ParserResult.success=False``.
         """
         if not document.source_path:
             raise ParserError(

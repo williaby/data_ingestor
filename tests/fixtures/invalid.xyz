@@ -1,0 +1,4 @@
+This file uses the .xyz extension which the FormatDetector does not
+map to any supported DocumentFormat. It exists purely so tests can
+exercise the "unsupported format" rejection path of the file
+validation stage.
