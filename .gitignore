@@ -229,6 +229,9 @@ data/test_pdfs/
 scripts/*
 # Keep the FIPS compatibility checker required by the fips-compatibility workflow
 !scripts/check_fips_compatibility.py
+# OpenAPI/Postman generators are tracked
+!scripts/export_openapi.py
+!scripts/generate_postman_collection.py
 
 # Benchmarking & Testing (Phase 1.5)
 # =================================

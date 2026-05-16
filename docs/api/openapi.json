@@ -1,0 +1,598 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "description": "Generic error envelope returned for non-2xx responses.",
+        "properties": {
+          "detail": {
+            "description": "Human-readable error description.",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthStatus": {
+        "description": "Liveness probe response for the API process.",
+        "properties": {
+          "status": {
+            "description": "Literal 'ok' when the process is serving requests.",
+            "examples": [
+              "ok"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "description": "Seconds elapsed since the API process started.",
+            "minimum": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          },
+          "version": {
+            "description": "Application version identifier.",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "uptime_seconds"
+        ],
+        "title": "HealthStatus",
+        "type": "object"
+      },
+      "IngestAccepted": {
+        "description": "Response returned when an ingestion job is accepted for asynchronous processing.",
+        "properties": {
+          "job_id": {
+            "description": "Server-generated identifier used to poll job status.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "poll_url": {
+            "description": "Relative URL the client should poll for status updates.",
+            "examples": [
+              "/ingest/3f1c.../status"
+            ],
+            "title": "Poll Url",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState",
+            "default": "queued",
+            "description": "Current lifecycle state of the job at acceptance time."
+          },
+          "submitted_at": {
+            "description": "UTC timestamp when the job was accepted by the API.",
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "poll_url"
+        ],
+        "title": "IngestAccepted",
+        "type": "object"
+      },
+      "IngestRequest": {
+        "description": "Request body for submitting a document to the ingestion pipeline.\n\nExactly one of ``file_path`` or ``url`` must be supplied.",
+        "properties": {
+          "chunking_strategy": {
+            "default": "basic",
+            "description": "Chunking strategy identifier: 'basic' (token-based) or 'by_title' (section-aware).",
+            "examples": [
+              "basic",
+              "by_title"
+            ],
+            "title": "Chunking Strategy",
+            "type": "string"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Absolute or workspace-relative filesystem path to the source document.",
+            "examples": [
+              "/data/inbox/sample.pdf"
+            ],
+            "title": "File Path"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "description": "Caller-supplied metadata propagated onto the resulting Document record.",
+            "title": "Metadata",
+            "type": "object"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "HTTPS URL of the source document to be downloaded and processed.",
+            "examples": [
+              "https://example.com/sample.pdf"
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "IngestRequest",
+        "type": "object"
+      },
+      "JobState": {
+        "description": "Lifecycle state for an ingestion job.",
+        "enum": [
+          "queued",
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "JobState",
+        "type": "string"
+      },
+      "JobStatus": {
+        "description": "Detailed status snapshot for a single ingestion job.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC timestamp when the job terminated (succeeded or failed).",
+            "title": "Completed At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error message if the job failed; null otherwise.",
+            "title": "Error"
+          },
+          "job_id": {
+            "description": "Server-generated job identifier.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "parser_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the parser that produced the result, if any.",
+            "title": "Parser Used"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC timestamp when worker execution began.",
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState",
+            "description": "Current lifecycle state of the job."
+          },
+          "submitted_at": {
+            "description": "UTC timestamp when the job was accepted.",
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "state",
+          "submitted_at"
+        ],
+        "title": "JobStatus",
+        "type": "object"
+      },
+      "ParserHealth": {
+        "description": "Per-format parser health entry.",
+        "properties": {
+          "available": {
+            "description": "True when at least one parser is registered and healthy.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "format": {
+            "description": "Document format identifier (e.g. 'pdf', 'docx').",
+            "title": "Format",
+            "type": "string"
+          },
+          "parsers": {
+            "description": "Names of parsers registered for the format, ordered by priority.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Parsers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "available"
+        ],
+        "title": "ParserHealth",
+        "type": "object"
+      },
+      "ParserHealthReport": {
+        "description": "Aggregated parser-availability report across all supported formats.",
+        "properties": {
+          "formats": {
+            "description": "Per-format health entries.",
+            "items": {
+              "$ref": "#/components/schemas/ParserHealth"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "healthy": {
+            "description": "True when every supported format has at least one parser.",
+            "title": "Healthy",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "healthy"
+        ],
+        "title": "ParserHealthReport",
+        "type": "object"
+      },
+      "PipelineStatus": {
+        "description": "Aggregate runtime status for the ingestion pipeline.",
+        "properties": {
+          "completed": {
+            "description": "Jobs that finished successfully.",
+            "minimum": 0.0,
+            "title": "Completed",
+            "type": "integer"
+          },
+          "failed": {
+            "description": "Jobs that terminated with an error.",
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "queued": {
+            "description": "Jobs currently in the QUEUED state.",
+            "minimum": 0.0,
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "description": "Jobs currently in the RUNNING state.",
+            "minimum": 0.0,
+            "title": "Running",
+            "type": "integer"
+          },
+          "total_jobs": {
+            "description": "Total jobs accepted since process start.",
+            "minimum": 0.0,
+            "title": "Total Jobs",
+            "type": "integer"
+          },
+          "uptime_seconds": {
+            "description": "Seconds elapsed since process start.",
+            "minimum": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_jobs",
+          "queued",
+          "running",
+          "completed",
+          "failed",
+          "uptime_seconds"
+        ],
+        "title": "PipelineStatus",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "byronawilliams@gmail.com",
+      "name": "Data Ingestor Maintainers",
+      "url": "https://github.com/williaby/data_ingestor"
+    },
+    "description": "REST interface to the Data Ingestor pipeline. The pipeline transforms diverse document formats (PDF, DOCX, HTML, video, audio) into structured, chunked, and metadata-rich records suitable for retrieval-augmented generation. The API exposes three pipeline stages: ingest (submit a document and poll job status), health (process liveness and parser availability), and status (aggregate job and uptime metrics).",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "title": "Data Ingestor API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Report API process liveness.\n\nPipeline stage: ``health`` \u2014 this endpoint does not invoke any parser or storage code;\nit only confirms that the API process is accepting requests.\n\nAsync response structure: a :class:`HealthStatus` payload with three fields \u2014\n``status`` (literal ``\"ok\"`` while serving), ``version`` (application version), and\n``uptime_seconds`` (float since process start).",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service unavailable"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/parsers": {
+      "get": {
+        "description": "Report which parsers are registered for each supported document format.\n\nPipeline stage: ``health`` \u2014 surfaces the ``ParserRegistry`` view of the routing layer\nwithout invoking any parser. Used by readiness gates and by the Newman CI workflow\nto confirm the service is wired up correctly before exercising ingest.\n\nAsync response structure: a :class:`ParserHealthReport` payload with a top-level\n``healthy`` boolean (true when every format has at least one parser registered) and\na ``formats`` list of :class:`ParserHealth` entries, each carrying the format\nidentifier, an ``available`` flag, and the registered parser names ordered by\npriority.",
+        "operationId": "parser_health_health_parsers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserHealthReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Parser availability report",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/ingest": {
+      "post": {
+        "description": "Accept a document into the ingestion pipeline.\n\nPipeline stage: ``ingest`` \u2014 enqueues the request for asynchronous processing by the\npipeline's :class:`DocumentRouter`. This endpoint records a job entry in the\nin-memory tracker and returns immediately; actual parsing, chunking, and export are\nperformed by the pipeline workers.\n\nAsync response structure: a :class:`IngestAccepted` payload with the server-issued\n``job_id``, the initial ``state`` (``\"queued\"``), the ``submitted_at`` UTC timestamp,\nand a ``poll_url`` the client can ``GET`` for status updates.",
+        "operationId": "submit_ingest_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No parser available for the resolved document format"
+          }
+        },
+        "summary": "Submit a document for ingestion",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/{job_id}/status": {
+      "get": {
+        "description": "Return the lifecycle snapshot for a previously submitted ingestion job.\n\nPipeline stage: ``ingest`` \u2014 read-only view over the in-memory job tracker; does not\nre-trigger parsing or touch storage.\n\nAsync response structure: a :class:`JobStatus` payload with ``job_id``, current\n``state``, ``submitted_at`` / ``started_at`` / ``completed_at`` timestamps,\n``parser_used`` (when known), and an optional ``error`` string for failed jobs.",
+        "operationId": "job_status_ingest__job_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown job id"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get ingestion job status",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/status": {
+      "get": {
+        "description": "Return an aggregate snapshot of pipeline activity.\n\nPipeline stage: ``status`` \u2014 read-only view over the API process's in-memory job\ntracker. Does not invoke parser or storage code.\n\nAsync response structure: a :class:`PipelineStatus` payload with ``total_jobs`` and\nper-state counters (``queued``, ``running``, ``completed``, ``failed``) plus\n``uptime_seconds`` since process start.",
+        "operationId": "pipeline_status_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pipeline status snapshot",
+        "tags": [
+          "status"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Submit documents and poll per-job status.",
+      "name": "ingest"
+    },
+    {
+      "description": "Liveness and parser-availability probes.",
+      "name": "health"
+    },
+    {
+      "description": "Aggregate pipeline metrics.",
+      "name": "status"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
 """FastAPI REST API endpoints for document processing."""
 
-__all__: list[str] = []
+from data_ingestor.api.app import app, create_app
+
+__all__ = ["app", "create_app"]
