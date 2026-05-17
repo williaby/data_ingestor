@@ -26,6 +26,8 @@ async def pipeline_status() -> PipelineStatus:
     per-state counters (``queued``, ``running``, ``completed``, ``failed``) plus
     ``uptime_seconds`` since process start.
     """
+    # #ASSUME: counts_by_state() returns a single locked snapshot; total_jobs is derived
+    # from the same snapshot so the response is internally consistent under concurrency.
     counts = state.counts_by_state()
     return PipelineStatus(
         total_jobs=sum(counts.values()),
