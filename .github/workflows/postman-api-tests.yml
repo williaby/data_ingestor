@@ -100,10 +100,16 @@ jobs:
         # would break both the spec-regen step and the uvicorn start-up below.
         run: |
           uv venv --python 3.11
+          # Pydantic and FastAPI are pinned to specific minor lines because
+          # subtle JSON-Schema-emission changes between minors (e.g.,
+          # additionalProperties defaults, `examples` placement) would cause
+          # the committed docs/api/openapi.json to drift in CI even when the
+          # source code is unchanged. Match the versions used to generate the
+          # committed spec.
           uv pip install \
-            "fastapi>=0.116,<1" \
+            "fastapi==0.136.1" \
             "uvicorn[standard]>=0.35,<1" \
-            "pydantic>=2.11,<3" \
+            "pydantic==2.13.4" \
             "pydantic-settings>=2.2,<3" \
             "python-magic>=0.4,<1" \
             "structlog>=24,<26" \
@@ -128,18 +134,28 @@ jobs:
       - name: Verify generated OpenAPI spec is up to date
         # Regenerate the spec from the live app and fail if the committed file
         # has drifted. This guarantees docs/api/openapi.json stays in sync.
+        # The diff output is captured to a file (and uploaded as an artifact
+        # on failure) so the drift is debuggable from the run page.
         env:
           PYTHONPATH: src
         run: |
           uv run python scripts/export_openapi.py /tmp/openapi.regen.json
-          diff -u docs/api/openapi.json /tmp/openapi.regen.json
+          if ! diff -u docs/api/openapi.json /tmp/openapi.regen.json > /tmp/openapi.diff; then
+            echo "::error::docs/api/openapi.json is out of date. Diff:"
+            cat /tmp/openapi.diff
+            exit 1
+          fi
 
       - name: Verify Postman collection is up to date
         run: |
           uv run python scripts/generate_postman_collection.py \
             --openapi docs/api/openapi.json \
             --out /tmp/postman.regen.json
-          diff -u docs/api/postman-collection.json /tmp/postman.regen.json
+          if ! diff -u docs/api/postman-collection.json /tmp/postman.regen.json > /tmp/postman.diff; then
+            echo "::error::docs/api/postman-collection.json is out of date. Diff:"
+            cat /tmp/postman.diff
+            exit 1
+          fi
 
       - name: Start FastAPI app in background
         env:
@@ -205,4 +221,14 @@ jobs:
         with:
           name: data-ingestor-app-log
           path: /tmp/data_ingestor_logs/app.log
+          if-no-files-found: ignore
+
+      - name: Upload spec/collection drift diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: openapi-postman-drift
+          path: |
+            /tmp/openapi.diff
+            /tmp/postman.diff
           if-no-files-found: ignore
