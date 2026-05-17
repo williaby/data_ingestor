@@ -226,7 +226,11 @@ zen-mcp-server/
 
 # Project-specific test data
 data/test_pdfs/
-scripts/
+# Local-only ad-hoc shell/python scratch scripts (the OpenAPI/Postman
+# generators below are intentionally tracked).
+scripts/*.sh
+scripts/*.tmp
+scripts/scratch_*.py
 
 # Benchmarking & Testing (Phase 1.5)
 # =================================
