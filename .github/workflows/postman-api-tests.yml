@@ -89,9 +89,15 @@ jobs:
         # The repo's pyproject.toml is Poetry-managed with `dynamic = ["dependencies"]`
         # under `[project]`, so `uv sync` can't resolve from it directly. We use
         # `uv pip install` with an explicit pin set covering exactly what the
-        # FastAPI surface needs to serve /health, /status, and /ingest. This keeps
-        # the job fast and avoids pulling the heavy ML deps (marker, docling,
-        # torch) that the API surface does not exercise.
+        # FastAPI surface needs to serve /health, /status, and /ingest. This
+        # avoids pulling the heavy ML deps (marker, docling, torch) the API
+        # itself does not exercise.
+        #
+        # The transitive imports come from `data_ingestor/__init__.py`, which
+        # eagerly imports DocumentRouter -> pdf_analyzer (fitz / PIL / cv2 /
+        # numpy) and format_detector (magic). Those packages must be present or
+        # `from data_ingestor.api.app import app` fails at import time, which
+        # would break both the spec-regen step and the uvicorn start-up below.
         run: |
           uv venv --python 3.11
           uv pip install \
@@ -102,7 +108,14 @@ jobs:
             "python-magic>=0.4,<1" \
             "structlog>=24,<26" \
             "python-multipart>=0.0.27,<1" \
-            "httpx>=0.27,<1"
+            "httpx>=0.27,<1" \
+            "pymupdf>=1.24,<2" \
+            "Pillow>=10,<12" \
+            "opencv-python-headless>=4.9,<5" \
+            "numpy>=1.26,<3"
+          # python-magic requires the libmagic system library on Linux runners.
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libmagic1
 
       - name: Set up Node.js (for Newman)
         uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
