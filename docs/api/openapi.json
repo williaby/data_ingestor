@@ -478,7 +478,7 @@
     },
     "/ingest/{job_id}/status": {
       "get": {
-        "description": "Return the lifecycle snapshot for a previously submitted ingestion job.\n\nPipeline stage: ``ingest`` \u2014 read-only view over the in-memory job tracker; does not\nre-trigger parsing or touch storage.\n\nAsync response structure: a :class:`JobStatus` payload with ``job_id``, current\n``state``, ``submitted_at`` / ``started_at`` / ``completed_at`` timestamps,\n``parser_used`` (when known), and an optional ``error`` string for failed jobs.",
+        "description": "Return the lifecycle snapshot for a previously submitted ingestion job.\n\nPipeline stage: ``ingest`` \u2014 read-only view over the in-memory job tracker; does not\nre-trigger parsing or touch storage. The ``job_id`` path parameter is validated as a\nUUID by FastAPI, so malformed IDs are rejected with 422 before the lookup.\n\nAsync response structure: a :class:`JobStatus` payload with ``job_id``, current\n``state``, ``submitted_at`` / ``started_at`` / ``completed_at`` timestamps,\n``parser_used`` (when known), and an optional ``error`` string for failed jobs.",
         "operationId": "job_status_ingest__job_id__status_get",
         "parameters": [
           {
@@ -486,6 +486,7 @@
             "name": "job_id",
             "required": true,
             "schema": {
+              "format": "uuid",
               "title": "Job Id",
               "type": "string"
             }

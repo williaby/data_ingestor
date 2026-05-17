@@ -30,6 +30,7 @@ async def health() -> HealthStatus:
     ``status`` (literal ``"ok"`` while serving), ``version`` (application version), and
     ``uptime_seconds`` (float since process start).
     """
+    # #ASSUME: serving this response implies the process is alive; no dep checks run here.
     return HealthStatus(
         status="ok",
         version=_SETTINGS.version,
@@ -57,6 +58,8 @@ async def supported_formats() -> ParserHealthReport:
     top-level ``healthy`` boolean (true when the format enum is non-empty) and a
     ``formats`` list of :class:`ParserHealth` entries.
     """
+    # #ASSUME: DocumentFormat enum is the source of truth for routable formats.
+    # #EDGE: UNKNOWN is an internal sentinel and is not externally reported.
     entries = [
         ParserHealth(format=fmt.value, available=True, parsers=[])
         for fmt in DocumentFormat
