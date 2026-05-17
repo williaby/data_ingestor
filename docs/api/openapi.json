@@ -33,10 +33,9 @@
         "description": "Liveness probe response for the API process.",
         "properties": {
           "status": {
+            "const": "ok",
+            "default": "ok",
             "description": "Literal 'ok' when the process is serving requests.",
-            "examples": [
-              "ok"
-            ],
             "title": "Status",
             "type": "string"
           },
@@ -53,7 +52,6 @@
           }
         },
         "required": [
-          "status",
           "version",
           "uptime_seconds"
         ],
@@ -100,7 +98,7 @@
           "chunking_strategy": {
             "default": "basic",
             "description": "Chunking strategy identifier: 'basic' (token-based) or 'by_title' (section-aware).",
-            "examples": [
+            "enum": [
               "basic",
               "by_title"
             ],
@@ -413,16 +411,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service unavailable"
           }
         },
         "summary": "Liveness probe",
@@ -433,8 +421,8 @@
     },
     "/health/parsers": {
       "get": {
-        "description": "Report which parsers are registered for each supported document format.\n\nPipeline stage: ``health`` \u2014 surfaces the ``ParserRegistry`` view of the routing layer\nwithout invoking any parser. Used by readiness gates and by the Newman CI workflow\nto confirm the service is wired up correctly before exercising ingest.\n\nAsync response structure: a :class:`ParserHealthReport` payload with a top-level\n``healthy`` boolean (true when every format has at least one parser registered) and\na ``formats`` list of :class:`ParserHealth` entries, each carrying the format\nidentifier, an ``available`` flag, and the registered parser names ordered by\npriority.",
-        "operationId": "parser_health_health_parsers_get",
+        "description": "List the document formats this build can route to a parser.\n\nPipeline stage: ``health`` \u2014 returns the static set of formats the\npipeline's :class:`DocumentFormat` enum advertises as routable. Actual parser\nregistration happens inside the pipeline runtime (out of scope for the API\nsurface in this PR), so the per-format ``available`` flag here reflects only\nwhether the format is recognised by the router, not whether any specific\nparser binary is installed in the current environment.\n\nAsync response structure: a :class:`ParserHealthReport` payload with a\ntop-level ``healthy`` boolean (true when the format enum is non-empty) and a\n``formats`` list of :class:`ParserHealth` entries.",
+        "operationId": "supported_formats_health_parsers_get",
         "responses": {
           "200": {
             "content": {
@@ -447,7 +435,7 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Parser availability report",
+        "summary": "Supported document formats",
         "tags": [
           "health"
         ]
@@ -479,24 +467,7 @@
             "description": "Successful Response"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
             "description": "Validation error"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "No parser available for the resolved document format"
           }
         },
         "summary": "Submit a document for ingestion",

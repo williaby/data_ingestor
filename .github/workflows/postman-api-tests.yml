@@ -52,8 +52,9 @@ jobs:
       # Force the app into a fully-mocked storage backend so no real cloud
       # credentials are required to boot.
       DATA_INGESTOR_STORAGE_BACKEND: mock
-      DATA_INGESTOR_DATABASE_URL: sqlite:///:memory:
-      DATA_INGESTOR_REDIS_URL: redis://localhost:6379/0
+      # Quoted because the trailing ":memory:" would otherwise be parsed as YAML.
+      DATA_INGESTOR_DATABASE_URL: "sqlite:///:memory:"
+      DATA_INGESTOR_REDIS_URL: "redis://localhost:6379/0"
       DATA_INGESTOR_ENABLE_GPU: "false"
       DATA_INGESTOR_LOG_LEVEL: WARNING
 
@@ -66,6 +67,11 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -75,27 +81,42 @@ jobs:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
         with:
           enable-cache: true
 
-      - name: Sync Python dependencies (uv)
-        # The repo ships a poetry-managed pyproject.toml; `uv sync` resolves it
-        # and installs into a managed venv at .venv.
+      - name: Install Python dependencies (uv pip, minimal API runtime only)
+        # The repo's pyproject.toml is Poetry-managed with `dynamic = ["dependencies"]`
+        # under `[project]`, so `uv sync` can't resolve from it directly. We use
+        # `uv pip install` with an explicit pin set covering exactly what the
+        # FastAPI surface needs to serve /health, /status, and /ingest. This keeps
+        # the job fast and avoids pulling the heavy ML deps (marker, docling,
+        # torch) that the API surface does not exercise.
         run: |
-          uv sync --python 3.11
+          uv venv --python 3.11
+          uv pip install \
+            "fastapi>=0.116,<1" \
+            "uvicorn[standard]>=0.35,<1" \
+            "pydantic>=2.11,<3" \
+            "pydantic-settings>=2.2,<3" \
+            "python-magic>=0.4,<1" \
+            "structlog>=24,<26" \
+            "python-multipart>=0.0.27,<1" \
+            "httpx>=0.27,<1"
 
       - name: Set up Node.js (for Newman)
         uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: "20"
 
-      - name: Install Newman
-        run: npm install --global newman
+      - name: Install Newman (pinned)
+        run: npm install --global newman@6.2.2
 
       - name: Verify generated OpenAPI spec is up to date
         # Regenerate the spec from the live app and fail if the committed file
         # has drifted. This guarantees docs/api/openapi.json stays in sync.
+        env:
+          PYTHONPATH: src
         run: |
           uv run python scripts/export_openapi.py /tmp/openapi.regen.json
           diff -u docs/api/openapi.json /tmp/openapi.regen.json
@@ -108,6 +129,8 @@ jobs:
           diff -u docs/api/postman-collection.json /tmp/postman.regen.json
 
       - name: Start FastAPI app in background
+        env:
+          PYTHONPATH: src
         run: |
           mkdir -p /tmp/data_ingestor_logs
           uv run uvicorn data_ingestor.api.app:app \
@@ -145,7 +168,7 @@ jobs:
 
       - name: Upload Newman JUnit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: newman-results
           path: newman-results.xml
@@ -165,7 +188,7 @@ jobs:
 
       - name: Upload app log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: data-ingestor-app-log
           path: /tmp/data_ingestor_logs/app.log

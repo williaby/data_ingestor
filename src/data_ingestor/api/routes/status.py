@@ -28,7 +28,7 @@ async def pipeline_status() -> PipelineStatus:
     """
     counts = state.counts_by_state()
     return PipelineStatus(
-        total_jobs=state.total_jobs(),
+        total_jobs=sum(counts.values()),
         queued=counts.get(JobState.QUEUED, 0),
         running=counts.get(JobState.RUNNING, 0),
         completed=counts.get(JobState.COMPLETED, 0),

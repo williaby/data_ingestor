@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
+from pathlib import PurePosixPath
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
@@ -35,10 +36,9 @@ class IngestRequest(BaseModel):
         description="HTTPS URL of the source document to be downloaded and processed.",
         examples=["https://example.com/sample.pdf"],
     )
-    chunking_strategy: str = Field(
+    chunking_strategy: Literal["basic", "by_title"] = Field(
         default="basic",
         description="Chunking strategy identifier: 'basic' (token-based) or 'by_title' (section-aware).",
-        examples=["basic", "by_title"],
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
@@ -46,10 +46,19 @@ class IngestRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _exactly_one_source(self) -> IngestRequest:
+    def _validate_source(self) -> IngestRequest:
         if bool(self.file_path) == bool(self.url):
             msg = "Provide exactly one of 'file_path' or 'url'."
             raise ValueError(msg)
+        if self.file_path is not None:
+            # Reject embedded NULs and any parent-directory traversal segment.
+            if "\x00" in self.file_path:
+                raise ValueError("file_path must not contain NUL bytes.")
+            normalized = self.file_path.replace("\\", "/")
+            if ".." in PurePosixPath(normalized).parts:
+                raise ValueError(
+                    "file_path must not contain parent-directory ('..') segments."
+                )
         return self
 
 
@@ -65,7 +74,7 @@ class IngestAccepted(BaseModel):
         description="Current lifecycle state of the job at acceptance time.",
     )
     submitted_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when the job was accepted by the API.",
     )
     poll_url: str = Field(
@@ -97,9 +106,9 @@ class JobStatus(BaseModel):
 class HealthStatus(BaseModel):
     """Liveness probe response for the API process."""
 
-    status: str = Field(
+    status: Literal["ok"] = Field(
+        default="ok",
         description="Literal 'ok' when the process is serving requests.",
-        examples=["ok"],
     )
     version: str = Field(description="Application version identifier.")
     uptime_seconds: float = Field(
