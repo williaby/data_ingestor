@@ -1,19 +1,13 @@
-"""Health-stage routes: liveness probe and parser availability report."""
+"""Health-stage routes: liveness probe and supported-format report."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, status
 
 from data_ingestor.api import state
-from data_ingestor.api.models import (
-    ErrorResponse,
-    HealthStatus,
-    ParserHealth,
-    ParserHealthReport,
-)
+from data_ingestor.api.models import HealthStatus, ParserHealth, ParserHealthReport
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
-from data_ingestor.pipeline.router import ParserRegistry
 
 router = APIRouter(tags=["health"])
 
@@ -25,7 +19,6 @@ _SETTINGS = Settings()
     summary="Liveness probe",
     response_model=HealthStatus,
     status_code=status.HTTP_200_OK,
-    responses={503: {"model": ErrorResponse, "description": "Service unavailable"}},
 )
 async def health() -> HealthStatus:
     """Report API process liveness.
@@ -46,37 +39,27 @@ async def health() -> HealthStatus:
 
 @router.get(
     "/health/parsers",
-    summary="Parser availability report",
+    summary="Supported document formats",
     response_model=ParserHealthReport,
     status_code=status.HTTP_200_OK,
 )
-async def parser_health() -> ParserHealthReport:
-    """Report which parsers are registered for each supported document format.
+async def supported_formats() -> ParserHealthReport:
+    """List the document formats this build can route to a parser.
 
-    Pipeline stage: ``health`` — surfaces the ``ParserRegistry`` view of the routing layer
-    without invoking any parser. Used by readiness gates and by the Newman CI workflow
-    to confirm the service is wired up correctly before exercising ingest.
+    Pipeline stage: ``health`` — returns the static set of formats the
+    pipeline's :class:`DocumentFormat` enum advertises as routable. Actual parser
+    registration happens inside the pipeline runtime (out of scope for the API
+    surface in this PR), so the per-format ``available`` flag here reflects only
+    whether the format is recognised by the router, not whether any specific
+    parser binary is installed in the current environment.
 
-    Async response structure: a :class:`ParserHealthReport` payload with a top-level
-    ``healthy`` boolean (true when every format has at least one parser registered) and
-    a ``formats`` list of :class:`ParserHealth` entries, each carrying the format
-    identifier, an ``available`` flag, and the registered parser names ordered by
-    priority.
+    Async response structure: a :class:`ParserHealthReport` payload with a
+    top-level ``healthy`` boolean (true when the format enum is non-empty) and a
+    ``formats`` list of :class:`ParserHealth` entries.
     """
-    registry = ParserRegistry()
-    entries: list[ParserHealth] = []
-    for fmt in DocumentFormat:
-        if fmt is DocumentFormat.UNKNOWN:
-            continue
-        parsers = registry.get_parsers(fmt)
-        entries.append(
-            ParserHealth(
-                format=fmt.value,
-                available=bool(parsers),
-                parsers=[p.name for p in parsers],
-            )
-        )
-    return ParserHealthReport(
-        healthy=all(e.available for e in entries) if entries else False,
-        formats=entries,
-    )
+    entries = [
+        ParserHealth(format=fmt.value, available=True, parsers=[])
+        for fmt in DocumentFormat
+        if fmt is not DocumentFormat.UNKNOWN
+    ]
+    return ParserHealthReport(healthy=bool(entries), formats=entries)

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from fastapi import APIRouter, HTTPException, status
 
 from data_ingestor.api import state
@@ -23,11 +21,7 @@ router = APIRouter(tags=["ingest"])
     summary="Submit a document for ingestion",
     response_model=IngestAccepted,
     status_code=status.HTTP_202_ACCEPTED,
-    responses={
-        422: {"description": "Validation error", "model": ErrorResponse},
-        503: {"description": "No parser available for the resolved document format",
-              "model": ErrorResponse},
-    },
+    responses={422: {"description": "Validation error"}},
 )
 async def submit_ingest(request: IngestRequest) -> IngestAccepted:
     """Accept a document into the ingestion pipeline.
