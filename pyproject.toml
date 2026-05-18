@@ -170,7 +170,7 @@ mkdocstrings = {extras = ["python"], version = "^0.24.0"}
 [tool.poetry.group.test.dependencies]
 pytest-benchmark = ">=4.0.0"
 pytest-memray = ">=1.5.0"
-aiosqlite = "^0.21.0"
+aiosqlite = "^0.22.1"
 
 [tool.poetry.group.advanced-pdf]
 optional = true
