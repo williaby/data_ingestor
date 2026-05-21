@@ -213,6 +213,18 @@
       "prBodyNotes": [
         "Renovate cannot validate Minimum Release Age for lock file maintenance; the package manager resolves the new versions. Review the lock diff before merging."
       ]
+    },
+    {
+      "description": "Track org workflow floating v1 tag for SHA pin updates",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackagePatterns": [
+        "ByronWilliamsCPA/.github",
+        "williaby/.github"
+      ],
+      "versioning": "semver",
+      "followTag": "v1"
     }
   ],
   "regexManagers": [
