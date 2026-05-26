@@ -74,7 +74,7 @@ dependencies = [
     # Document processing dependencies for RAG ingestion pipeline
     # PDF processing
     "pymupdf>=1.24.0,<2.0.0",
-    "pymupdf4llm>=0.0.17,<1.0.0",
+    "pymupdf4llm>=0.0.17,<0.0.18",
     # Image processing for PDF resolution enhancement
     "opencv-python-headless>=4.10.0,<5.0.0",
     # Compatible with marker-pdf
