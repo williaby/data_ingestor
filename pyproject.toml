@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry-core>=1.9.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 # Project metadata (PEP 621 standard)
 [project]
@@ -18,200 +18,173 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.11,<3.13"
-dynamic = ["dependencies"]
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    # Core web framework
+    "gradio>=5.35.0,<6.0.0",
+    "fastapi>=0.116.0,<0.117.0",
+    "uvicorn[standard]>=0.35.0,<0.36.0",
+    "httpx>=0.27.0,<0.28.0",
+    "pydantic>=2.11.0,<3.0.0",
+    "pydantic-settings>=2.2.1,<3.0.0",
+    # LLM clients
+    # Temporarily relaxed to allow marker-pdf compatibility (requires anthropic <0.47.0)
+    # Tighten back to >=0.57.0,<1.0.0 when implementing LLM features
+    "anthropic>=0.46.0,<1.0.0",
+    "openai>=1.12.0,<2.0.0",
+    # Storage / infra
+    "qdrant-client>=1.14.3,<2.0.0",
+    "cryptography>=45.0.0,<46.0.0",
+    "pyjwt[crypto]>=2.10.1,<3.0.0",
+    "python-gnupg>=0.5.2,<1.0.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "toml>=0.10.2,<0.11.0",
+    "python-multipart>=0.0.18,<0.0.19",
+    "redis[hiredis]>=6.0.0,<7.0.0",
+    "prometheus-client>=0.20.0,<1.0.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+    "python-magic>=0.4.27,<1.0.0",
+    "structlog>=24.0.0,<26.0.0",
+    "rich>=14.0.0,<15.0.0",
+    "tenacity>=9.0.0,<10.0.0",
+    "python-dateutil>=2.9.0,<3.0.0",
+    "aiofiles>=24.1.0,<25.0.0",
+    "asyncer>=0.0.5,<1.0.0",
+    "mcp>=1.10.1,<2.0.0",
+    "sentry-sdk>=2.0.0,<3.0.0",
+    "opentelemetry-api>=1.25.0,<2.0.0",
+    "typing-extensions>=4.10.0,<5.0.0",
+    "slowapi>=0.1.9,<1.0.0",
+    "cachetools>=6.1.0,<7.0.0",
+    "defusedxml>=0.7.1,<1.0.0",
+    "starlette>=0.47.2",
+    # Database dependencies for AUTH-1 enhanced authentication and AUTH-2 service token management
+    "sqlalchemy[asyncio]>=2.0.36,<3.0.0",
+    "asyncpg>=0.30.0,<1.0.0",
+    "alembic>=1.14.0,<2.0.0",
+    "aiohttp>=3.12.15,<4.0.0",
+    "plotly>=6.3.0,<7.0.0",
+    "pandas>=2.3.1,<3.0.0",
+    "jinja2>=3.1.6,<4.0.0",
+    # Document processing dependencies for RAG ingestion pipeline
+    # PDF processing
+    "pymupdf>=1.24.0,<2.0.0",
+    "pymupdf4llm>=0.0.17,<1.0.0",
+    # Image processing for PDF resolution enhancement
+    "opencv-python-headless>=4.10.0,<5.0.0",
+    # Compatible with marker-pdf
+    "pillow>=10.1.0,<11.0.0",
+    # Note: Advanced PDF processing with marker-pdf available via optional extra
+    # Install with: uv sync --extra advanced-pdf
+    # Note: docling may require separate installation
+    # Install separately: pip install docling
+    # DOCX processing
+    "python-docx>=1.1.0,<2.0.0",
+    "docx2python>=3.1.2,<4.0.0",
+    # Web scraping
+    "beautifulsoup4>=4.12.0,<5.0.0",
+    "lxml>=5.0.0,<6.0.0",
+    "playwright>=1.48.0,<2.0.0",
+    # Video/Audio transcription
+    "faster-whisper>=1.0.0,<2.0.0",
+    "ffmpeg-python>=0.2.0,<1.0.0",
+    # Task queue
+    "celery[redis]>=5.4.0,<6.0.0",
+    "kombu>=5.4.0,<6.0.0",
+    # CLI
+    "click>=8.1.7,<9.0.0",
+    # Chunking and text processing
+    "langchain-text-splitters>=0.3.0,<1.0.0",
+    # Language detection
+    "langdetect>=1.0.9,<2.0.0",
+    # PDF table extraction
+    "pdfplumber>=0.11.0,<1.0.0",
+]
 
 [project.urls]
 homepage = "https://github.com/Byron/data_ingestor"
 repository = "https://github.com/Byron/data_ingestor"
 documentation = "https://github.com/Byron/data_ingestor/wiki"
 
-# Poetry-specific configuration
-[tool.poetry]
-package-mode = false
-requires-poetry = ">=1.8.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 data-ingestor = "data_ingestor.cli.main:cli"
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.13"
-# Main dependencies
-gradio = "^5.35.0"
-fastapi = "^0.116.0"
-uvicorn = {extras = ["standard"], version = "^0.35.0"}
-httpx = "^0.27.0"
-pydantic = ">=2.11.0,<3.0.0"
-pydantic-settings = "^2.2.1"
-# Temporarily relaxed to allow marker-pdf compatibility (requires anthropic <0.47.0)
-# Tighten back to ^0.57.0 when implementing LLM features
-anthropic = ">=0.46.0,<1.0.0"
-openai = "^1.12.0"
-qdrant-client = "^1.14.3"
-cryptography = "^45.0.0"
-pyjwt = {version = "^2.10.1", extras = ["crypto"]}
-python-gnupg = "^0.5.2"
-pyyaml = "^6.0.2"
-toml = "^0.10.2"
-python-multipart = "^0.0.18"
-redis = {extras = ["hiredis"], version = "^6.0.0"}
-prometheus-client = "^0.20.0"
-python-dotenv = "^1.0.1"
-python-magic = "^0.4.27"
-structlog = ">=24.0.0,<26.0.0"
-rich = "^14.0.0"
-tenacity = "^9.0.0"
-python-dateutil = "^2.9.0"
-aiofiles = ">=24.1.0,<25.0.0"
-asyncer = ">=0.0.5,<1.0.0"
-mcp = "^1.10.1"
-sentry-sdk = ">=2.0.0,<3.0.0"
-opentelemetry-api = "^1.25.0"
-typing-extensions = ">=4.10.0,<5.0.0"
-slowapi = "^0.1.9"
-cachetools = "^6.1.0"
-defusedxml = "^0.7.1"
-starlette = ">=0.47.2"
-# Database dependencies for AUTH-1 enhanced authentication and AUTH-2 service token management
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
-asyncpg = "^0.30.0"
-alembic = "^1.14.0"
-aiohttp = "^3.12.15"
-plotly = "^6.3.0"
-pandas = "^2.3.1"
-jinja2 = "^3.1.6"
-# Document processing dependencies for RAG ingestion pipeline
-# PDF processing
-pymupdf = "^1.24.0"
-pymupdf4llm = "^0.0.17"
-# Image processing for PDF resolution enhancement
-opencv-python-headless = "^4.10.0"
-pillow = ">=10.1.0,<11.0.0"  # Compatible with marker-pdf
-# Note: Advanced PDF processing with marker-pdf available via optional group
-# Install with: poetry install --with advanced-pdf
-# Note: docling may require separate installation
-# Install separately: pip install docling
-# DOCX processing
-python-docx = "^1.1.0"
-docx2python = "^3.1.2"
-# Web scraping
-beautifulsoup4 = "^4.12.0"
-lxml = "^5.0.0"
-playwright = "^1.48.0"
-# Video/Audio transcription
-faster-whisper = "^1.0.0"
-ffmpeg-python = "^0.2.0"
-# Task queue
-celery = {extras = ["redis"], version = "^5.4.0"}
-kombu = "^5.4.0"
-# CLI
-click = "^8.1.7"
-# Chunking and text processing
-langchain-text-splitters = "^0.3.0"
-# Language detection
-langdetect = "^1.0.9"
-# PDF table extraction
-pdfplumber = "^0.11.0"
+[project.optional-dependencies]
+dev = [
+    # Testing (absorbed from former test group)
+    "pytest>=8.0.1",
+    "pytest-asyncio>=0.26.0",
+    "pytest-cov>=6.0.0",
+    "pytest-env>=1.1.3",
+    "pytest-mock>=3.12.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-rerunfailures>=12.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-memray>=1.5.0",
+    "aiosqlite>=0.21.0,<0.22.0",
+    "hypothesis>=6.98.9",
+    "faker>=37.0.0",
+    # Code quality
+    "ruff==0.12.3",
+    "mypy==1.13.0",
+    "types-pyyaml>=6.0.12.12",
+    "types-python-dateutil>=2.8.19.20240106",
+    "types-aiofiles>=24.0.0",
+    "types-cachetools>=6.1.0.20250717",
+    # Security
+    "bandit[toml]==1.7.7",
+    "detect-secrets>=1.5.0",
+    "pip-audit>=2.9.0,<3.0.0",
+    # Dev tooling
+    "pre-commit>=4.0.0",
+    "nox>=2025.1.0",
+    "nox-uv>=0.6.3",
+    "ipython>=9.0.0",
+    "ipdb>=0.13.13",
+    "toml>=0.10.2,<0.11.0",
+    "mutmut>=3.3.0,<4.0.0",
+    "locust>=2.0.0,<3.0.0",
+    "datasets>=4.4.0,<5.0.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = ">=8.0.1"
-pytest-asyncio = ">=0.26.0"
-pytest-cov = ">=6.0.0"
-pytest-env = ">=1.1.3"
-pytest-mock = ">=3.12.0"
-pytest-timeout = ">=2.2.0"
-pytest-xdist = ">=3.5.0"
-pytest-rerunfailures = ">=12.0"
-hypothesis = ">=6.98.9"
-faker = ">=37.0.0"
-black = "24.10.0"
-ruff = "0.12.3"
-mypy = "1.13.0"
-types-pyyaml = ">=6.0.12.12"
-types-python-dateutil = ">=2.8.19.20240106"
-types-aiofiles = ">=24.0.0"
-bandit = {extras = ["toml"], version = "1.7.7"}
-safety = ">=3.0.1"
-detect-secrets = ">=1.5.0"
-pre-commit = ">=4.0.0"
-nox = ">=2025.1.0"
-ipython = ">=9.0.0"
-ipdb = ">=0.13.13"
-toml = "^0.10.2"
-mutmut = "^3.3.0"
-# pact-python = "^2.3.2"  # Temporarily removed due to CI build issues with external dependency
-locust = "^2.0.0"
-pip-audit = "^2.9.0"
-types-cachetools = "^6.1.0.20250717"
-isort = "^6.0.1"
-datasets = "^4.4.0"
+docs = [
+    "mkdocs>=1.6.0,<2.0.0",
+    "mkdocs-material>=9.5.32,<10.0.0",
+    "mkdocstrings[python]>=0.24.0,<1.0.0",
+]
 
-[tool.poetry.group.azure.dependencies]
-azure-identity = "^1.15.0"
-azure-keyvault-secrets = "^4.8.0"
-azure-storage-blob = "^12.19.0"
+azure = [
+    "azure-identity>=1.15.0,<2.0.0",
+    "azure-keyvault-secrets>=4.8.0,<5.0.0",
+    "azure-storage-blob>=12.19.0,<13.0.0",
+]
 
-[tool.poetry.group.ml.dependencies]
-sentence-transformers = ">=3.0.0,<6.0.0"
-tiktoken = ">=0.8.0,<1.0.0"
-numpy = ">=1.26.1,<2.0.0"
-pandas = "^2.2.0"
-spacy = ">=3.7.0,<4.0.0"
-nltk = ">=3.8.0,<4.0.0"
+ml = [
+    "sentence-transformers>=3.0.0,<6.0.0",
+    "tiktoken>=0.8.0,<1.0.0",
+    "numpy>=1.26.1",
+    "pandas>=2.2.0,<3.0.0",
+    "spacy>=3.7.0,<4.0.0",
+    "nltk>=3.8.0,<4.0.0",
+]
 
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
-mkdocs-material = "^9.5.32"
-mkdocstrings = {extras = ["python"], version = "^0.24.0"}
+advanced-pdf = [
+    # WARNING: marker-pdf constrains regex to <2025.0.0 (CVE-2025-78558).
+    # Use the [tool.uv] override-dependencies block to force a safe regex version.
+    "marker-pdf>=1.9.3,<2.0.0",
+]
 
-[tool.poetry.group.test.dependencies]
-pytest-benchmark = ">=4.0.0"
-pytest-memray = ">=1.5.0"
-aiosqlite = "^0.21.0"
+[tool.hatch.build.targets.wheel]
+packages = ["src/data_ingestor"]
 
-[tool.poetry.group.advanced-pdf]
-optional = true
-
-[tool.poetry.group.advanced-pdf.dependencies]
-# Marker for advanced PDF processing (requires GPU for optimal performance)
-# torch/torchvision versions are managed by marker-pdf dependencies
-# Using 1.9.x (latest stable with LLM features, compatible with relaxed anthropic)
-# WARNING: marker-pdf constrains regex to <2025.0.0, which has ReDoS vulnerability (CVE-2025-78558)
-# Security vs Feature tradeoff: Choose based on deployment needs
-# - For production: Skip this group and upgrade regex to >=2025.2.10
-# - For advanced PDF: Install this group, accept vulnerability, use input validation
-marker-pdf = "^1.9.3"
-
-
-[[tool.poetry.source]]
-name = "safety"
-url = "https://pkgs.safetycli.com/repository/williams-consulting/project/promptcraft/pypi/simple/"
-priority = "supplemental"
-
-[tool.black]
-line-length = 120
-target-version = ['py311', 'py312']
-include = '\.pyi?$'
-extend-exclude = '''
-(
-  /(
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.nox
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
+[tool.uv]
+override-dependencies = ["regex>=2025.2.10"]   # CVE-2025-78558 ReDoS; pair with: uv lock --upgrade-package regex
 
 [tool.ruff]
 line-length = 120
@@ -304,20 +277,6 @@ max-statements = 75    # Increased from default 50 for industry standards
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
-
-# Dedicated isort configuration for import organization
-[tool.isort]
-profile = "black"
-line_length = 120
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-known_first_party = ["src"]
-known_third_party = ["pytest", "httpx", "fastapi", "gradio", "pydantic", "anthropic", "openai", "qdrant_client"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-skip_glob = ["**/migrations/*", "**/venv/*", "**/.venv/*"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -460,7 +419,7 @@ skips = ["B101", "B601"]
 [tool.bandit.assert_used]
 skips = ["*/test_*.py", "*_test.py"]
 
-[tool.pytest.benchmark]
+[tool.pytest-benchmark]
 # Benchmark configuration
 min_rounds = 5
 max_time = 1.0
