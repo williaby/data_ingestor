@@ -9,6 +9,12 @@
     "group:recommended",
     "workarounds:all"
   ],
+  "enabledManagers": [
+    "pep621",
+    "github-actions",
+    "pre-commit",
+    "dockerfile"
+  ],
   "timezone": "America/New_York",
   "schedule": [
     "before 3am on Monday"
@@ -67,7 +73,7 @@
       "automerge": false
     },
     {
-      "description": "Python dependencies - Poetry managed",
+      "description": "Python dependencies - uv managed",
       "matchDatasources": [
         "pypi"
       ],
@@ -162,7 +168,7 @@
       "description": "Security tooling - always update",
       "matchPackageNames": [
         "bandit",
-        "safety",
+        "pip-audit",
         "semgrep"
       ],
       "automerge": true,
