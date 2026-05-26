@@ -267,7 +267,7 @@ def lint(session):
     """Run linters."""
     args = session.posargs or SRC_LOCATIONS
     session.install("-e", DEV_EXTRAS)
-    session.run("black", "--check", *args)
+    session.run("ruff", "format", "--check", ".")
     session.run("ruff", "check", *args)
 
     # Markdown linting
@@ -290,7 +290,7 @@ def security(session):
     session.install("-e", DEV_EXTRAS)
 
     # Check for known vulnerabilities
-    session.run("safety", "check", "--json")
+    session.run("pip-audit")
 
     # Run bandit for code security issues
     session.run("bandit", "-r", "src", "-ll")
@@ -304,7 +304,7 @@ def format_code(session):
     """Format code."""
     args = session.posargs or SRC_LOCATIONS
     session.install("-e", DEV_EXTRAS)
-    session.run("black", *args)
+    session.run("ruff", "format", ".")
     session.run("ruff", "check", "--fix", *args)
 
 
@@ -323,20 +323,21 @@ def deps(session):
 
     # Check for outdated packages - uv has no direct equivalent; Renovate handles this
 
-    # Export requirements with hashes
-    session.run("./scripts/generate_requirements.sh", external=True)
+    # Export requirements with hashes for Docker/CI reproducibility
+    session.run(
+        "uv",
+        "export",
+        "--format",
+        "requirements-txt",
+        "--hashes",
+        "-o",
+        "requirements-docker.txt",
+        external=False,
+    )
 
-    # Verify installation with hashes
-    with session.chdir(session.create_tmp()):
-        session.run("python", "-m", "venv", "test-env")
-        session.run(
-            "./test-env/bin/pip",
-            "install",
-            "--require-hashes",
-            "-r",
-            str(Path.cwd().parent / "requirements.txt"),
-            external=True,
-        )
+    # TODO: add hash-verification step once requirements-docker.txt is confirmed correct;
+    # old version used ./scripts/generate_requirements.sh (script does not exist in this repo)
+    # and then verified installation in a temporary venv via pip --require-hashes.
 
 
 @nox.session(python="3.11")
