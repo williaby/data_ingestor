@@ -8,7 +8,7 @@
 #   - CodeQL: Python security-extended and quality queries
 #   - Dependency Review: PR-based dependency vulnerability detection
 #   - Bandit: Python static security analysis
-#   - Safety: Python dependency CVE scanning
+#   - pip-audit: Python dependency CVE scanning
 #   - Document Processing Security: Custom validation for file handling
 #
 # EXTERNAL GITHUB APPS (Complementary - No Duplication):
@@ -18,7 +18,7 @@
 #
 # REMOVED DUPLICATIONS:
 #   - Semgrep workflow step (now using Semgrep App)
-#   - Bandit/Safety from ci.yml (consolidated here)
+#   - Bandit/pip-audit from ci.yml (consolidated here)
 #   - CodeQL standalone check (using workflow version with custom queries)
 #
 # BENEFITS:
@@ -64,14 +64,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup Python for Document Processing Dependencies
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
-        with:
-          python-version: '3.11'
-
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           enable-cache: true
+          python-version: '3.11'
 
       # Install only main dependencies for CodeQL analysis
       - name: Install Document Processing Dependencies
@@ -150,14 +147,11 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
-        with:
-          python-version: '3.11'
-
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           enable-cache: true
+          python-version: '3.11'
       - name: Install Dependencies
         run: uv sync --extra dev
 
@@ -202,14 +196,11 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
-        with:
-          python-version: '3.11'
-
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           enable-cache: true
+          python-version: '3.11'
       - name: Install Dependencies
         run: uv sync --extra dev
 
