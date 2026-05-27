@@ -46,8 +46,8 @@ class TestTestsSessions:
 
         noxfile.tests(mock_session)
 
-        # Verify poetry install was called
-        mock_session.run.assert_any_call("poetry", "install", "--with", "dev", external=True)
+        # Verify session.install was called with the dev extras
+        mock_session.install.assert_any_call("-e", ".[dev]")
         # Verify pytest was called with coverage args
         assert any("pytest" in str(call) for call in mock_session.run.call_args_list)
 
@@ -249,9 +249,8 @@ class TestSessionConfiguration:
 
             session_func(mock_session)
 
-            # Verify poetry install was called
-            install_calls = [c for c in mock_session.run.call_args_list if "poetry" in str(c) and "install" in str(c)]
-            assert len(install_calls) > 0, f"Session {session_func.__name__} did not install dependencies"
+            # Verify session.install was called (uv-based install pattern)
+            assert mock_session.install.called, f"Session {session_func.__name__} did not install dependencies"
 
 
 class TestSessionPosargs:
@@ -324,20 +323,15 @@ class TestSessionIntegration:
 
             assert mock_session.run.called
 
-    def test_sessions_use_external_flag(self) -> None:
-        """Test that poetry commands use external=True flag."""
+    def test_sessions_install_editable_package(self) -> None:
+        """Test that sessions install the package in editable mode."""
         mock_session = MagicMock()
         mock_session.posargs = []
 
         noxfile.tests(mock_session)
 
-        # Find poetry install call
-        poetry_calls = [c for c in mock_session.run.call_args_list if "poetry" in str(c[0])]
-        assert len(poetry_calls) > 0
-
-        # Verify external=True is used
-        poetry_call = poetry_calls[0]
-        assert poetry_call[1].get("external") is True
+        # Verify session.install called with editable dev extras (uv pattern)
+        mock_session.install.assert_any_call("-e", ".[dev]")
 
 
 class TestAdvancedSessions:
@@ -387,8 +381,8 @@ class TestAdvancedSessions:
 
         noxfile.metrics(mock_session)
 
-        # Should run poetry install
-        mock_session.run.assert_any_call("poetry", "install", "--with", "dev", external=True)
+        # When script doesn't exist, session logs a warning (no run call)
+        assert mock_session.log.called
 
     def test_metrics_session_with_existing_script(self) -> None:
         """Test metrics session when script exists."""
@@ -535,11 +529,11 @@ class TestLintingAndFormatSessions:
 
         noxfile.lint(mock_session)
 
-        # Verify black check
-        black_calls = [c for c in mock_session.run.call_args_list if "black" in str(c[0])]
-        assert len(black_calls) > 0
+        # Verify ruff format check (replaced black in the uv migration)
+        ruff_format_calls = [c for c in mock_session.run.call_args_list if "ruff" in str(c[0]) and "format" in str(c[0])]
+        assert len(ruff_format_calls) > 0
 
-        # Verify ruff
+        # Verify ruff check
         ruff_calls = [c for c in mock_session.run.call_args_list if "ruff" in str(c[0])]
         assert len(ruff_calls) > 0
 
@@ -559,9 +553,9 @@ class TestLintingAndFormatSessions:
 
         noxfile.security(mock_session)
 
-        # Verify safety check
-        safety_calls = [c for c in mock_session.run.call_args_list if "safety" in str(c[0])]
-        assert len(safety_calls) > 0
+        # Verify pip-audit (replaced safety in the uv migration)
+        pip_audit_calls = [c for c in mock_session.run.call_args_list if "pip-audit" in str(c[0])]
+        assert len(pip_audit_calls) > 0
 
         # Verify bandit
         bandit_calls = [c for c in mock_session.run.call_args_list if "bandit" in str(c[0])]
@@ -574,9 +568,9 @@ class TestLintingAndFormatSessions:
 
         noxfile.format_code(mock_session)
 
-        # Verify black formatting
-        black_calls = [c for c in mock_session.run.call_args_list if "black" in str(c[0])]
-        assert len(black_calls) > 0
+        # Verify ruff format (replaced black in the uv migration)
+        ruff_format_calls = [c for c in mock_session.run.call_args_list if "ruff" in str(c[0]) and "format" in str(c[0])]
+        assert len(ruff_format_calls) > 0
 
         # Verify ruff fix
         ruff_calls = [c for c in mock_session.run.call_args_list if "ruff" in str(c[0])]
@@ -624,20 +618,12 @@ class TestComplexUtilitySessions:
     def test_deps_session(self) -> None:
         """Test deps session execution."""
         mock_session = MagicMock()
-        # Mock chdir and create_tmp to avoid actual directory operations
-        mock_session.create_tmp.return_value = "/tmp/test"
-        
-        # Mock chdir context manager
-        mock_chdir = MagicMock()
-        mock_chdir.__enter__ = MagicMock(return_value=None)
-        mock_chdir.__exit__ = MagicMock(return_value=None)
-        mock_session.chdir.return_value = mock_chdir
 
         noxfile.deps(mock_session)
 
-        # Verify poetry show was called
-        show_calls = [c for c in mock_session.run.call_args_list if "poetry" in str(c) and "show" in str(c)]
-        assert len(show_calls) > 0
+        # Verify uv export was called to generate requirements-docker.txt
+        uv_export_calls = [c for c in mock_session.run.call_args_list if "uv" in str(c) and "export" in str(c)]
+        assert len(uv_export_calls) > 0
 
     def test_mutation_testing_session(self) -> None:
         """Test mutation testing session execution."""
@@ -660,9 +646,8 @@ class TestComplexUtilitySessions:
         """Test mutation testing handles exceptions gracefully."""
         mock_session = MagicMock()
 
-        # Make first mutmut run raise an exception
+        # session.install is separate from session.run; only mock session.run calls
         mock_session.run.side_effect = [
-            None,  # poetry install
             None,  # rm -rf .mutmut-cache
             Exception("Mutation testing failed"),  # mutmut run - raises
             None,  # mutmut html - should still be called
@@ -700,8 +685,8 @@ class TestComplexUtilitySessions:
         mock_session.env = {"PWD": "/test/path"}
 
         # Make docker and curl checks succeed, then docker run succeeds
+        # session.install is separate; only mock session.run calls here
         mock_session.run.side_effect = [
-            None,  # poetry install
             None,  # docker --version
             None,  # curl (app is running) - covers line 419
             None,  # mkdir -p dast-reports
@@ -728,8 +713,8 @@ class TestComplexUtilitySessions:
         mock_session.env = {"PWD": "/test/path"}
 
         # Make setup succeed but ZAP scan fail
+        # session.install is separate; only mock session.run calls here
         mock_session.run.side_effect = [
-            None,  # poetry install
             None,  # docker --version
             Exception("App not running"),  # curl fails
             None,  # mkdir -p dast-reports

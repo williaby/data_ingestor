@@ -435,7 +435,7 @@ class MarkerParser(BaseParser):
                 logger.warning("torch not available, Marker will use CPU")
 
         except ImportError:
-            logger.warning("marker-pdf not installed. Install with: poetry install --with advanced-pdf")
+            logger.warning("marker-pdf not installed. Install with: uv sync --extra advanced-pdf")
 
     def supports_format(self, document_format: DocumentFormat) -> bool:
         """Check if this parser supports PDF format.
