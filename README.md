@@ -27,18 +27,24 @@ A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation)
 ### Installation
 
 ```bash
-# Clone and install
+# 1. Install uv if not already present
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Clone the repo
 git clone https://github.com/Byron/data_ingestor.git
 cd data_ingestor
 
-# Basic installation (PyMuPDF parsers)
-poetry install
+# 3. Install Python
+uv python install 3.12
+
+# 4. Basic installation (PyMuPDF parsers)
+uv sync
 
 # With advanced PDF processing (Marker - requires GPU for best performance)
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 
 # For CPU-only systems (Marker will still work but slower)
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 # Then: export CUDA_VISIBLE_DEVICES=""  # Force CPU mode
 ```
 
@@ -48,22 +54,22 @@ poetry install --with advanced-pdf
 
 ```bash
 # Process a PDF and output to JSON
-poetry run data-ingestor process document.pdf --output output.json
+uv run data-ingestor process document.pdf --output output.json
 
 # Process and export as Markdown
-poetry run data-ingestor process document.pdf --format markdown --output output.md
+uv run data-ingestor process document.pdf --format markdown --output output.md
 
 # Export both JSON and Markdown
-poetry run data-ingestor process document.pdf --format both --output document
+uv run data-ingestor process document.pdf --format both --output document
 
 # Use section-aware chunking (preserves document structure)
-poetry run data-ingestor process document.pdf --chunking-strategy by_title --output output.json
+uv run data-ingestor process document.pdf --chunking-strategy by_title --output output.json
 
 # Combine small sections (by_title only)
-poetry run data-ingestor process document.pdf --chunking-strategy by_title --combine-under 500 --output output.json
+uv run data-ingestor process document.pdf --chunking-strategy by_title --combine-under 500 --output output.json
 
 # Check parser health
-poetry run data-ingestor health
+uv run data-ingestor health
 ```
 
 ### Python API
