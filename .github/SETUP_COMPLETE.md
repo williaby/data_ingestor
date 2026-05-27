@@ -32,7 +32,7 @@
   - `/src/data_ingestor/chunking/` - Chunking strategies
   - `/src/data_ingestor/quality/` - Quality validation
   - `/src/data_ingestor/export/` - Export functionality
-- Configuration files (pyproject.toml, poetry.lock, requirements.txt)
+- Configuration files (pyproject.toml, uv.lock, requirements.txt)
 - Security-sensitive files (.env, scripts)
 - Documentation (docs/, README.md, CLAUDE.md)
 
@@ -75,7 +75,7 @@
 **Jobs:**
 1. **setup-optimized** (10 min timeout)
    - Python 3.11 setup
-   - Poetry installation with export plugin
+   - uv installation and dependency caching
    - Document processing dependency caching
    - Dependency validation (pdfplumber, pypdf, tiktoken, etc.)
    - Disk space cleanup
@@ -107,15 +107,15 @@
 **Purpose:** Dependency consistency and standards compliance
 
 **Validation Steps:**
-1. **Poetry Export Plugin Installation** (with retry logic)
+1. **uv Installation and Sync** (with retry logic)
 2. **Document Processing Dependency Validation**
    - Critical: pdfplumber, pypdf, python_docx, markdown, tiktoken, pydantic
    - Optional: docling, transformers, torch
 3. **Dependency Change Detection**
-   - Monitors poetry.lock and pyproject.toml
+   - Monitors uv.lock and pyproject.toml
 4. **Requirements.txt Sync Validation**
-   - Auto-generates requirements.txt and requirements-dev.txt
-   - Ensures synchronization with poetry.lock
+   - Auto-generates requirements.txt via `uv export --format requirements-txt --hashes`
+   - Ensures synchronization with uv.lock
 5. **Project Structure Validation**
    - Required directories: src/data_ingestor, parsers, chunking, quality, export, core, tests, docs
    - Required files: pyproject.toml, README.md, CLAUDE.md, .env.example
@@ -169,12 +169,14 @@
 
 ## Environment Variables
 
+<!-- Updated 2026-05-26: Poetry replaced by uv. The POETRY_* env vars below
+     are historical; the active CI configuration uses UV_VERSION and
+     UV_CACHE_DIR instead. -->
 ### CI/CD Environment
 ```yaml
 CI_ENVIRONMENT: true
-POETRY_VERSION: 2.1.2
-POETRY_CACHE_DIR: ~/.cache/pypoetry
-POETRY_VENV_IN_PROJECT: true
+UV_VERSION: "0.6"
+UV_CACHE_DIR: ~/.cache/uv
 MYPY_CACHE_DIR: ~/.cache/mypy
 DATA_INGESTOR_TEMP_DIR: /tmp/data_ingestor
 DATA_INGESTOR_OUTPUT_DIR: ./test_output
@@ -241,7 +243,7 @@ Require review from Code Owners: true
 - ✅ Adjusted security focus (financial data → file processing)
 
 ### Adapted from PromptCraft
-- ✅ Kept Poetry caching optimization
+- ✅ Kept uv caching optimization (originally Poetry caching)
 - ✅ Retained dependency retry logic
 - ✅ Removed service mocking (Qdrant, Redis)
 - ✅ Simplified to single-pipeline architecture

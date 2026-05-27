@@ -74,7 +74,7 @@ vulnerabilities and edge cases.
 pip install atheris
 
 # Install project dependencies
-poetry install --without dev
+uv sync --no-dev
 ```
 
 ### Run Individual Fuzzer
