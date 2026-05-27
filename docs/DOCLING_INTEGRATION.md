@@ -552,7 +552,7 @@ class DoclingParser(BaseParser):
 **GPU Acceleration** (Recommended):
 ```bash
 # Install with GPU support
-poetry add docling[gpu]
+uv add "docling[gpu]"
 
 # Verify GPU availability
 python -c "import torch; print(torch.cuda.is_available())"
@@ -737,26 +737,29 @@ class Settings(BaseSettings):
 **Add to `pyproject.toml`**:
 
 ```toml
-[tool.poetry.dependencies]
-# ... existing dependencies ...
-
+[project.optional-dependencies]
 # Docling (MIT License)
-docling = "^2.0.0"
-docling-core = "^2.0.0"
-docling-ibm-models = "^2.0.0"  # TableFormer, DocLayNet
+advanced-parsing = [
+    "docling>=2.0.0",
+    "docling-core>=2.0.0",
+    "docling-ibm-models>=2.0.0",  # TableFormer, DocLayNet
+]
 
-[tool.poetry.group.advanced-parsing.dependencies]
-# GPU support (optional)
-docling = {version = "^2.0.0", extras = ["gpu"]}
+# GPU support (optional extra)
+advanced-parsing-gpu = [
+    "docling[gpu]>=2.0.0",
+    "docling-core>=2.0.0",
+    "docling-ibm-models>=2.0.0",
+]
 ```
 
 **Installation**:
 ```bash
 # Standard installation (CPU)
-poetry add docling docling-core docling-ibm-models
+uv add docling docling-core docling-ibm-models
 
 # With GPU support
-poetry add "docling[gpu]" docling-core docling-ibm-models
+uv add "docling[gpu]" docling-core docling-ibm-models
 ```
 
 ---

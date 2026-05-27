@@ -205,7 +205,7 @@ if document.metadata.get("upscaling", {}).get("performed"):
 
 ```bash
 # Run all Phase 1C tests
-poetry run pytest tests/unit/test_pdf_resolution.py \
+uv run pytest tests/unit/test_pdf_resolution.py \
                   tests/unit/test_pdf_upscaler.py \
                   tests/integration/test_pdf_upscaling_integration.py -v
 
@@ -299,7 +299,7 @@ src/data_ingestor/pipeline/router.py
 - [ ] Add 3 dependencies to `pyproject.toml` (opencv, pillow, numpy)
 - [ ] Add 5 settings to `config.py`
 - [ ] Integrate with DocumentRouter (or equivalent)
-- [ ] Run `poetry install` to install dependencies
+- [ ] Run `uv sync` to install dependencies
 - [ ] Run tests to verify integration
 
 ### Should Do
@@ -410,7 +410,7 @@ cp src/data_ingestor/utils/pdf_upscaler.py <your_project>/utils/
 cp src/data_ingestor/pipeline/pdf_analyzer.py <your_project>/pipeline/
 
 # 2. Add dependencies
-poetry add opencv-python-headless@^4.10.0 pillow@">=10.1.0,<11.0.0" numpy@">=1.26.1,<2.0.0"
+uv add "opencv-python-headless>=4.10.0" "pillow>=10.1.0,<11.0.0" "numpy>=1.26.1,<2.0.0"
 
 # 3. Update config.py (add 5 settings - see Configuration section)
 
@@ -422,7 +422,7 @@ cp tests/unit/test_pdf_upscaler.py <your_project>/tests/unit/
 cp tests/integration/test_pdf_upscaling_integration.py <your_project>/tests/integration/
 
 # 6. Run tests
-poetry run pytest tests/unit/test_pdf_resolution.py tests/unit/test_pdf_upscaler.py -v
+uv run pytest tests/unit/test_pdf_resolution.py tests/unit/test_pdf_upscaler.py -v
 
 # 7. Test integration
 python scripts/validate_pdf_resolution.py <test_pdf> --upscale
@@ -432,13 +432,13 @@ python scripts/validate_pdf_resolution.py <test_pdf> --upscale
 
 ```bash
 # Verify dependencies installed
-poetry show | grep -E "opencv|pillow|numpy"
+uv pip list | grep -E "opencv|pillow|numpy"
 
 # Verify settings configured
 grep -n "pdf_min_dpi" <your_project>/src/core/config.py
 
 # Verify integration working
-poetry run pytest tests/integration/test_pdf_upscaling_integration.py -v
+uv run pytest tests/integration/test_pdf_upscaling_integration.py -v
 ```
 
 ---

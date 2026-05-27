@@ -509,19 +509,19 @@ def benchmark_report(
 
 ```bash
 # Run full benchmark suite
-poetry run data-ingestor benchmark --dataset all
+uv run data-ingestor benchmark --dataset all
 
 # Benchmark specific dataset with specific parsers
-poetry run data-ingestor benchmark \
+uv run data-ingestor benchmark \
     --dataset readoc \
     --parsers "marker,docling,pymupdf4llm" \
     --output-dir data/results/marker_evaluation
 
 # Generate comparison report
-poetry run data-ingestor benchmark-report run_20251103_143022 --format html
+uv run data-ingestor benchmark-report run_20251103_143022 --format html
 
 # Quick validation run (subset)
-poetry run data-ingestor benchmark \
+uv run data-ingestor benchmark \
     --dataset readoc \
     --sample-size 50 \
     --quick-mode
@@ -572,7 +572,7 @@ python scripts/benchmarks/analyze_datasets.py
 **Day 8: Initial Benchmark Run**
 ```bash
 # Run baseline with current Phase 1 parsers
-poetry run data-ingestor benchmark \
+uv run data-ingestor benchmark \
     --dataset all \
     --parsers "pymupdf,pymupdf4llm" \
     --output-dir data/results/baseline_phase1 \
@@ -957,8 +957,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install
+          uv sync
 
       - name: Download datasets (cached)
         uses: actions/cache@v3
@@ -968,13 +967,13 @@ jobs:
 
       - name: Run benchmark
         run: |
-          poetry run data-ingestor benchmark \
+          uv run data-ingestor benchmark \
             --dataset all \
             --output-dir data/results/ci_run_${{ github.sha }}
 
       - name: Compare to baseline
         run: |
-          poetry run python scripts/benchmarks/compare_to_baseline.py \
+          uv run python scripts/benchmarks/compare_to_baseline.py \
             --current data/results/ci_run_${{ github.sha }} \
             --baseline data/results/baselines/phase1_baseline.json
 
@@ -1079,13 +1078,13 @@ python scripts/benchmarks/download_datasets.py --dataset readoc --force
 **Solutions**:
 ```bash
 # Reduce batch size
-poetry run data-ingestor benchmark --batch-size 10
+uv run data-ingestor benchmark --batch-size 10
 
 # Process sequentially (no parallelism)
-poetry run data-ingestor benchmark --workers 1
+uv run data-ingestor benchmark --workers 1
 
 # Process subset
-poetry run data-ingestor benchmark --sample-size 100
+uv run data-ingestor benchmark --sample-size 100
 ```
 
 #### 4. Metric Calculation Failures
@@ -1095,10 +1094,10 @@ poetry run data-ingestor benchmark --sample-size 100
 **Debugging**:
 ```python
 # Enable debug logging
-poetry run data-ingestor benchmark --log-level DEBUG
+uv run data-ingestor benchmark --log-level DEBUG
 
 # Save intermediate outputs
-poetry run data-ingestor benchmark --save-outputs --debug-mode
+uv run data-ingestor benchmark --save-outputs --debug-mode
 
 # Validate specific document
 python scripts/benchmarks/debug_single_doc.py \
@@ -1113,17 +1112,17 @@ python scripts/benchmarks/debug_single_doc.py \
 **Optimizations**:
 ```bash
 # Increase parallelism
-poetry run data-ingestor benchmark --workers 8
+uv run data-ingestor benchmark --workers 8
 
 # Skip output saving
-poetry run data-ingestor benchmark --no-save-outputs
+uv run data-ingestor benchmark --no-save-outputs
 
 # Profile execution
-poetry run python -m cProfile -o benchmark.prof \
+uv run python -m cProfile -o benchmark.prof \
     -m data_ingestor.cli.main benchmark --dataset readoc
 
 # Analyze profiling results
-poetry run python scripts/analyze_profile.py benchmark.prof
+uv run python scripts/analyze_profile.py benchmark.prof
 ```
 
 ---

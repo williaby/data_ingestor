@@ -66,7 +66,7 @@ Process without LLM            │
 
 ```bash
 # Use CLI as normal
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/result.json
 

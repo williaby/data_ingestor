@@ -98,7 +98,7 @@ WTD intelligently excludes files that don't provide meaningful review value. Thi
    - `htmlcov/`
 
 4. **Lock Files and Dependencies**
-   - `poetry.lock`
+   - `uv.lock`
    - `package-lock.json`
 
 5. **Temporary and Cache Files**

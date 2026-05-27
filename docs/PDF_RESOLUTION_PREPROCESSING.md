@@ -358,7 +358,7 @@ rm -rf /tmp/data_ingestor_upscaled/
 Run Phase 1c unit tests:
 
 ```bash
-poetry run pytest tests/unit/test_pdf_resolution.py tests/unit/test_pdf_upscaler.py -v
+uv run pytest tests/unit/test_pdf_resolution.py tests/unit/test_pdf_upscaler.py -v
 ```
 
 ### Integration Tests
@@ -381,7 +381,7 @@ assert result.success
 Run comprehensive integration tests:
 
 ```bash
-poetry run pytest tests/integration/test_pdf_upscaling_integration.py -v -s
+uv run pytest tests/integration/test_pdf_upscaling_integration.py -v -s
 ```
 
 ## Validation
@@ -467,7 +467,7 @@ Step 3: Verify Upscaled Resolution
 Run the comprehensive integration test suite:
 
 ```bash
-poetry run pytest tests/integration/test_pdf_upscaling_integration.py -v -s
+uv run pytest tests/integration/test_pdf_upscaling_integration.py -v -s
 ```
 
 This tests:

@@ -1520,7 +1520,7 @@ The system SHALL be delivered as a containerized application.
 
 **Dependencies:**
 - All dependencies specified in `pyproject.toml`
-- Reproducible builds (lock file: `poetry.lock`)
+- Reproducible builds (lock file: `uv.lock`)
 
 **Image Size:**
 - Target: < 2GB (compressed)

@@ -861,22 +861,22 @@ SUMMARY_CACHE_ENABLED=true
 
 2. **Install Dependencies**:
    ```bash
-   poetry install --with advanced-pdf,ml
+   uv sync --extra advanced-pdf,ml
    ```
 
 3. **Initialize Database**:
    ```bash
-   poetry run data-ingestor init --create-collections
+   uv run data-ingestor init --create-collections
    ```
 
 4. **Process Documents**:
    ```bash
-   poetry run data-ingestor process-batch docs/ --with-summaries
+   uv run data-ingestor process-batch docs/ --with-summaries
    ```
 
 5. **Start Query Interface**:
    ```bash
-   poetry run data-ingestor serve --port 8000
+   uv run data-ingestor serve --port 8000
    ```
 
 ---

@@ -57,7 +57,7 @@ The data_ingestor project currently has an empty .github folder and needs a comp
 # Configuration and deployment
 /.github/ @Byron
 /pyproject.toml @Byron
-/poetry.lock @Byron
+/uv.lock @Byron
 /requirements*.txt @Byron
 
 # Security-sensitive
@@ -141,7 +141,7 @@ CLAUDE.md @Byron
 ### Security Assessment
 - [ ] No known vulnerabilities in updated dependencies
 - [ ] Requirements.txt updated
-- [ ] poetry.lock synchronized
+- [ ] uv.lock synchronized
 
 ### Auto-merge Criteria
 - [ ] All CI checks pass
@@ -199,9 +199,7 @@ exceptions:
 ```yaml
 env:
   CI_ENVIRONMENT: true
-  POETRY_VERSION: 2.1.2
-  POETRY_CACHE_DIR: ~/.cache/pypoetry
-  POETRY_VENV_IN_PROJECT: true
+  UV_CACHE_DIR: ~/.cache/uv
   MYPY_CACHE_DIR: ~/.cache/mypy
 
 jobs:
@@ -211,12 +209,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install Poetry and Configure
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          poetry config virtualenvs.in-project true
-          poetry self add poetry-plugin-export
-      - name: Cache Poetry dependencies
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Cache uv dependencies
         uses: actions/cache@v4
 ```
 
@@ -231,7 +226,7 @@ jobs:
     steps:
       - name: Run test suite
         run: |
-          poetry run pytest -v \
+          uv run pytest -v \
             --cov=src \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
@@ -246,15 +241,15 @@ jobs:
   quality-checks:
     steps:
       - name: Type checking with MyPy
-        run: poetry run mypy src --config-file=pyproject.toml
+        run: uv run mypy src --config-file=pyproject.toml
       - name: Code formatting
-        run: poetry run black . --check
+        run: uv run black . --check
       - name: Linting
-        run: poetry run ruff check .
+        run: uv run ruff check .
       - name: Security scanning
         run: |
-          poetry run bandit -r src
-          poetry run safety check
+          uv run bandit -r src
+          uv run safety check
 ```
 
 **data_ingestor Specific:**
@@ -284,14 +279,14 @@ jobs:
     steps:
       - name: Check dependency changes
         run: |
-          if git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -E "(poetry\.lock|pyproject\.toml)"; then
+          if git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -E "(uv\.lock|pyproject\.toml)"; then
             echo "changed=true"
           fi
 
       - name: Validate Requirements Sync
         if: dependencies changed
         run: |
-          poetry export -f requirements.txt --output requirements.txt --without-hashes
+          uv export --format requirements-txt --output-file requirements.txt --no-hashes
           if ! git diff --exit-code requirements*.txt; then
             echo "::error::Requirements files out of sync"
             exit 1
@@ -359,10 +354,10 @@ jobs:
   security-scanning:
     steps:
       - name: Bandit Security Analysis
-        run: poetry run bandit -r src -f json -o bandit-report.json
+        run: uv run bandit -r src -f json -o bandit-report.json
 
       - name: Safety Vulnerability Scan
-        run: poetry run safety check --json --output safety-report.json
+        run: uv run safety check --json --output safety-report.json
 
       - name: Semgrep Security Analysis
         uses: semgrep/semgrep-action@v1
@@ -475,9 +470,7 @@ Override organization-level files only when:
 ```yaml
 # From pyproject.toml and .env.example
 CI_ENVIRONMENT: true
-POETRY_VERSION: 2.1.2
-POETRY_CACHE_DIR: ~/.cache/pypoetry
-POETRY_VENV_IN_PROJECT: true
+UV_CACHE_DIR: ~/.cache/uv
 MYPY_CACHE_DIR: ~/.cache/mypy
 
 # data_ingestor specific
@@ -507,6 +500,6 @@ SEMGREP_APP_TOKEN - Semgrep security scanning (optional)
 ## References
 
 - xero_crypto CI: Comprehensive financial system CI with database integration
-- PromptCraft CI: Optimized Poetry caching and dependency management
+- PromptCraft CI: Optimized dependency caching and management (originally Poetry, now uv)
 - Organization .github: Community health files and standards
 - GitHub Actions Best Practices: https://docs.github.com/en/actions/learn-github-actions/best-practices

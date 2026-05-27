@@ -329,23 +329,21 @@ torch = "^2.0.0"          # PyTorch (optional: CPU or GPU)
 python-email = "*"  # Standard library (no install needed)
 ```
 
-**Optional (GPU Acceleration)**:
+**Optional (GPU Acceleration)** -- PEP 621 optional-dependency:
 ```toml
-[tool.poetry.group.gpu]
-optional = true
-
-[tool.poetry.group.gpu.dependencies]
-docling = {version = "^2.0.0", extras = ["gpu"]}
-torch = {version = "^2.0.0", source = "pytorch-gpu"}
+[project.optional-dependencies]
+gpu = [
+    "docling[gpu]>=2.0.0",
+    "torch>=2.0.0",
+]
 ```
 
-**Optional (CJK Support - Phase 3-4)**:
+**Optional (CJK Support - Phase 3-4)** -- PEP 621 optional-dependency:
 ```toml
-[tool.poetry.group.cjk]
-optional = true
-
-[tool.poetry.group.cjk.dependencies]
-paddleocr = "^2.7.0"  # Apache 2.0 License
+[project.optional-dependencies]
+cjk = [
+    "paddleocr>=2.7.0",  # Apache 2.0 License
+]
 ```
 
 ---
