@@ -84,8 +84,8 @@ wtd:summary
 ### Security Assessment
 - [ ] No known vulnerabilities in updated dependencies
 - [ ] All dependencies scanned with pip-audit
-- [ ] Requirements.txt synchronized with poetry.lock
-- [ ] Poetry export plugin available for requirements generation
+- [ ] Requirements.txt synchronized with uv.lock (via `uv export --format requirements-txt --hashes`)
+- [ ] uv version pinned in CI workflows
 
 ### Auto-merge Criteria
 - [ ] All CI checks pass (tests, linting, security scans)
