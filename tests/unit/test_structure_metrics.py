@@ -5,8 +5,6 @@ Tests section F1, reading order F1, and Kendall's tau with comprehensive
 coverage of all functions, branches, and edge cases.
 """
 
-import pytest
-
 from data_ingestor.evaluation.metrics.structure_metrics import (
     calculate_kendall_tau,
     calculate_reading_order_f1,

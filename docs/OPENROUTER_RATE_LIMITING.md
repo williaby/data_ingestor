@@ -211,7 +211,7 @@ Rate limiting is enabled by default and works transparently:
 
 ```bash
 # Process PDF with LLM enhancement (rate limiting automatic)
-poetry run data-ingestor process document.pdf --output output.json
+uv run data-ingestor process document.pdf --output output.json
 ```
 
 ### Disable Rate Limiting (Not Recommended)
@@ -365,10 +365,10 @@ Comprehensive unit tests available in [tests/unit/test_rate_limiter.py](tests/un
 
 ```bash
 # Run rate limiter tests
-poetry run pytest tests/unit/test_rate_limiter.py -v
+uv run pytest tests/unit/test_rate_limiter.py -v
 
 # Test specific scenarios
-poetry run pytest tests/unit/test_rate_limiter.py::TestRateLimiter::test_basic_rate_limiting -v
+uv run pytest tests/unit/test_rate_limiter.py::TestRateLimiter::test_basic_rate_limiting -v
 ```
 
 ## Support

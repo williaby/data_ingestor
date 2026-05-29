@@ -1,5 +1,6 @@
 """Document router for selecting appropriate parsers."""
 
+import contextlib
 import hashlib
 import logging
 from pathlib import Path
@@ -148,14 +149,12 @@ class DocumentRouter:
             )
 
         # Create document
-        doc = Document(
+        return Document(
             source_path=source_path_str,
             source_url=source_url,
             format=document_format,
             metadata=metadata or {},
         )
-
-        return doc
 
     def is_duplicate(self, document: Document) -> bool:
         """Check if document has been processed before.
@@ -221,7 +220,7 @@ class DocumentRouter:
                 if preflight_result.should_use_upscaled and preflight_result.upscaled_path:
                     logger.info(
                         f"Using upscaled PDF: {preflight_result.upscaled_path} "
-                        f"(upscaling took {preflight_result.upscaling_result.get('processing_time', 0):.2f}s)"
+                        f"(upscaling took {preflight_result.upscaling_result.get('processing_time', 0):.2f}s)",
                     )
                     document.source_path = preflight_result.upscaled_path
 
@@ -300,12 +299,9 @@ class DocumentRouter:
 
         # Cleanup temporary upscaled file if parsing failed
         if preflight_result and preflight_result.upscaled_path:
-            try:
+            with contextlib.suppress(Exception):
                 Path(preflight_result.upscaled_path).unlink(missing_ok=True)
-            except Exception:
-                pass
 
-        error_summary = "; ".join(errors)
         raise ParserError(
             message=f"All parsers failed for document format {document.format.value}",
             parser_name="all",

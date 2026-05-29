@@ -15,6 +15,7 @@ on:
     branches: [main, master]
     paths:
       - 'src/**/*.py'
+      - 'scripts/**/*.py'
       - 'pyproject.toml'
       - 'requirements*.txt'
       - '.github/workflows/fips-compatibility.yml'
@@ -22,6 +23,7 @@ on:
     branches: [main, master]
     paths:
       - 'src/**/*.py'
+      - 'scripts/**/*.py'
       - 'pyproject.toml'
       - 'requirements*.txt'
   schedule:

@@ -6,18 +6,14 @@ Tests base functionality with a concrete test implementation.
 
 import json
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from datetime import UTC, datetime
-
 from data_ingestor.core.models import (
     Document,
-    DocumentElement,
     DocumentFormat,
-    ElementMetadata,
-    ElementType,
     ProcessingStatus,
 )
 from data_ingestor.evaluation.base import BaseEvaluator
@@ -53,7 +49,7 @@ class TestEvaluator(BaseEvaluator):
         """Return test baseline targets."""
         return {
             "cer": 0.10,  # Lower is better
-            "f1": 0.90,   # Higher is better
+            "f1": 0.90,  # Higher is better
         }
 
 
@@ -91,7 +87,7 @@ class TestBaseEvaluator:
         return {
             "doc_id": "test_doc_1",
             "text": "Test content",
-            "elements": [{"type": "text", "content": "Test content"}]
+            "elements": [{"type": "text", "content": "Test content"}],
         }
 
     def test_initialization(self, temp_gt_dir):
@@ -281,6 +277,7 @@ class TestBaseEvaluator:
 
     def test_validate_document_no_metadata(self, evaluator, sample_ground_truth):
         """Test validation with document missing metadata."""
+
         # Create document-like object without metadata
         class FakeDoc:
             pass
@@ -308,7 +305,7 @@ class TestBaseEvaluator:
             failed_documents=0,
             mean_metrics={
                 "character_error_rate": 0.05,  # Better than target (0.10), "error" in name
-                "f1": 0.95,   # Better than target (0.90)
+                "f1": 0.95,  # Better than target (0.90)
             },
         )
 
@@ -344,7 +341,7 @@ class TestBaseEvaluator:
             failed_documents=0,
             mean_metrics={
                 "character_error_rate": 0.15,  # Worse than target (0.10), "error" in name
-                "f1": 0.85,   # Worse than target (0.90)
+                "f1": 0.85,  # Worse than target (0.90)
             },
         )
 

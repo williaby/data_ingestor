@@ -38,7 +38,6 @@ jobs:
             uploads.github.com:443
             pypi.org:443
             files.pythonhosted.org:443
-            install.python-poetry.org:443
 
       - name: Checkout Repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -52,40 +51,33 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
+      - name: Install uv
+        run: pip install uv
 
-      - name: Cache Poetry Dependencies
+      - name: Cache uv Dependencies
         uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             .venv
-            ~/.cache/pypoetry
-          key: release-poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+            ~/.cache/uv
+          key: release-uv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
-            release-poetry-${{ runner.os }}-
+            release-uv-${{ runner.os }}-
 
       - name: Install Dependencies
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --with dev --no-interaction
+          uv sync --frozen
 
       - name: Run Tests
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run pytest -v \
+          uv run --frozen pytest -v \
             --cov=src \
             --cov-report=term-missing \
             -m "not slow and not performance"
 
       - name: Build Package
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry build
+          uv build
           ls -lh dist/
 
       - name: Setup Node.js for Semantic Release
@@ -148,7 +140,7 @@ jobs:
                 "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file."
               }],
               ["@semantic-release/exec", {
-                "prepareCmd": "poetry version ${nextRelease.version}"
+                "prepareCmd": "uv version ${nextRelease.version}"
               }],
               ["@semantic-release/github", {
                 "assets": [

@@ -331,21 +331,19 @@ python-email = "*"  # Standard library (no install needed)
 
 **Optional (GPU Acceleration)**:
 ```toml
-[tool.poetry.group.gpu]
-optional = true
-
-[tool.poetry.group.gpu.dependencies]
-docling = {version = "^2.0.0", extras = ["gpu"]}
-torch = {version = "^2.0.0", source = "pytorch-gpu"}
+[project.optional-dependencies]
+gpu = [
+    "docling[gpu]>=2.0.0,<3.0.0",
+    "torch>=2.0.0,<3.0.0",  # configure a custom index via [[tool.uv.index]] if needed
+]
 ```
 
 **Optional (CJK Support - Phase 3-4)**:
 ```toml
-[tool.poetry.group.cjk]
-optional = true
-
-[tool.poetry.group.cjk.dependencies]
-paddleocr = "^2.7.0"  # Apache 2.0 License
+[project.optional-dependencies]
+cjk = [
+    "paddleocr>=2.7.0,<3.0.0",  # Apache 2.0 License
+]
 ```
 
 ---

@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,16 +12,16 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
 
+from data_ingestor.benchmarking import BenchmarkOrchestrator, BenchmarkReporter
+from data_ingestor.benchmarking.baseline import BaselineManager, ComparativeAnalyzer
+from data_ingestor.benchmarking.config_tester import ConfigSuite, ParserConfigurationTester
+from data_ingestor.benchmarking.fingerprint import HardwareFingerprint
 from data_ingestor.chunking import ByTitleChunker, TokenChunker
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
 from data_ingestor.export.exporter import DocumentExporter, OutputFormat
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
-from data_ingestor.benchmarking import BenchmarkOrchestrator, BenchmarkReporter
-from data_ingestor.benchmarking.config_tester import ConfigSuite, ParserConfigurationTester
-from data_ingestor.benchmarking.baseline import BaselineManager, ComparativeAnalyzer
-from data_ingestor.benchmarking.fingerprint import HardwareFingerprint, DatasetFingerprint
 
 
 def setup_logging(debug: bool = False) -> Console:
@@ -402,7 +403,7 @@ def benchmark_report(
     console: Console = ctx.obj["console"]
 
     try:
-        console.print(f"\n[bold blue]📊 Generating Report[/bold blue]\n")
+        console.print("\n[bold blue]📊 Generating Report[/bold blue]\n")
         console.print(f"[cyan]Input:[/cyan] {results_file}")
         console.print(f"[cyan]Format:[/cyan] {format}\n")
 
@@ -443,7 +444,7 @@ def benchmark_report(
             console.print(f"[cyan]{format_name}:[/cyan] {file_path}")
 
         if "html" in [f[0] for f in generated_files]:
-            html_file = [f[1] for f in generated_files if f[0] == "HTML"][0]
+            html_file = next(f[1] for f in generated_files if f[0] == "HTML")
             console.print(f"\n[dim]Open in browser:[/dim] file://{Path(html_file).absolute()}")
 
     except Exception as e:
@@ -551,10 +552,7 @@ def benchmark_configs(
 
         # Find documents
         docs_path = Path(documents)
-        if docs_path.is_file():
-            doc_files = [docs_path]
-        else:
-            doc_files = list(docs_path.glob("*.pdf"))
+        doc_files = [docs_path] if docs_path.is_file() else list(docs_path.glob("*.pdf"))
 
         console.print(f"[cyan]Documents:[/cyan] {len(doc_files)} files")
         console.print(f"[cyan]Workers:[/cyan] {workers}\n")
@@ -576,6 +574,7 @@ def benchmark_configs(
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         import json
+
         with open(output_path, "w") as f:
             json.dump([r.to_dict() for r in results], f, indent=2)
 
@@ -648,10 +647,12 @@ def baseline_create(
 
         # Load results
         import json
+
         with open(results) as f:
             results_data = json.load(f)
 
         from data_ingestor.benchmarking.config_tester import ConfigurationResult
+
         config_results = [ConfigurationResult.from_dict(r) for r in results_data]
 
         console.print(f"[cyan]Baseline name:[/cyan] {name}")
@@ -667,6 +668,7 @@ def baseline_create(
             # For now, create a minimal profile
             console.print("[dim]Creating minimal dataset profile...[/dim]")
             from data_ingestor.benchmarking.fingerprint import DatasetProfile
+
             dataset_profile = DatasetProfile(
                 total_documents=0,
                 total_size_gb=0.0,
@@ -684,7 +686,8 @@ def baseline_create(
             # Require manual hardware/dataset profiles
             console.print("[yellow]Warning: Auto-fingerprint not enabled[/yellow]")
             console.print("[dim]Creating default profiles...[/dim]")
-            from data_ingestor.benchmarking.fingerprint import HardwareProfile, DatasetProfile
+            from data_ingestor.benchmarking.fingerprint import DatasetProfile, HardwareProfile
+
             hardware_profile = HardwareProfile(
                 cpu_model="unknown",
                 cpu_cores=0,
@@ -727,7 +730,7 @@ def baseline_create(
             metadata=metadata,
         )
 
-        console.print(f"\n[bold green]✓ Baseline Created[/bold green]")
+        console.print("\n[bold green]✓ Baseline Created[/bold green]")
         console.print(f"[cyan]Name:[/cyan] {baseline.name}")
         console.print(f"[cyan]Version:[/cyan] {baseline.version}")
         console.print(f"[cyan]Created:[/cyan] {baseline.created_at}")
@@ -829,15 +832,17 @@ def baseline_compare(
 
             # Load results and create temporary baseline
             import json
+
             with open(results) as f:
                 results_data = json.load(f)
 
             from data_ingestor.benchmarking.config_tester import ConfigurationResult
-            from data_ingestor.benchmarking.fingerprint import HardwareProfile, DatasetProfile
+
             config_results = [ConfigurationResult.from_dict(r) for r in results_data]
 
             # Create temporary baseline for comparison
             from data_ingestor.benchmarking.baseline import Baseline
+
             bl2 = Baseline(
                 name="temporary",
                 version=0,
@@ -854,7 +859,7 @@ def baseline_compare(
             sys.exit(1)
 
         # Display summary
-        console.print(f"\n[bold green]✓ Comparison Complete[/bold green]\n")
+        console.print("\n[bold green]✓ Comparison Complete[/bold green]\n")
         console.print(f"[cyan]Comparisons:[/cyan] {len(report.comparisons)}")
 
         summary = report.summary
@@ -872,6 +877,7 @@ def baseline_compare(
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         import json
+
         with open(output_path, "w") as f:
             json.dump(report.to_dict(), f, indent=2)
 
@@ -949,10 +955,12 @@ def compare_configs(
 
         # Load results
         import json
+
         with open(results_file) as f:
             results_data = json.load(f)
 
         from data_ingestor.benchmarking.config_tester import ConfigurationResult
+
         results = [ConfigurationResult.from_dict(r) for r in results_data]
 
         console.print(f"[cyan]Configurations:[/cyan] {len(results)}\n")

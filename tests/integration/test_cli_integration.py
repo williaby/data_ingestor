@@ -22,7 +22,10 @@ class TestCLIProcessCommand:
     """Integration tests for process command with real PDFs."""
 
     def test_process_command_with_real_pdf(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """Test CLI process command with actual PDF file."""
         pdf_path = sample_pdf_paths["simple_text"]
@@ -47,7 +50,10 @@ class TestCLIProcessCommand:
         assert "elements" in data or "content" in data
 
     def test_process_command_markdown_output(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """Test CLI markdown output format."""
         pdf_path = sample_pdf_paths["simple_text"]
@@ -68,7 +74,10 @@ class TestCLIProcessCommand:
         assert "Test Document" in content or "#" in content
 
     def test_process_command_both_formats(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """Test CLI with both JSON and markdown output."""
         pdf_path = sample_pdf_paths["multipage"]
@@ -89,7 +98,10 @@ class TestCLIProcessCommand:
         assert md_file.exists()
 
     def test_process_command_basic_validation(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """Test CLI output has correct structure (works without Marker).
 
@@ -131,8 +143,11 @@ class TestCLIProcessCommand:
 
     @pytest.mark.requires_marker
     def test_process_command_quality_validation(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path],
-        validation_dir: Path, tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        validation_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test CLI output matches high-quality parsing expectations (requires Marker).
 
@@ -181,7 +196,10 @@ class TestCLIBatchProcessing:
 
     @pytest.mark.slow
     def test_batch_processing_multiple_pdfs(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """
         Test processing multiple PDFs sequentially.
@@ -206,7 +224,10 @@ class TestCLIBatchProcessing:
             assert file_exists, f"Output file not created for {name}"
 
     def test_process_command_with_different_pdfs(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path], tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
+        tmp_path: Path,
     ) -> None:
         """Test CLI handles different PDF types correctly."""
         test_cases = [
@@ -247,7 +268,9 @@ class TestCLIErrorHandling:
     """Integration tests for CLI error handling with real scenarios."""
 
     def test_process_nonexistent_file(
-        self, cli_runner: CliRunner, tmp_path: Path
+        self,
+        cli_runner: CliRunner,
+        tmp_path: Path,
     ) -> None:
         """Test CLI handles nonexistent input file."""
         nonexistent_file = tmp_path / "nonexistent.pdf"
@@ -262,7 +285,9 @@ class TestCLIErrorHandling:
         assert result.exit_code != 0
 
     def test_process_invalid_output_directory(
-        self, cli_runner: CliRunner, sample_pdf_paths: dict[str, Path]
+        self,
+        cli_runner: CliRunner,
+        sample_pdf_paths: dict[str, Path],
     ) -> None:
         """Test CLI handles invalid output directory."""
         pdf_path = sample_pdf_paths["simple_text"]

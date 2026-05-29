@@ -51,7 +51,7 @@ Automatically excluded in local development and VS Code.
 # Uses: SKIP_MARKER_PARSER=1, -m 'not slow', -n 2
 
 # Or manually:
-SKIP_MARKER_PARSER=1 poetry run pytest tests/ -m 'not slow'
+SKIP_MARKER_PARSER=1 uv run pytest tests/ -m 'not slow'
 
 # Results: ~35s, 660+ tests
 ```
@@ -60,7 +60,7 @@ SKIP_MARKER_PARSER=1 poetry run pytest tests/ -m 'not slow'
 
 ```bash
 # Full test suite with Marker parser
-poetry run pytest tests/
+uv run pytest tests/
 
 # Results: ~2-5min, 660+ tests including quality validation
 ```
@@ -69,13 +69,13 @@ poetry run pytest tests/
 
 ```bash
 # Only basic validation (without Marker)
-SKIP_MARKER_PARSER=1 poetry run pytest tests/ -m 'not slow and not requires_marker'
+SKIP_MARKER_PARSER=1 uv run pytest tests/ -m 'not slow and not requires_marker'
 
 # Only quality validation (with Marker)
-poetry run pytest tests/ -m 'requires_marker'
+uv run pytest tests/ -m 'requires_marker'
 
 # Only fast tests (for quick checks)
-poetry run pytest tests/ -m fast
+uv run pytest tests/ -m fast
 ```
 
 ## VS Code Configuration
@@ -146,11 +146,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
-          poetry install
+          uv sync
       - name: Run fast tests
         env:
           SKIP_MARKER_PARSER: "1"
-        run: poetry run pytest tests/ -m 'not slow' -n auto
+        run: uv run pytest tests/ -m 'not slow' -n auto
 
   # Tier 2: Comprehensive tests (PRs to main)
   quality-tests:
@@ -160,9 +160,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install with Marker
         run: |
-          poetry install --with advanced-pdf
+          uv sync --extra advanced-pdf
       - name: Run comprehensive tests
-        run: poetry run pytest tests/ -n auto
+        run: uv run pytest tests/ -n auto
 ```
 
 ## Benefits

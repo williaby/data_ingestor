@@ -22,7 +22,7 @@ class TestBenchmarkRunner:
         assert runner.workers == 4
         assert runner.batch_size == 32
         assert runner.timeout == 120
-        assert runner.router is not None
+        assert runner.settings is not None
 
     def test_runner_initialization_with_custom_settings(self) -> None:
         """Test BenchmarkRunner initialization with custom settings."""
@@ -31,17 +31,18 @@ class TestBenchmarkRunner:
         assert runner.workers == 8
         assert runner.batch_size == 16
         assert runner.timeout == 60
-        assert runner.router is not None
+        assert runner.settings is not None
 
     def test_runner_has_router_configured(self) -> None:
-        """Test runner has DocumentRouter properly configured."""
+        """Test runner has parsers available for router configuration."""
         runner = BenchmarkRunner()
 
-        # Should have DocumentRouter
-        assert runner.router is not None
+        # Settings used to build a router per benchmark run
+        assert runner.settings is not None
 
-        # Router should have parsers registered
-        assert runner.router.parser_registry is not None
+        # Available parsers can be registered on a per-run router
+        assert runner.available_parsers is not None
+        assert "pymupdf" in runner.available_parsers
 
     def test_runner_parallel_configuration(self) -> None:
         """Test runner configures parallel processing correctly."""
@@ -140,8 +141,8 @@ class TestBenchmarkReporter:
                         "total_files": 5,
                         "successful": 5,
                         "failed": 0,
-                    }
-                }
+                    },
+                },
             },
             "overall": {
                 "total_files": 5,
@@ -168,8 +169,8 @@ class TestBenchmarkReporter:
                     "pymupdf": {
                         "total_files": 5,
                         "successful": 5,
-                    }
-                }
+                    },
+                },
             },
             "overall": {},
         }
@@ -229,10 +230,10 @@ class TestBenchmarkReporter:
                                 "failed_documents": 0,
                                 "success_rate": 1.0,
                                 "avg_processing_time": 0.5,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }

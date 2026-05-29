@@ -93,7 +93,5 @@ class StorageError(DataIngestorError):
     """Exception raised when storage operation fails."""
 
 
-
 class ChunkingError(DataIngestorError):
     """Exception raised when document chunking fails."""
-

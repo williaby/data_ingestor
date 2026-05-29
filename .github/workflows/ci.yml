@@ -44,9 +44,7 @@ concurrency:
 
 env:
   CI_ENVIRONMENT: true
-  POETRY_VERSION: 2.1.2
-  POETRY_CACHE_DIR: ~/.cache/pypoetry
-  POETRY_VENV_IN_PROJECT: true
+  UV_CACHE_DIR: ~/.cache/uv
   MYPY_CACHE_DIR: ~/.cache/mypy
   # Data ingestor specific environment
   DATA_INGESTOR_TEMP_DIR: /tmp/data_ingestor
@@ -59,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      poetry-hash: ${{ steps.cache-key.outputs.poetry-hash }}
+      uv-hash: ${{ steps.cache-key.outputs.uv-hash }}
       pyproject-hash: ${{ steps.cache-key.outputs.pyproject-hash }}
     steps:
       - name: Harden the runner (Audit outbound calls)
@@ -72,7 +70,7 @@ jobs:
       - name: Generate cache keys
         id: cache-key
         run: |
-          echo "poetry-hash=${{ hashFiles('**/poetry.lock') }}" >> $GITHUB_OUTPUT
+          echo "uv-hash=${{ hashFiles('**/uv.lock') }}" >> $GITHUB_OUTPUT
           echo "pyproject-hash=${{ hashFiles('**/pyproject.toml') }}" >> $GITHUB_OUTPUT
 
       - name: Set up Python 3.11
@@ -80,43 +78,36 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry and Configure
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-          poetry self add poetry-plugin-export
+      - name: Install uv
+        run: pip install uv
 
       # Document processing optimized caching strategy
-      - name: Cache Poetry dependencies
+      - name: Cache uv dependencies
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
-            ~/.cache/pypoetry
-          key: doc-deps-${{ runner.os }}-${{ steps.cache-key.outputs.poetry-hash }}
+            ~/.cache/uv
+          key: doc-deps-${{ runner.os }}-${{ steps.cache-key.outputs.uv-hash }}
           restore-keys: |
             doc-deps-${{ runner.os }}-
 
       - name: Install dependencies with document processing libraries
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           # Install main dependencies including docling, marker, transformers
-          poetry install --sync --no-interaction --with dev
+          uv sync --frozen
 
           # Verify document processing dependencies
-          poetry run python -c "import docling; print(f'Docling version: {docling.__version__}')" || echo "Docling not available"
-          poetry run python -c "import pdfplumber; print('pdfplumber installed successfully')"
+          uv run --frozen python -c "import docling; print(f'Docling version: {docling.__version__}')" || echo "Docling not available"
+          uv run --frozen python -c "import pdfplumber; print('pdfplumber installed successfully')"
 
       - name: Document processing dependency validation
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "📄 Validating document processing dependencies..."
-          poetry run python -c "
+          uv run --frozen python -c "
           import sys
-          required_deps = ['pdfplumber', 'pypdf', 'python_docx', 'markdown', 'tiktoken']
+          # Import names (not package names) for the project's core document deps
+          required_deps = ['pdfplumber', 'fitz', 'pymupdf4llm', 'docx', 'tiktoken']
           optional_deps = ['docling', 'transformers', 'torch']
 
           print('🔍 Core Dependencies:')
@@ -143,7 +134,7 @@ jobs:
         run: |
           echo "🧹 Cleaning up disk space for document processing project..."
           pip cache purge 2>/dev/null || true
-          poetry cache clear --all . -n 2>/dev/null || true
+          uv cache clean 2>/dev/null || true
           sudo apt-get clean 2>/dev/null || true
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc 2>/dev/null || true
 
@@ -171,27 +162,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
+      - name: Install uv
+        run: pip install uv
 
       - name: Restore dependency cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
-            ~/.cache/pypoetry
-          key: doc-deps-${{ runner.os }}-${{ needs.setup-optimized.outputs.poetry-hash }}
+            ~/.cache/uv
+          key: doc-deps-${{ runner.os }}-${{ needs.setup-optimized.outputs.uv-hash }}
           restore-keys: |
             doc-deps-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction --with dev
+          uv sync --frozen
 
       - name: Install system dependencies for document processing
         run: |
@@ -208,9 +194,8 @@ jobs:
       # Run comprehensive test suite with parallel execution
       - name: Run document processing test suite
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🧪 Running document processing tests (parallelized)..."
-          poetry run pytest -v \
+          uv run --frozen pytest -v \
             -n auto \
             --cov=src \
             --cov-report=xml:coverage.xml \
@@ -230,9 +215,8 @@ jobs:
       # Document processing quality validation
       - name: Run parsing quality tests
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "📄 Running parsing quality and accuracy tests..."
-          poetry run pytest -v \
+          uv run --frozen pytest -v \
             -m "parser or chunking or quality" \
             tests/ || true  # Allow to continue during development
         env:
@@ -269,45 +253,37 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
+      - name: Install uv
+        run: pip install uv
 
       - name: Restore dependency cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             .venv
-            ~/.cache/pypoetry
-          key: doc-deps-${{ runner.os }}-${{ needs.setup-optimized.outputs.poetry-hash }}
+            ~/.cache/uv
+          key: doc-deps-${{ runner.os }}-${{ needs.setup-optimized.outputs.uv-hash }}
           restore-keys: |
             doc-deps-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction --with dev
+          uv sync --frozen
 
       - name: Type checking with MyPy
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🔍 Running strict type checking for document processing system..."
-          poetry run mypy src --config-file=pyproject.toml --cache-dir=${{ env.MYPY_CACHE_DIR }}
+          uv run --frozen mypy src --config-file=pyproject.toml --cache-dir=${{ env.MYPY_CACHE_DIR }}
 
       - name: Code formatting validation
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🧹 Validating code formatting..."
-          poetry run black . --check --config=pyproject.toml
+          uv run --frozen black . --check --config=pyproject.toml
 
       - name: Linting with enhanced rules
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🔧 Running enhanced linting for document processing..."
-          poetry run ruff check . --config=pyproject.toml
+          uv run --frozen ruff check . --config=pyproject.toml
 
       # Note: Security scanning (Bandit, Safety) moved to security-analysis.yml workflow
       # This eliminates duplicate scans and consolidates security tooling

@@ -5,11 +5,11 @@ Comprehensive tests to achieve 80%+ coverage for the evaluation framework.
 """
 
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock
 
-from data_ingestor.core.models import Document, DocumentElement, ElementType, ElementMetadata, DocumentFormat
+import pytest
+
+from data_ingestor.core.models import Document
 from data_ingestor.evaluation.doclaynet_evaluator import DocLayNetEvaluator
 from data_ingestor.evaluation.models import MetricType
 
@@ -133,8 +133,8 @@ def sample_ground_truth():
                     "category_id": 1,
                     "area": 4000,
                 },
-            ]
-        }
+            ],
+        },
     }
 
 
@@ -206,7 +206,7 @@ class TestDocLayNetEvaluatorEvaluateDocument:
 
         # Should skip mAP but still calculate reading order
         assert result.success is True
-        metric_names = [m.name for m in result.metrics]
+        [m.name for m in result.metrics]
         # mAP should be skipped when no bboxes
         # Reading order metrics may still be calculated
 
@@ -295,7 +295,7 @@ class TestDocLayNetEvaluatorBoxConversion:
             "annotations": [
                 {"id": 1, "bbox": [100, 50], "category": "Text"},  # Invalid: only 2 values
                 {"id": 2, "bbox": [10, 20, 30, 40], "category": "Table"},  # Valid
-            ]
+            ],
         }
 
         boxes = evaluator._annotations_to_boxes(layout)
@@ -324,7 +324,7 @@ class TestDocLayNetEvaluatorReadingOrder:
                 {"id": 1, "reading_order": 2, "bbox": [0, 100, 10, 10]},
                 {"id": 2, "reading_order": 1, "bbox": [0, 50, 10, 10]},
                 {"id": 3, "reading_order": 3, "bbox": [0, 150, 10, 10]},
-            ]
+            ],
         }
 
         order = evaluator._extract_ground_truth_order(layout)
@@ -337,9 +337,9 @@ class TestDocLayNetEvaluatorReadingOrder:
         layout = {
             "annotations": [
                 {"id": 1, "bbox": [0, 150, 10, 10]},  # Bottom
-                {"id": 2, "bbox": [0, 50, 10, 10]},   # Top
+                {"id": 2, "bbox": [0, 50, 10, 10]},  # Top
                 {"id": 3, "bbox": [0, 100, 10, 10]},  # Middle
-            ]
+            ],
         }
 
         order = evaluator._extract_ground_truth_order(layout)

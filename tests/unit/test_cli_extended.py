@@ -6,13 +6,12 @@ Tests all CLI commands with various options, error paths, and edge cases.
 
 import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 from click.testing import CliRunner
 
 from data_ingestor.cli.main import cli
-from data_ingestor.core.models import Document, DocumentElement, ElementType
-from data_ingestor.evaluation.models import AggregatedMetrics
 
 
 @pytest.mark.unit
@@ -25,7 +24,9 @@ class TestCLIProcessCommand:
 
         # Create a real PDF file
         pdf_file = tmp_path / "test.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n%Test PDF\n1 0 obj\n<</Type/Catalog>>\nendobj\ntrailer\n<</Root 1 0 R>>\nstartxref\n0\n%%EOF")
+        pdf_file.write_bytes(
+            b"%PDF-1.4\n%Test PDF\n1 0 obj\n<</Type/Catalog>>\nendobj\ntrailer\n<</Root 1 0 R>>\nstartxref\n0\n%%EOF",
+        )
 
         output_file = tmp_path / "output.json"
 
@@ -34,8 +35,10 @@ class TestCLIProcessCommand:
             [
                 "process",
                 str(pdf_file),
-                "--output", str(output_file),
-                "--format", "json",
+                "--output",
+                str(output_file),
+                "--format",
+                "json",
             ],
         )
 
@@ -57,8 +60,10 @@ class TestCLIProcessCommand:
             [
                 "process",
                 str(pdf_file),
-                "--output", str(output_file),
-                "--format", "markdown",
+                "--output",
+                str(output_file),
+                "--format",
+                "markdown",
             ],
         )
 
@@ -79,8 +84,10 @@ class TestCLIProcessCommand:
             [
                 "process",
                 str(pdf_file),
-                "--output", str(output_base),
-                "--format", "both",
+                "--output",
+                str(output_base),
+                "--format",
+                "both",
             ],
         )
 
@@ -99,10 +106,14 @@ class TestCLIProcessCommand:
             [
                 "process",
                 str(pdf_file),
-                "--chunking-strategy", "by_title",
-                "--chunk-size", "500",
-                "--chunk-overlap", "100",
-                "--combine-under", "300",
+                "--chunking-strategy",
+                "by_title",
+                "--chunk-size",
+                "500",
+                "--chunk-overlap",
+                "100",
+                "--combine-under",
+                "300",
             ],
         )
 
@@ -136,8 +147,10 @@ class TestCLIProcessCommand:
             [
                 "process",
                 str(pdf_file),
-                "--output", str(output_file),
-                "--format", "markdown",
+                "--output",
+                str(output_file),
+                "--format",
+                "markdown",
                 "--include-chunks",
             ],
         )
@@ -196,7 +209,9 @@ class TestCLIBenchmarkCommand:
 
     @patch("data_ingestor.cli.main.BenchmarkOrchestrator")
     def test_benchmark_command_basic(
-        self, mock_orchestrator_class: Mock, tmp_path: Path
+        self,
+        mock_orchestrator_class: Mock,
+        tmp_path: Path,
     ) -> None:
         """Test benchmark command basic execution."""
         # Mock the orchestrator
@@ -214,9 +229,12 @@ class TestCLIBenchmarkCommand:
             cli,
             [
                 "benchmark",
-                "-d", "doclaynet",
-                "-p", "pymupdf",
-                "-o", str(tmp_path / "results.json"),
+                "-d",
+                "doclaynet",
+                "-p",
+                "pymupdf",
+                "-o",
+                str(tmp_path / "results.json"),
             ],
         )
 
@@ -226,7 +244,9 @@ class TestCLIBenchmarkCommand:
 
     @patch("data_ingestor.cli.main.BenchmarkOrchestrator")
     def test_benchmark_command_with_workers(
-        self, mock_orchestrator_class: Mock, tmp_path: Path
+        self,
+        mock_orchestrator_class: Mock,
+        tmp_path: Path,
     ) -> None:
         """Test benchmark command with custom workers."""
         mock_orchestrator = Mock()
@@ -239,10 +259,14 @@ class TestCLIBenchmarkCommand:
             cli,
             [
                 "benchmark",
-                "-d", "doclaynet",
-                "-p", "pymupdf",
-                "-w", "8",
-                "-o", str(tmp_path / "results.json"),
+                "-d",
+                "doclaynet",
+                "-p",
+                "pymupdf",
+                "-w",
+                "8",
+                "-o",
+                str(tmp_path / "results.json"),
             ],
         )
 
@@ -251,7 +275,9 @@ class TestCLIBenchmarkCommand:
 
     @patch("data_ingestor.cli.main.BenchmarkOrchestrator")
     def test_benchmark_command_multiple_datasets(
-        self, mock_orchestrator_class: Mock, tmp_path: Path
+        self,
+        mock_orchestrator_class: Mock,
+        tmp_path: Path,
     ) -> None:
         """Test benchmark command with multiple datasets."""
         mock_orchestrator = Mock()
@@ -264,10 +290,14 @@ class TestCLIBenchmarkCommand:
             cli,
             [
                 "benchmark",
-                "-d", "doclaynet",
-                "-p", "pymupdf",
-                "-p", "pymupdf4llm",
-                "-o", str(tmp_path / "results.json"),
+                "-d",
+                "doclaynet",
+                "-p",
+                "pymupdf",
+                "-p",
+                "pymupdf4llm",
+                "-o",
+                str(tmp_path / "results.json"),
             ],
         )
 
@@ -296,10 +326,10 @@ class TestCLIBenchmarkReportCommand:
                             "aggregated": {
                                 "total_documents": 10,
                                 "success_rate": 0.95,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }
@@ -314,8 +344,10 @@ class TestCLIBenchmarkReportCommand:
             [
                 "benchmark-report",
                 str(results_file),
-                "--output", str(output_file),
-                "--format", "html",
+                "--output",
+                str(output_file),
+                "--format",
+                "html",
             ],
         )
 
@@ -345,8 +377,10 @@ class TestCLIBenchmarkReportCommand:
             [
                 "benchmark-report",
                 str(results_file),
-                "--output", str(output_file),
-                "--format", "json",
+                "--output",
+                str(output_file),
+                "--format",
+                "json",
             ],
         )
 
@@ -371,10 +405,10 @@ class TestCLIBenchmarkReportCommand:
                                 "failed_documents": 0,
                                 "success_rate": 1.0,
                                 "avg_processing_time": 1.5,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }
@@ -389,8 +423,10 @@ class TestCLIBenchmarkReportCommand:
             [
                 "benchmark-report",
                 str(results_file),
-                "--output", str(output_file),
-                "--format", "csv",
+                "--output",
+                str(output_file),
+                "--format",
+                "csv",
             ],
         )
 
@@ -415,10 +451,10 @@ class TestCLIBenchmarkReportCommand:
                                 "failed_documents": 0,
                                 "success_rate": 1.0,
                                 "avg_processing_time": 1.5,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }
@@ -432,7 +468,8 @@ class TestCLIBenchmarkReportCommand:
             [
                 "benchmark-report",
                 str(results_file),
-                "--format", "all",
+                "--format",
+                "all",
             ],
         )
 

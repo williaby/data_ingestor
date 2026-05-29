@@ -5,12 +5,10 @@ Implements metrics for evaluating layout detection quality:
 - mAP (mean Average Precision): Layout class detection across document
 """
 
-from typing import Dict, List
-
 
 def calculate_map(
-    predicted_boxes: List[Dict],
-    ground_truth_boxes: List[Dict],
+    predicted_boxes: list[dict],
+    ground_truth_boxes: list[dict],
     iou_threshold: float = 0.5,
 ) -> float:
     """
@@ -38,7 +36,7 @@ def calculate_map(
         return 0.0
 
     # Get unique classes
-    classes = set(box.get("class") for box in ground_truth_boxes)
+    classes = {box.get("class") for box in ground_truth_boxes}
 
     # Calculate AP for each class
     aps = []
@@ -52,13 +50,12 @@ def calculate_map(
         aps.append(ap)
 
     # Mean AP across all classes
-    map_score = sum(aps) / len(aps) if aps else 0.0
-    return map_score
+    return sum(aps) / len(aps) if aps else 0.0
 
 
 def _calculate_class_ap(
-    predicted: List[Dict],
-    ground_truth: List[Dict],
+    predicted: list[dict],
+    ground_truth: list[dict],
     target_class: str,
     iou_threshold: float,
 ) -> float:
@@ -108,11 +105,10 @@ def _calculate_class_ap(
     if precision + recall == 0:
         return 0.0
 
-    ap = 2 * precision * recall / (precision + recall)  # F1 as simplified AP
-    return ap
+    return 2 * precision * recall / (precision + recall)  # F1 as simplified AP
 
 
-def _calculate_iou(bbox1: List[float], bbox2: List[float]) -> float:
+def _calculate_iou(bbox1: list[float], bbox2: list[float]) -> float:
     """
     Calculate Intersection over Union (IoU) for two bounding boxes.
 
@@ -149,5 +145,4 @@ def _calculate_iou(bbox1: List[float], bbox2: List[float]) -> float:
     if union == 0:
         return 0.0
 
-    iou = intersection / union
-    return iou
+    return intersection / union

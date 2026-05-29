@@ -6,19 +6,19 @@ with extensive coverage of error paths, edge cases, and branch coverage.
 """
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, mock_open
-import pytest
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import Mock
 
-from data_ingestor.benchmarking.runner import BenchmarkRunner
+import pytest
+
 from data_ingestor.benchmarking.orchestrator import (
-    BenchmarkOrchestrator,
     BenchmarkConfig,
+    BenchmarkOrchestrator,
 )
 from data_ingestor.benchmarking.reporter import BenchmarkReporter
-from data_ingestor.core.models import Document, DocumentElement, ElementType
-from data_ingestor.evaluation.models import EvaluationResult, AggregatedMetrics
+from data_ingestor.benchmarking.runner import BenchmarkRunner
+from data_ingestor.evaluation.models import EvaluationResult
 
 
 @pytest.mark.unit
@@ -26,17 +26,14 @@ class TestBenchmarkRunnerExtended:
     """Extended tests for BenchmarkRunner with comprehensive coverage."""
 
     def test_runner_initialization_registers_parsers(self) -> None:
-        """Test runner initializes and registers all available parsers."""
+        """Test runner initializes with the available parsers configured."""
         runner = BenchmarkRunner()
 
-        # Should have router with registered parsers
-        assert runner.router is not None
-        assert runner.router.parser_registry is not None
-
-        # Check parsers were registered
-        from data_ingestor.core.models import DocumentFormat
-        parsers = runner.router.parser_registry.get_parsers(DocumentFormat.PDF)
-        assert len(parsers) >= 1  # At least PyMuPDFParser should be registered
+        # Parsers are registered per benchmark run; the runner exposes the
+        # available parser classes it can register.
+        assert runner.available_parsers is not None
+        assert "pymupdf" in runner.available_parsers
+        assert len(runner.available_parsers) >= 1  # At least PyMuPDFParser available
 
     def test_run_batch_with_sample_documents(self, tmp_path: Path) -> None:
         """Test run_batch with sample PDF documents."""
@@ -56,6 +53,7 @@ class TestBenchmarkRunnerExtended:
 
         # Create expected evaluation result
         from data_ingestor.evaluation.models import MetricScore
+
         expected_result = EvaluationResult(
             document_id="test",
             dataset="test_dataset",
@@ -131,7 +129,9 @@ class TestBenchmarkRunnerExtended:
         assert len(results[0].error) > 0
 
     def test_run_batch_parallel_fallback_warning(
-        self, tmp_path: Path, caplog
+        self,
+        tmp_path: Path,
+        caplog,
     ) -> None:
         """Test run_batch_parallel shows fallback warning."""
         runner = BenchmarkRunner()
@@ -151,10 +151,7 @@ class TestBenchmarkRunnerExtended:
             )
 
         # Should log warning about parallel processing not implemented
-        assert any(
-            "Parallel processing not yet implemented" in record.message
-            for record in caplog.records
-        )
+        assert any("Parallel processing not yet implemented" in record.message for record in caplog.records)
 
     def test_process_document_success(self, tmp_path: Path) -> None:
         """Test _process_document with successful parsing."""
@@ -169,6 +166,7 @@ class TestBenchmarkRunnerExtended:
         mock_evaluator.load_ground_truth.return_value = {"text": "test"}
 
         from data_ingestor.evaluation.models import MetricScore
+
         expected_result = EvaluationResult(
             document_id="test",
             dataset="test",
@@ -177,11 +175,21 @@ class TestBenchmarkRunnerExtended:
         )
         mock_evaluator.evaluate_document.return_value = expected_result
 
+        # Build a router with the requested parser registered, as run_batch does.
+        from data_ingestor.core.models import DocumentFormat
+        from data_ingestor.pipeline.router import DocumentRouter
+
+        router = DocumentRouter(runner.settings)
+        parser_class = runner.available_parsers["pymupdf"]
+        parser = parser_class(runner.settings.get_parser_config("pymupdf"))
+        router.parser_registry.register(parser, [DocumentFormat.PDF])
+
         # Process document
         result = runner._process_document(
             doc_file=pdf_file,
             parser_name="pymupdf",
             evaluator=mock_evaluator,
+            router=router,
         )
 
         # Verify result
@@ -200,11 +208,21 @@ class TestBenchmarkRunnerExtended:
         mock_evaluator = Mock()
         mock_evaluator.dataset_name = "test"
 
+        # Build a router with the requested parser registered, as run_batch does.
+        from data_ingestor.core.models import DocumentFormat
+        from data_ingestor.pipeline.router import DocumentRouter
+
+        router = DocumentRouter(runner.settings)
+        parser_class = runner.available_parsers["pymupdf"]
+        parser = parser_class(runner.settings.get_parser_config("pymupdf"))
+        router.parser_registry.register(parser, [DocumentFormat.PDF])
+
         # Process document - should handle exception
         result = runner._process_document(
             doc_file=pdf_file,
             parser_name="pymupdf",
             evaluator=mock_evaluator,
+            router=router,
         )
 
         # Should return failure result with error
@@ -218,7 +236,8 @@ class TestBenchmarkOrchestratorExtended:
     """Extended tests for BenchmarkOrchestrator."""
 
     def test_orchestrator_load_dataset_config_missing_file(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test orchestrator handles missing config file."""
         missing_config = tmp_path / "nonexistent.yaml"
@@ -233,7 +252,8 @@ class TestBenchmarkOrchestratorExtended:
         assert orchestrator.dataset_config == {"datasets": {}}
 
     def test_orchestrator_load_dataset_config_valid_file(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test orchestrator loads valid config file."""
         config_file = tmp_path / "config.yaml"
@@ -257,7 +277,8 @@ workers: 8
         assert "testset" in orchestrator.dataset_config["datasets"]
 
     def test_orchestrator_initialize_evaluators_skips_missing_datasets(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test orchestrator skips datasets not in config."""
         config_file = tmp_path / "config.yaml"
@@ -280,7 +301,9 @@ datasets:
         assert isinstance(orchestrator.evaluators, dict)
 
     def test_orchestrator_initialize_evaluators_handles_file_errors(
-        self, tmp_path: Path, caplog
+        self,
+        tmp_path: Path,
+        caplog,
     ) -> None:
         """Test orchestrator handles FileNotFoundError during evaluator init."""
         config_file = tmp_path / "config.yaml"
@@ -303,7 +326,8 @@ datasets:
         assert isinstance(orchestrator.evaluators, dict)
 
     def test_orchestrator_run_raises_error_no_evaluators(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test orchestrator.run() raises error when no evaluators initialized."""
         config_file = tmp_path / "config.yaml"
@@ -323,7 +347,8 @@ datasets:
             orchestrator.run()
 
     def test_orchestrator_save_results_default_filename(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test save_results generates default filename."""
         orchestrator = BenchmarkOrchestrator(
@@ -348,7 +373,8 @@ datasets:
         assert output_path.suffix == ".json"
 
     def test_orchestrator_save_results_custom_filename(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test save_results with custom filename."""
         orchestrator = BenchmarkOrchestrator(
@@ -401,7 +427,8 @@ datasets:
         assert loaded["metadata"]["test"] == "data"
 
     def test_orchestrator_find_documents_nonexistent_dir(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test _find_documents with nonexistent directory."""
         orchestrator = BenchmarkOrchestrator(
@@ -416,7 +443,8 @@ datasets:
         assert documents == []
 
     def test_orchestrator_find_documents_multiple_formats(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test _find_documents finds multiple document formats."""
         orchestrator = BenchmarkOrchestrator(
@@ -475,9 +503,9 @@ datasets:
                             "total_documents": 100,
                             "successful_documents": 95,
                             "failed_documents": 5,
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             "dataset2": {
                 "parsers": {
@@ -486,9 +514,9 @@ datasets:
                             "total_documents": 50,
                             "successful_documents": 48,
                             "failed_documents": 2,
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
         }
 
@@ -496,7 +524,9 @@ datasets:
         end_time = datetime(2025, 1, 1, 1, 0, 0)  # 1 hour
 
         stats = orchestrator._calculate_overall_stats(
-            dataset_results, start_time, end_time
+            dataset_results,
+            start_time,
+            end_time,
         )
 
         # Verify calculations
@@ -576,10 +606,10 @@ class TestBenchmarkReporterExtended:
                                     "cer": 0.05,
                                     "bleu": 0.85,
                                 },
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {
                 "total_documents": 10,
@@ -617,10 +647,10 @@ class TestBenchmarkReporterExtended:
                                 "success_rate": 1.0,
                                 "avg_processing_time": 1.0,
                                 # No mean_metrics
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {
                 "total_documents": 10,
@@ -651,10 +681,10 @@ class TestBenchmarkReporterExtended:
                                 "avg_processing_time": 1.0,
                                 "mean_metrics": {"cer": 0.05},
                                 "std_metrics": {"cer": 0.01},
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }
@@ -706,7 +736,8 @@ class TestBenchmarkReporterExtended:
         assert output_file.exists()
 
     def test_reporter_build_overall_section_formatting(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test overall section formats numbers correctly."""
         results = {

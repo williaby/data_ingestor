@@ -12,7 +12,8 @@ class TestPDFDocumentAnalyzer:
     """Integration tests for PDFDocumentAnalyzer with diverse real PDFs."""
 
     def test_analyze_simple_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with simple text PDF."""
         pdf_path = diverse_test_pdfs["simple"]
@@ -22,11 +23,12 @@ class TestPDFDocumentAnalyzer:
 
         # Verify analysis results - PDFPreflightResult object
         assert analysis is not None
-        assert hasattr(analysis, 'needs_upscaling')
-        assert hasattr(analysis, 'resolution_analysis')
+        assert hasattr(analysis, "needs_upscaling")
+        assert hasattr(analysis, "resolution_analysis")
 
     def test_analyze_multipage_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with multipage PDF."""
         pdf_path = diverse_test_pdfs["multipage"]
@@ -42,7 +44,8 @@ class TestPDFDocumentAnalyzer:
             assert analysis["page_count"] > 1
 
     def test_analyze_formatted_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with formatted text PDF."""
         pdf_path = diverse_test_pdfs["formatted"]
@@ -54,7 +57,8 @@ class TestPDFDocumentAnalyzer:
         assert analysis is not None
 
     def test_analyze_table_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with tabular data PDF."""
         pdf_path = diverse_test_pdfs["tables"]
@@ -70,7 +74,8 @@ class TestPDFDocumentAnalyzer:
             assert analysis["has_tables"] is True
 
     def test_analyze_mixed_content_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with mixed content PDF."""
         pdf_path = diverse_test_pdfs["mixed"]
@@ -87,7 +92,8 @@ class TestPDFDocumentAnalyzer:
             assert len(analysis) > 0
 
     def test_analyze_complex_layout_pdf(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test analyzer with complex layout PDF."""
         pdf_path = diverse_test_pdfs["complex"]
@@ -104,7 +110,8 @@ class TestPDFDocumentAnalyzer:
 
     @pytest.mark.slow
     def test_analyze_large_pdf(
-        self, large_test_pdf: Path
+        self,
+        large_test_pdf: Path,
     ) -> None:
         """Test analyzer with large real-world PDF."""
         analyzer = PDFDocumentAnalyzer()
@@ -123,12 +130,13 @@ class TestPDFDocumentAnalyzerQualityAssessment:
     """Integration tests for PDF quality assessment."""
 
     def test_resolution_detection(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test resolution detection across different PDFs."""
         analyzer = PDFDocumentAnalyzer()
 
-        for name, pdf_path in diverse_test_pdfs.items():
+        for _name, pdf_path in diverse_test_pdfs.items():
             analysis = analyzer.analyze(str(pdf_path))
 
             # Should detect resolution info
@@ -141,7 +149,8 @@ class TestPDFDocumentAnalyzerQualityAssessment:
                 assert 72 <= resolution <= 300 or resolution is None
 
     def test_quality_assessment(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test quality assessment for PDFs."""
         analyzer = PDFDocumentAnalyzer()
@@ -158,7 +167,8 @@ class TestPDFDocumentAnalyzerQualityAssessment:
             assert 0.0 <= quality <= 1.0
 
     def test_content_type_detection(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test content type detection."""
         analyzer = PDFDocumentAnalyzer()
@@ -198,7 +208,7 @@ class TestPDFDocumentAnalyzerEdgeCases:
         # (logs errors but doesn't raise exceptions)
         analysis = analyzer.analyze(str(invalid_pdf))
         assert analysis is not None
-        assert hasattr(analysis, 'needs_upscaling')
+        assert hasattr(analysis, "needs_upscaling")
 
     def test_analyzer_initialization(self) -> None:
         """Test analyzer initialization."""
