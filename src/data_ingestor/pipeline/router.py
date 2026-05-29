@@ -302,7 +302,6 @@ class DocumentRouter:
             with contextlib.suppress(Exception):
                 Path(preflight_result.upscaled_path).unlink(missing_ok=True)
 
-        "; ".join(errors)
         raise ParserError(
             message=f"All parsers failed for document format {document.format.value}",
             parser_name="all",

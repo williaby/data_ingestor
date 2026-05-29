@@ -199,9 +199,6 @@ class TestTextMetrics:
         # Get required phrases (ground truth)
         required_phrases = validation["content_validation"]["required_phrases"]
 
-        # Simulate extraction result
-        " ".join(required_phrases)
-
         # Calculate metrics
         for phrase in required_phrases:
             cer = calculate_cer(phrase, phrase)  # Perfect match
