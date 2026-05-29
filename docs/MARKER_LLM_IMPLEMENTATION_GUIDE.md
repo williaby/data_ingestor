@@ -6,7 +6,7 @@ This guide provides step-by-step instructions for implementing LLM-enhanced PDF 
 
 ## Prerequisites
 
-- ✅ Marker PDF installed: `poetry install --with advanced-pdf`
+- ✅ Marker PDF installed: `uv sync --extra advanced-pdf`
 - ✅ OpenRouter API key from zen-mcp-server
 - ✅ Python 3.11+
 - ✅ Existing MarkerParser implementation
@@ -398,7 +398,7 @@ class MarkerLLMParser(BaseParser):
 
         except ImportError:
             logger.warning(
-                "marker-pdf not installed. Install with: poetry install --with advanced-pdf"
+                "marker-pdf not installed. Install with: uv sync --extra advanced-pdf"
             )
 
         # Cost tracking
@@ -1046,7 +1046,7 @@ export TEST_PDF_PATH=data/test_pdfs/sample.pdf
 export OPENROUTER_API_KEY=your_key_here
 
 # Run test
-poetry run python scripts/test_marker_llm.py
+uv run python scripts/test_marker_llm.py
 ```
 
 ## Next Steps
@@ -1062,7 +1062,7 @@ poetry run python scripts/test_marker_llm.py
 ### Issue: "marker-pdf not installed"
 
 ```bash
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 ```
 
 ### Issue: "OpenRouter API key not found"

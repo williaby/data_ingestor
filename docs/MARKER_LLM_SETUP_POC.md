@@ -42,10 +42,10 @@ That's it! The default free model (`meta-llama/llama-3.1-405b-instruct:free`) wi
 
 ```bash
 # Ensure advanced-pdf group is installed
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 
 # Verify Marker is available
-poetry run python -c "import marker; print(f'Marker {marker.__version__} installed')"
+uv run python -c "import marker; print(f'Marker {marker.__version__} installed')"
 ```
 
 ### Step 4: Test LLM Integration
@@ -54,14 +54,14 @@ Run the test script to compare basic Marker vs LLM-enhanced Marker:
 
 ```bash
 # Run test on sample PDF
-poetry run python scripts/run_pdf_tests.py
+uv run python scripts/run_pdf_tests.py
 ```
 
 Or test a specific PDF:
 
 ```bash
 # Test with your own PDF
-poetry run python -c "
+uv run python -c "
 from data_ingestor.parsers import MarkerParser
 from data_ingestor.core.models import Document, DocumentFormat
 
@@ -113,10 +113,10 @@ Compare extraction quality:
 
 ```bash
 # Test WITHOUT LLM (basic Marker)
-MARKER_USE_LLM=false poetry run python scripts/run_pdf_tests.py
+MARKER_USE_LLM=false uv run python scripts/run_pdf_tests.py
 
 # Test WITH LLM (free tier)
-MARKER_USE_LLM=true poetry run python scripts/run_pdf_tests.py
+MARKER_USE_LLM=true uv run python scripts/run_pdf_tests.py
 ```
 
 Look for improvements in:
@@ -155,10 +155,10 @@ OPENROUTER_API_KEY=your_key python scripts/run_pdf_tests.py
 
 ```bash
 # Install advanced-pdf group
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 
 # Verify installation
-poetry show marker-pdf
+uv pip show marker-pdf
 ```
 
 ### Issue: "LLM enabled but no improvement"
@@ -172,7 +172,7 @@ Free tier models may be rate-limited or slow. Try:
    ```
 3. **Check logs** - Enable debug logging:
    ```bash
-   LOG_LEVEL=DEBUG poetry run python scripts/run_pdf_tests.py
+   LOG_LEVEL=DEBUG uv run python scripts/run_pdf_tests.py
    ```
 
 ### Issue: API errors or timeouts

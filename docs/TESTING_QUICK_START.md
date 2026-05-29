@@ -13,7 +13,7 @@
 ```bash
 # Run in VS Code Test Explorer (already configured) ✅
 # OR manually:
-SKIP_MARKER_PARSER=1 poetry run pytest tests/ -m 'not slow'
+SKIP_MARKER_PARSER=1 uv run pytest tests/ -m 'not slow'
 
 # Result: 660+ tests in ~35 seconds
 # Tests: Code correctness, structure, basic functionality
@@ -23,7 +23,7 @@ SKIP_MARKER_PARSER=1 poetry run pytest tests/ -m 'not slow'
 
 ```bash
 # Full test suite with quality validation
-poetry run pytest tests/
+uv run pytest tests/
 
 # Result: 660+ tests in ~2-5 minutes
 # Tests: Everything + parsing accuracy, content quality

@@ -38,7 +38,7 @@ on:
       - '**/*.py'
       - '.github/workflows/security-analysis.yml'
       - 'pyproject.toml'
-      - 'poetry.lock'
+      - 'uv.lock'
   schedule:
     - cron: '30 2 * * 1'  # Weekly Monday 2:30 AM UTC
   workflow_dispatch:  # Manual trigger
@@ -69,22 +69,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
+      - name: Install uv
+        run: pip install uv
 
       # Install only main dependencies for CodeQL analysis
       - name: Install Document Processing Dependencies
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "📦 Installing document processing dependencies for security analysis..."
-          poetry install --only main --no-interaction
+          uv sync --frozen --no-default-groups
 
           # Verify critical security-sensitive packages
-          poetry run python -c "
+          uv run --frozen python -c "
           import sys
           critical_deps = ['pdfplumber', 'pypdf', 'pydantic', 'tiktoken']
           for dep in critical_deps:
@@ -160,45 +155,37 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry and Dependencies
+      - name: Install uv and Dependencies
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-          poetry install --with dev --no-interaction
+          pip install uv
+          uv sync --frozen
 
       # Bandit static analysis for document processing code
       - name: Bandit Security Analysis
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🔒 Running Bandit security analysis for document processing system..."
-          poetry run bandit -r src \
+          uv run --frozen bandit -r src \
             -f json -o bandit-report.json \
             -c pyproject.toml || true
 
           # Also generate human-readable output
-          poetry run bandit -r src -c pyproject.toml || true
+          uv run --frozen bandit -r src -c pyproject.toml || true
 
       # Safety dependency vulnerability scanning
       - name: Safety Vulnerability Scan
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🛡️ Scanning for known vulnerabilities in document processing dependencies..."
 
-          # Install poetry-plugin-export (required for poetry export in Poetry 2.0+)
-          poetry self add poetry-plugin-export
-
           # Export requirements for safety scanning
-          poetry export -f requirements.txt --output requirements-scan.txt
+          uv export --format requirements-txt --no-hashes --no-emit-project --output requirements-scan.txt
 
           # Run safety scan
-          poetry run safety check \
+          uv run --frozen safety check \
             --file requirements-scan.txt \
             --json --output safety-report.json || true
 
           # Human readable output
-          poetry run safety check \
+          uv run --frozen safety check \
             --file requirements-scan.txt || true
 
       # Note: Semgrep scanning provided by Semgrep Cloud Platform GitHub App
@@ -234,19 +221,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-          poetry install --with dev --no-interaction
+          pip install uv
+          uv sync --frozen
 
       # Validate file processing security
       - name: Validate File Processing Security
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "📄 Validating file processing security..."
 
-          poetry run python -c "
+          uv run --frozen python -c "
           import os
           import pathlib
 
@@ -267,9 +250,8 @@ jobs:
       # Check for hardcoded secrets in document processing code
       - name: Scan for Hardcoded Secrets
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🔐 Scanning for hardcoded secrets..."
-          poetry run python -c "
+          uv run --frozen python -c "
           import re
           import os
 

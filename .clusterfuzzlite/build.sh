@@ -24,13 +24,12 @@ fi
 
 echo "Python version $PYTHON_VERSION is compatible with Atheris"
 
-# Install Poetry
-pip3 install poetry
+# Install uv
+pip3 install uv
 
-# Install project dependencies (without dev dependencies)
+# Install project dependencies (runtime only, no dev) into the system environment
 cd $SRC/data_ingestor
-poetry config virtualenvs.create false
-poetry install --without dev --no-interaction
+uv pip install --system .
 
 # Use OSS-Fuzz helper to compile Python fuzz targets
 # This creates proper executables that ClusterFuzzLite recognizes

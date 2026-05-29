@@ -28,7 +28,7 @@
 # Configuration and deployment files
 /.github/ @Byron
 /pyproject.toml @Byron
-/poetry.lock @Byron
+/uv.lock @Byron
 /requirements*.txt @Byron
 
 # Security-sensitive directories
