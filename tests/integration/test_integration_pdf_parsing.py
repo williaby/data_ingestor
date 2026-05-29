@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from data_ingestor.core.models import Document, DocumentFormat, ElementType
+from data_ingestor.core.models import Document, DocumentFormat
 from data_ingestor.parsers.pdf_parser import PyMuPDF4LLMParser, PyMuPDFParser
 
 
@@ -56,8 +56,11 @@ class TestPDFParsingIntegration:
         # Verify word count range
         full_text = " ".join(elem.content for elem in result.elements)
         word_count = len(full_text.split())
-        assert validation["metadata"]["expected_word_count_min"] <= word_count <= \
-               validation["metadata"]["expected_word_count_max"]
+        assert (
+            validation["metadata"]["expected_word_count_min"]
+            <= word_count
+            <= validation["metadata"]["expected_word_count_max"]
+        )
 
         # Verify required phrases
         for phrase in validation["content_validation"]["required_phrases"]:
@@ -139,8 +142,9 @@ class TestPDFParsingIntegration:
 
         # Both should contain required keywords
         for keyword in validation["content_validation"]["required_keywords"]:
-            assert keyword.lower() in pymupdf_text.lower() or \
-                   keyword.lower() in pymupdf4llm_text.lower(), f"Missing: {keyword}"
+            assert (
+                keyword.lower() in pymupdf_text.lower() or keyword.lower() in pymupdf4llm_text.lower()
+            ), f"Missing: {keyword}"
 
     def test_mixed_content_parsing(self, test_pdfs_dir: Path, validation_dir: Path) -> None:
         """Test parsing PDF with mixed content types."""

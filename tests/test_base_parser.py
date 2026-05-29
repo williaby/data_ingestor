@@ -12,7 +12,6 @@ from data_ingestor.core.models import (
     ElementMetadata,
     ElementType,
     ParserResult,
-    ProcessingStatus,
 )
 
 

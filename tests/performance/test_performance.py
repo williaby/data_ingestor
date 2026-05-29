@@ -17,7 +17,9 @@ class TestParserPerformance:
     """Performance tests for PDF parsers."""
 
     def test_pymupdf_parser_throughput(
-        self, performance_test_pdfs: list[Path], performance_metrics
+        self,
+        performance_test_pdfs: list[Path],
+        performance_metrics,
     ) -> None:
         """Measure PyMuPDF parser throughput with multiple PDFs."""
         parser = PyMuPDFParser()
@@ -42,7 +44,7 @@ class TestParserPerformance:
         duration = performance_metrics.duration
         throughput_files = successful_parses / duration if duration > 0 else 0
 
-        print(f"\nPyMuPDF Performance:")
+        print("\nPyMuPDF Performance:")
         print(f"  Files processed: {successful_parses}/{len(performance_test_pdfs)}")
         print(f"  Total pages: {total_pages}")
         print(f"  Duration: {duration:.2f}s")
@@ -52,7 +54,9 @@ class TestParserPerformance:
         assert throughput_files > 0.5, f"Throughput too low: {throughput_files:.2f} files/sec"
 
     def test_pymupdf4llm_parser_throughput(
-        self, performance_test_pdfs: list[Path], performance_metrics
+        self,
+        performance_test_pdfs: list[Path],
+        performance_metrics,
     ) -> None:
         """Measure PyMuPDF4LLM parser throughput."""
         parser = PyMuPDF4LLMParser()
@@ -72,7 +76,7 @@ class TestParserPerformance:
         duration = performance_metrics.duration
         throughput = successful_parses / duration if duration > 0 else 0
 
-        print(f"\nPyMuPDF4LLM Performance:")
+        print("\nPyMuPDF4LLM Performance:")
         print(f"  Files processed: {successful_parses}/{len(performance_test_pdfs)}")
         print(f"  Duration: {duration:.2f}s")
         print(f"  Throughput: {throughput:.2f} files/sec")
@@ -82,7 +86,9 @@ class TestParserPerformance:
 
     @pytest.mark.slow
     def test_large_pdf_processing_time(
-        self, large_test_pdf: Path, performance_metrics
+        self,
+        large_test_pdf: Path,
+        performance_metrics,
     ) -> None:
         """Measure processing time for large real-world PDF."""
         parser = PyMuPDFParser()
@@ -96,7 +102,7 @@ class TestParserPerformance:
 
         duration = performance_metrics.duration
 
-        print(f"\nLarge PDF Processing:")
+        print("\nLarge PDF Processing:")
         print(f"  File: {large_test_pdf.name}")
         print(f"  Duration: {duration:.2f}s")
 
@@ -110,7 +116,9 @@ class TestChunkingPerformance:
     """Performance tests for chunking operations."""
 
     def test_token_chunking_performance(
-        self, sample_realistic_document: Document, performance_metrics
+        self,
+        sample_realistic_document: Document,
+        performance_metrics,
     ) -> None:
         """Measure token chunking performance with realistic document."""
         chunker = TokenChunker(chunk_size=500, chunk_overlap=50)
@@ -126,7 +134,7 @@ class TestChunkingPerformance:
 
         duration = performance_metrics.duration
 
-        print(f"\nToken Chunking Performance:")
+        print("\nToken Chunking Performance:")
         print(f"  Input elements: {len(large_doc.elements)}")
         print(f"  Output chunks: {len(chunks)}")
         print(f"  Duration: {duration:.2f}s")
@@ -135,7 +143,9 @@ class TestChunkingPerformance:
         assert duration < 5.0, f"Chunking too slow: {duration:.2f}s"
 
     def test_by_title_chunking_performance(
-        self, sample_realistic_document: Document, performance_metrics
+        self,
+        sample_realistic_document: Document,
+        performance_metrics,
     ) -> None:
         """Measure by-title chunking performance."""
         chunker = ByTitleChunker(chunk_size=500, preserve_tables=True)
@@ -150,7 +160,7 @@ class TestChunkingPerformance:
 
         duration = performance_metrics.duration
 
-        print(f"\nBy-Title Chunking Performance:")
+        print("\nBy-Title Chunking Performance:")
         print(f"  Input elements: {len(large_doc.elements)}")
         print(f"  Output chunks: {len(chunks)}")
         print(f"  Duration: {duration:.2f}s")
@@ -164,7 +174,8 @@ class TestMemoryUsage:
     """Performance tests for memory usage patterns."""
 
     def test_parser_memory_efficiency(
-        self, diverse_test_pdfs: dict[str, Path]
+        self,
+        diverse_test_pdfs: dict[str, Path],
     ) -> None:
         """Test parser memory usage remains reasonable."""
         parser = PyMuPDFParser()
@@ -184,7 +195,8 @@ class TestMemoryUsage:
         assert True
 
     def test_chunking_memory_efficiency(
-        self, sample_realistic_document: Document
+        self,
+        sample_realistic_document: Document,
     ) -> None:
         """Test chunking memory usage with large documents."""
         chunker = TokenChunker(chunk_size=500)

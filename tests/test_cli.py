@@ -1,12 +1,12 @@
 """Comprehensive tests for CLI module."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
 
-from data_ingestor.cli.main import _display_preview, cli, health, process, setup_logging
+from data_ingestor.cli.main import _display_preview, cli, setup_logging
 from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementType, ParserResult
 
 
@@ -532,6 +532,7 @@ class TestDisplayPreview:
     def test_display_preview_short_document(self, mock_document: Document) -> None:
         """Test preview display for short document."""
         from rich.console import Console
+
         console = Console()
         _display_preview(mock_document, console)
         # Function should execute without errors
@@ -539,11 +540,9 @@ class TestDisplayPreview:
     def test_display_preview_long_document(self) -> None:
         """Test preview display for long document."""
         from rich.console import Console
+
         console = Console()
-        elements = [
-            DocumentElement(element_type=ElementType.PARAGRAPH, content=f"Paragraph {i}")
-            for i in range(20)
-        ]
+        elements = [DocumentElement(element_type=ElementType.PARAGRAPH, content=f"Paragraph {i}") for i in range(20)]
         doc = Document(
             source_path=None,
             format=DocumentFormat.PDF,
@@ -556,13 +555,11 @@ class TestDisplayPreview:
     def test_display_preview_with_chunks(self, mock_document: Document) -> None:
         """Test preview display with chunks."""
         from rich.console import Console
+
         from data_ingestor.core.models import Chunk
 
         console = Console()
-        chunks = [
-            Chunk(content=f"Chunk {i} content " * 50, metadata={}, token_count=100)
-            for i in range(5)
-        ]
+        chunks = [Chunk(content=f"Chunk {i} content " * 50, metadata={}, token_count=100) for i in range(5)]
         mock_document.chunks = chunks
 
         _display_preview(mock_document, console)

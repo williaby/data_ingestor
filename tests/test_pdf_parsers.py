@@ -1,14 +1,13 @@
 """Comprehensive tests for PDF parser implementations."""
 
 import importlib.util
-import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from data_ingestor.core.exceptions import ParserError
-from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementType, ParserResult
+from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementType
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 
 # The marker-pdf package is an optional extra (advanced-pdf) that is not always
@@ -427,9 +426,9 @@ class TestMarkerParserExtended:
         """Test markdown parsing with list items."""
         parser = MarkerParser()
         markdown = "- Item 1\n- Item 2\n* Item 3"
-        
+
         elements = parser._markdown_to_elements(markdown)
-        
+
         assert len(elements) > 0
         assert any(el.element_type == ElementType.LIST for el in elements)
 
@@ -437,9 +436,9 @@ class TestMarkerParserExtended:
         """Test markdown parsing skips separator lines."""
         parser = MarkerParser()
         markdown = "{0}\n----------\n# Title"
-        
+
         elements = parser._markdown_to_elements(markdown)
-        
+
         # Should skip page marker and separator
         assert all(el.content != "----------" for el in elements)
 
@@ -447,9 +446,9 @@ class TestMarkerParserExtended:
         """Test table flushing on empty line."""
         parser = MarkerParser()
         markdown = "| Header |\n| Cell |\n\nParagraph"
-        
+
         elements = parser._markdown_to_elements(markdown)
-        
+
         # Should have table and paragraph
         assert any(el.element_type == ElementType.TABLE for el in elements)
         assert any(el.element_type == ElementType.PARAGRAPH for el in elements)
@@ -463,9 +462,9 @@ class TestMarkerParserExtended:
             DocumentElement(element_type=ElementType.TABLE, content="| A | B |"),
             DocumentElement(element_type=ElementType.FORMULA, content="E=mc^2"),
         ]
-        
+
         enhanced = parser._enhance_element_metadata(elements, {})
-        
+
         # Title should have category_depth 1
         assert enhanced[0].metadata.category_depth == 1
         # Heading should have category_depth 2
@@ -479,11 +478,11 @@ class TestMarkerParserExtended:
         parser = MarkerParser()
         element = DocumentElement(
             element_type=ElementType.PARAGRAPH,
-            content="This is a long paragraph with substantial content that exceeds 100 characters and should get a confidence boost."
+            content="This is a long paragraph with substantial content that exceeds 100 characters and should get a confidence boost.",
         )
-        
+
         confidence = parser._estimate_confidence(element)
-        
+
         assert confidence > 0.85
 
     def test_extract_toc_with_category_depth(self) -> None:
@@ -493,13 +492,13 @@ class TestMarkerParserExtended:
             DocumentElement(element_type=ElementType.TITLE, content="Main Title"),
             DocumentElement(element_type=ElementType.HEADING, content="Section 1"),
         ]
-        
+
         # Set category_depth manually
         elements[0].metadata.category_depth = 1
         elements[1].metadata.category_depth = 2
-        
+
         toc = parser._extract_toc_from_elements(elements)
-        
+
         assert len(toc) == 2
         assert toc[0]["level"] == 1
         assert toc[1]["level"] == 2
@@ -508,25 +507,25 @@ class TestMarkerParserExtended:
     def test_detect_languages_with_multiple_elements(self, mock_detect) -> None:
         """Test language detection with enough text."""
         mock_detect.return_value = "en"
-        
+
         parser = MarkerParser()
         elements = [
             DocumentElement(element_type=ElementType.PARAGRAPH, content="A" * 500),
             DocumentElement(element_type=ElementType.PARAGRAPH, content="B" * 500),
             DocumentElement(element_type=ElementType.TABLE, content="Table"),  # Should be skipped
         ]
-        
+
         languages = parser._detect_languages(elements)
-        
+
         assert len(languages) == 1
 
     def test_detect_languages_insufficient_text(self) -> None:
         """Test language detection with insufficient text."""
         parser = MarkerParser()
         elements = []  # No elements
-        
+
         languages = parser._detect_languages(elements)
-        
+
         assert languages == []
 
     @patch("data_ingestor.parsers.pdf_parser.marker", create=True)
@@ -537,12 +536,12 @@ class TestMarkerParserExtended:
         mock_models = MagicMock()
         mock_marker.convert.convert_single_pdf = mock_convert
         mock_marker.models.load_all_models = mock_models
-        
+
         parser = MarkerParser()
         parser._marker_available = True
-        
+
         result = parser.health_check()
-        
+
         # Should return False because the import will still fail in the actual code
         # but the test verifies the code path
         assert isinstance(result, bool)
@@ -551,18 +550,18 @@ class TestMarkerParserExtended:
         """Test confidence for table elements."""
         parser = MarkerParser()
         element = DocumentElement(element_type=ElementType.TABLE, content="| A | B |")
-        
+
         confidence = parser._estimate_confidence(element)
-        
+
         assert confidence >= 0.90
 
     def test_markdown_to_elements_remaining_table_flush(self) -> None:
         """Test flushing remaining table at end of document."""
         parser = MarkerParser()
         markdown = "| Header |\n| Cell |"  # Table at end, no trailing newline
-        
+
         elements = parser._markdown_to_elements(markdown)
-        
+
         assert len(elements) > 0
         assert elements[0].element_type == ElementType.TABLE
 
@@ -587,10 +586,10 @@ class TestPyMuPDFParserExtended:
         mock_pdf.__len__.return_value = 5
         mock_pdf.__getitem__.return_value = MagicMock()
         mock_fitz.open.return_value = mock_pdf
-        
+
         parser = PyMuPDFParser()
         metadata = parser._extract_metadata(mock_pdf)
-        
+
         assert metadata["title"] == "Test Title"
         assert metadata["author"] == "Test Author"
         assert metadata["page_count"] == 5
@@ -601,7 +600,7 @@ class TestPyMuPDFParserExtended:
         mock_pdf = MagicMock()
         mock_pdf.metadata = {}
         mock_pdf.__len__.return_value = 3
-        
+
         # Create mock pages
         mock_pages = []
         for i in range(3):
@@ -612,33 +611,42 @@ class TestPyMuPDFParserExtended:
                         "type": 0,
                         "lines": [{"spans": [{"text": f"Page {i} content", "size": 12}]}],
                         "bbox": (0, 0, 100, 100),
-                    }
-                ]
+                    },
+                ],
             }
             mock_page.get_images.return_value = []
             mock_pages.append(mock_page)
-        
+
         mock_pdf.__getitem__.side_effect = mock_pages
         mock_fitz.open.return_value = mock_pdf
-        
+
         parser = PyMuPDFParser()
         doc = Document(source_path=str(temp_test_file), format=DocumentFormat.PDF)
-        
+
         result = parser.parse(doc)
-        
+
         assert result.success is True
         assert len(result.elements) == 3
 
-    @pytest.mark.parametrize("text,font_size,expected_type,reason", [
-        ("Huge Title", 20, ElementType.TITLE, "large_font_size"),
-        ("Exact Boundary", 15, ElementType.HEADING, "heading_threshold"),
-        ("THIS IS A LONG HEADING THAT EXCEEDS THE 100 CHARACTER LIMIT" * 3, 12, ElementType.PARAGRAPH, "long_caps_text"),
-        ("Short", 12, ElementType.PARAGRAPH, "short_mixed_case"),
-        ("VERY SHORT CAPS", 12, ElementType.HEADING, "short_all_caps"),
-        ("", 12, ElementType.PARAGRAPH, "empty_string"),
-        ("Medium Text", 14, ElementType.PARAGRAPH, "below_heading_threshold"),
-        ("ALL CAPS", 16, ElementType.HEADING, "caps_large_font"),
-    ], ids=lambda x: x if isinstance(x, str) and len(x) < 30 else str(x)[:20] if isinstance(x, str) else str(x))
+    @pytest.mark.parametrize(
+        "text,font_size,expected_type,reason",
+        [
+            ("Huge Title", 20, ElementType.TITLE, "large_font_size"),
+            ("Exact Boundary", 15, ElementType.HEADING, "heading_threshold"),
+            (
+                "THIS IS A LONG HEADING THAT EXCEEDS THE 100 CHARACTER LIMIT" * 3,
+                12,
+                ElementType.PARAGRAPH,
+                "long_caps_text",
+            ),
+            ("Short", 12, ElementType.PARAGRAPH, "short_mixed_case"),
+            ("VERY SHORT CAPS", 12, ElementType.HEADING, "short_all_caps"),
+            ("", 12, ElementType.PARAGRAPH, "empty_string"),
+            ("Medium Text", 14, ElementType.PARAGRAPH, "below_heading_threshold"),
+            ("ALL CAPS", 16, ElementType.HEADING, "caps_large_font"),
+        ],
+        ids=lambda x: x if isinstance(x, str) and len(x) < 30 else str(x)[:20] if isinstance(x, str) else str(x),
+    )
     @patch("data_ingestor.parsers.pdf_parser.fitz")
     def test_classify_text_variations(self, mock_fitz, text, font_size, expected_type, reason) -> None:
         """Test text classification with various inputs."""
@@ -664,10 +672,12 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 1, "toc": [], "languages": ["en"], "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_with_llm", return_value=mock_output) as mock_process_llm, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch("marker.models.create_model_dict") as mock_create_model:
+        with (
+            patch.object(MarkerParser, "_process_with_llm", return_value=mock_output) as mock_process_llm,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch("marker.models.create_model_dict") as mock_create_model,
+        ):
 
             # Setup mocks
             mock_create_model.return_value = {"test": "model"}
@@ -707,12 +717,14 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 1, "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_with_llm") as mock_process_llm, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]), \
-             patch.object(MarkerParser, "_detect_languages", return_value=["en"]), \
-             patch("marker.models.create_model_dict") as mock_create_model:
+        with (
+            patch.object(MarkerParser, "_process_with_llm") as mock_process_llm,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]),
+            patch.object(MarkerParser, "_detect_languages", return_value=["en"]),
+            patch("marker.models.create_model_dict") as mock_create_model,
+        ):
 
             # Primary fails with API error, fallback succeeds
             mock_process_llm.side_effect = [
@@ -751,13 +763,15 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 1, "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_with_llm") as mock_process_llm, \
-             patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process_no_llm, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]), \
-             patch.object(MarkerParser, "_detect_languages", return_value=["en"]), \
-             patch("marker.models.create_model_dict") as mock_create_model:
+        with (
+            patch.object(MarkerParser, "_process_with_llm") as mock_process_llm,
+            patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process_no_llm,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]),
+            patch.object(MarkerParser, "_detect_languages", return_value=["en"]),
+            patch("marker.models.create_model_dict") as mock_create_model,
+        ):
 
             # Both primary and fallback fail
             mock_process_llm.side_effect = [
@@ -794,10 +808,12 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 2, "toc": ["Section 1"], "languages": ["en"], "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process_no_llm, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch("marker.models.create_model_dict") as mock_create_model:
+        with (
+            patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process_no_llm,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch("marker.models.create_model_dict") as mock_create_model,
+        ):
 
             mock_create_model.return_value = {"test": "model"}
             mock_elements = [
@@ -862,12 +878,14 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 5, "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]), \
-             patch.object(MarkerParser, "_detect_languages", return_value=["en"]), \
-             patch("marker.models.create_model_dict") as mock_create_model:
+        with (
+            patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_process,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]),
+            patch.object(MarkerParser, "_detect_languages", return_value=["en"]),
+            patch("marker.models.create_model_dict") as mock_create_model,
+        ):
 
             mock_create_model.return_value = {"test": "model"}
             mock_elements = [DocumentElement(element_type=ElementType.TITLE, content="Title")]
@@ -891,8 +909,10 @@ class TestMarkerParserParseMethod:
         mock_time.time.side_effect = [100.0, 102.0]
         mock_path_cls.return_value.name = "test.pdf"
 
-        with patch.object(MarkerParser, "_process_with_llm", side_effect=ValueError("Invalid input")), \
-             patch("marker.models.create_model_dict", return_value={"test": "model"}):
+        with (
+            patch.object(MarkerParser, "_process_with_llm", side_effect=ValueError("Invalid input")),
+            patch("marker.models.create_model_dict", return_value={"test": "model"}),
+        ):
 
             parser = MarkerParser()
             parser.use_llm = True
@@ -918,13 +938,15 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 1, "version": "1.10"}
 
-        with patch.object(MarkerParser, "_process_with_llm", side_effect=ValueError("Invalid input")), \
-             patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_no_llm, \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]), \
-             patch.object(MarkerParser, "_detect_languages", return_value=["en"]), \
-             patch("marker.models.create_model_dict", return_value={"test": "model"}):
+        with (
+            patch.object(MarkerParser, "_process_with_llm", side_effect=ValueError("Invalid input")),
+            patch.object(MarkerParser, "_process_without_llm", return_value=mock_output) as mock_no_llm,
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]),
+            patch.object(MarkerParser, "_detect_languages", return_value=["en"]),
+            patch("marker.models.create_model_dict", return_value={"test": "model"}),
+        ):
 
             mock_elements = [DocumentElement(element_type=ElementType.TITLE, content="Title")]
             mock_md_to_elements.return_value = mock_elements
@@ -953,20 +975,25 @@ class TestMarkerParserParseMethod:
         mock_output.images = []
         mock_output.metadata = {"pages": 0, "version": "1.10"}  # No page count
 
-        with patch.object(MarkerParser, "_process_without_llm", return_value=mock_output), \
-             patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements, \
-             patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance, \
-             patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]), \
-             patch.object(MarkerParser, "_detect_languages", return_value=["en"]), \
-             patch("marker.models.create_model_dict", return_value={"test": "model"}):
+        with (
+            patch.object(MarkerParser, "_process_without_llm", return_value=mock_output),
+            patch.object(MarkerParser, "_markdown_to_elements") as mock_md_to_elements,
+            patch.object(MarkerParser, "_enhance_element_metadata") as mock_enhance,
+            patch.object(MarkerParser, "_extract_toc_from_elements", return_value=[]),
+            patch.object(MarkerParser, "_detect_languages", return_value=["en"]),
+            patch("marker.models.create_model_dict", return_value={"test": "model"}),
+        ):
 
             # Elements with page numbers
             from data_ingestor.core.models import ElementMetadata
+
             mock_elements = [
-                DocumentElement(element_type=ElementType.TITLE, content="Title",
-                              metadata=ElementMetadata(page_number=1)),
-                DocumentElement(element_type=ElementType.PARAGRAPH, content="Content",
-                              metadata=ElementMetadata(page_number=3)),
+                DocumentElement(
+                    element_type=ElementType.TITLE, content="Title", metadata=ElementMetadata(page_number=1)
+                ),
+                DocumentElement(
+                    element_type=ElementType.PARAGRAPH, content="Content", metadata=ElementMetadata(page_number=3)
+                ),
             ]
             mock_md_to_elements.return_value = mock_elements
             mock_enhance.return_value = mock_elements
@@ -986,8 +1013,10 @@ class TestMarkerParserHelperMethods:
     @requires_marker
     def test_process_with_llm_configures_service(self, temp_test_file: Path) -> None:
         """Test _process_with_llm configures LLM service correctly."""
-        with patch("marker.config.parser.ConfigParser") as mock_config_parser, \
-             patch("marker.converters.pdf.PdfConverter") as mock_converter:
+        with (
+            patch("marker.config.parser.ConfigParser") as mock_config_parser,
+            patch("marker.converters.pdf.PdfConverter") as mock_converter,
+        ):
 
             # Setup mocks
             mock_parser_instance = MagicMock()
@@ -1007,7 +1036,7 @@ class TestMarkerParserHelperMethods:
                 str(temp_test_file),
                 {"model": "dict"},
                 {},
-                "test/model"
+                "test/model",
             )
 
             # Verify LLM config was set
@@ -1017,8 +1046,10 @@ class TestMarkerParserHelperMethods:
     @requires_marker
     def test_process_without_llm_disables_llm(self, temp_test_file: Path) -> None:
         """Test _process_without_llm disables LLM correctly."""
-        with patch("marker.config.parser.ConfigParser") as mock_config_parser, \
-             patch("marker.converters.pdf.PdfConverter") as mock_converter:
+        with (
+            patch("marker.config.parser.ConfigParser") as mock_config_parser,
+            patch("marker.converters.pdf.PdfConverter") as mock_converter,
+        ):
 
             # Setup mocks
             mock_parser_instance = MagicMock()
@@ -1035,7 +1066,7 @@ class TestMarkerParserHelperMethods:
             result = parser._process_without_llm(
                 str(temp_test_file),
                 {"model": "dict"},
-                {}
+                {},
             )
 
             # Verify converter was called with llm_service=None

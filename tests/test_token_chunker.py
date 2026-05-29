@@ -419,15 +419,19 @@ class TestTokenCounting:
 class TestEdgeCases:
     """Tests for edge cases and boundary conditions."""
 
-    @pytest.mark.parametrize("chunk_size,overlap,content,expected_chunks_min", [
-        (5, 1, "This is a test.", 1),  # Very small chunk size
-        (50, 45, "Word " * 100, 1),  # Overlap close to chunk size
-        (100, 0, "Short text", 1),  # Zero overlap
-        (10, 5, "Word " * 50, 1),  # Normal case - single element treated as one chunk
-        (1000, 100, "Small content", 1),  # Large chunk for small content
-        (50, 49, "Word " * 100, 1),  # Overlap almost equal to chunk size
-        (200, 50, "Token " * 200, 1),  # Medium case - single element
-    ], ids=["very_small", "high_overlap", "zero_overlap", "normal", "large_chunk", "max_overlap", "medium"])
+    @pytest.mark.parametrize(
+        "chunk_size,overlap,content,expected_chunks_min",
+        [
+            (5, 1, "This is a test.", 1),  # Very small chunk size
+            (50, 45, "Word " * 100, 1),  # Overlap close to chunk size
+            (100, 0, "Short text", 1),  # Zero overlap
+            (10, 5, "Word " * 50, 1),  # Normal case - single element treated as one chunk
+            (1000, 100, "Small content", 1),  # Large chunk for small content
+            (50, 49, "Word " * 100, 1),  # Overlap almost equal to chunk size
+            (200, 50, "Token " * 200, 1),  # Medium case - single element
+        ],
+        ids=["very_small", "high_overlap", "zero_overlap", "normal", "large_chunk", "max_overlap", "medium"],
+    )
     def test_chunk_size_and_overlap_variations(self, chunk_size, overlap, content, expected_chunks_min) -> None:
         """Test various chunk size and overlap combinations."""
         doc = Document(
@@ -446,8 +450,7 @@ class TestEdgeCases:
 
         chunker = TokenChunker(chunk_size=chunk_size, chunk_overlap=overlap)
         chunks = chunker.chunk_document(doc)
-        assert len(chunks) >= expected_chunks_min, \
-            f"Expected at least {expected_chunks_min} chunks, got {len(chunks)}"
+        assert len(chunks) >= expected_chunks_min, f"Expected at least {expected_chunks_min} chunks, got {len(chunks)}"
 
     def test_unicode_content(self) -> None:
         """Test chunking with unicode content."""

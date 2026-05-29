@@ -8,7 +8,6 @@ implements document-level evaluation and result aggregation for its dataset.
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -16,7 +15,6 @@ from data_ingestor.core.models import Document
 from data_ingestor.evaluation.models import (
     AggregatedMetrics,
     EvaluationResult,
-    MetricScore,
 )
 
 
@@ -50,14 +48,14 @@ class BaseEvaluator(ABC):
         # Validate ground truth directory
         if not self.ground_truth_dir.exists():
             raise FileNotFoundError(
-                f"Ground truth directory not found: {self.ground_truth_dir}"
+                f"Ground truth directory not found: {self.ground_truth_dir}",
             )
 
     @abstractmethod
     def evaluate_document(
         self,
         predicted: Document,
-        ground_truth: Dict,
+        ground_truth: dict,
     ) -> EvaluationResult:
         """
         Evaluate a single document against ground truth.
@@ -72,12 +70,11 @@ class BaseEvaluator(ABC):
         Raises:
             ValueError: If document or ground truth is invalid
         """
-        pass
 
     def evaluate_batch(
         self,
-        documents: List[tuple[Document, Dict]],
-    ) -> List[EvaluationResult]:
+        documents: list[tuple[Document, dict]],
+    ) -> list[EvaluationResult]:
         """
         Evaluate multiple documents.
 
@@ -102,19 +99,20 @@ class BaseEvaluator(ABC):
                 results.append(
                     EvaluationResult(
                         document_id=predicted.metadata.get(
-                            "doc_id", "unknown"
+                            "doc_id",
+                            "unknown",
                         ),
                         dataset=self.dataset_name,
                         success=False,
                         error=str(e),
-                    )
+                    ),
                 )
 
         return results
 
     def aggregate_results(
         self,
-        results: List[EvaluationResult],
+        results: list[EvaluationResult],
     ) -> AggregatedMetrics:
         """
         Aggregate individual results into dataset-level metrics.
@@ -170,7 +168,7 @@ class BaseEvaluator(ABC):
     def load_ground_truth(
         self,
         document_id: str,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Load ground truth for a specific document.
 
@@ -197,7 +195,7 @@ class BaseEvaluator(ABC):
     def validate_document(
         self,
         predicted: Document,
-        ground_truth: Dict,
+        ground_truth: dict,
     ) -> None:
         """
         Validate document and ground truth are compatible.
@@ -220,7 +218,7 @@ class BaseEvaluator(ABC):
         if not hasattr(predicted, "metadata"):
             raise ValueError("Document missing metadata attribute")
 
-    def get_baseline_targets(self) -> Dict[str, float]:
+    def get_baseline_targets(self) -> dict[str, float]:
         """
         Get baseline target metrics for this dataset.
 
@@ -235,7 +233,7 @@ class BaseEvaluator(ABC):
     def compare_to_baseline(
         self,
         aggregated: AggregatedMetrics,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Compare aggregated metrics to baseline targets.
 

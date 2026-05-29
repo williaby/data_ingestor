@@ -9,7 +9,14 @@ import fitz  # PyMuPDF  # type: ignore[import-untyped]
 
 from data_ingestor.core.base import BaseParser
 from data_ingestor.core.exceptions import ParserError
-from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementMetadata, ElementType, ParserResult
+from data_ingestor.core.models import (
+    Document,
+    DocumentElement,
+    DocumentFormat,
+    ElementMetadata,
+    ElementType,
+    ParserResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -526,7 +533,10 @@ class MarkerParser(BaseParser):
                 try:
                     logger.info(f"Attempting LLM enhancement with primary model: {self.llm_model_primary}")
                     output = self._process_with_llm(
-                        document.source_path, model_dict, config.copy(), self.llm_model_primary,
+                        document.source_path,
+                        model_dict,
+                        config.copy(),
+                        self.llm_model_primary,
                     )
                     llm_model_used = self.llm_model_primary
                     logger.info(f"✓ Successfully processed with primary model: {self.llm_model_primary}")
@@ -539,8 +549,7 @@ class MarkerParser(BaseParser):
 
                     # Categorize error types
                     is_rate_limit_error = any(
-                        keyword in error_str
-                        for keyword in ["rate limit", "429", "too many requests"]
+                        keyword in error_str for keyword in ["rate limit", "429", "too many requests"]
                     )
 
                     is_auth_error = any(
@@ -559,8 +568,7 @@ class MarkerParser(BaseParser):
                     )
 
                     is_connection_error = any(
-                        keyword in error_str
-                        for keyword in ["connection", "timeout", "network", "unreachable"]
+                        keyword in error_str for keyword in ["connection", "timeout", "network", "unreachable"]
                     )
 
                     # Log detailed error classification
@@ -571,7 +579,7 @@ class MarkerParser(BaseParser):
                     elif is_downstream_provider_error:
                         logger.warning(
                             f"Downstream provider error (400/model unavailable): "
-                            f"Likely from OpenAI/model provider, not OpenRouter. Error: {e}"
+                            f"Likely from OpenAI/model provider, not OpenRouter. Error: {e}",
                         )
                     elif is_server_error:
                         logger.warning(f"Server error (5xx): Temporary issue. Error: {e}")
@@ -593,7 +601,10 @@ class MarkerParser(BaseParser):
 
                         try:
                             output = self._process_with_llm(
-                                document.source_path, model_dict, config.copy(), self.llm_model_fallback,
+                                document.source_path,
+                                model_dict,
+                                config.copy(),
+                                self.llm_model_fallback,
                             )
                             llm_model_used = self.llm_model_fallback
                             logger.info(f"✓ Successfully processed with fallback model: {self.llm_model_fallback}")
@@ -723,7 +734,7 @@ class MarkerParser(BaseParser):
                 if not acquired:
                     raise ValueError(
                         f"Rate limit timeout ({self.rate_limit_timeout}s) exceeded. "
-                        "Too many concurrent requests or daily limit reached."
+                        "Too many concurrent requests or daily limit reached.",
                     )
                 logger.info("✓ Rate limit permission acquired")
 
@@ -767,16 +778,15 @@ class MarkerParser(BaseParser):
                 if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
                     if attempt < max_retries - 1:
                         # Exponential backoff: 1s, 2s, 4s
-                        delay = base_delay * (2 ** attempt)
+                        delay = base_delay * (2**attempt)
                         logger.warning(
                             f"Rate limit error (429) on attempt {attempt + 1}/{max_retries}. "
-                            f"Retrying in {delay}s..."
+                            f"Retrying in {delay}s...",
                         )
                         time.sleep(delay)
                         continue
-                    else:
-                        logger.error("Rate limit error persists after retries")
-                        raise
+                    logger.error("Rate limit error persists after retries")
+                    raise
 
                 # Non-rate-limit error, re-raise immediately
                 raise

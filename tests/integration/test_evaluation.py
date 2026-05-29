@@ -20,7 +20,8 @@ class TestDocLayNetEvaluator:
     """Integration tests for DocLayNetEvaluator with real ground truth."""
 
     def test_evaluator_with_real_ground_truth(
-        self, sample_doclaynet_files: list[Path]
+        self,
+        sample_doclaynet_files: list[Path],
     ) -> None:
         """Test evaluator with actual DocLayNet annotations."""
         # Use first ground truth file
@@ -38,7 +39,9 @@ class TestDocLayNetEvaluator:
         assert evaluator.ground_truth_dir == gt_file.parent
 
     def test_evaluator_loads_ground_truth(
-        self, doclaynet_ground_truth_loader, sample_doclaynet_files: list[Path]
+        self,
+        doclaynet_ground_truth_loader,
+        sample_doclaynet_files: list[Path],
     ) -> None:
         """Test loading ground truth data."""
         # Get first file hash
@@ -54,11 +57,12 @@ class TestDocLayNetEvaluator:
         # (structure depends on actual format)
 
     def test_evaluator_with_multiple_ground_truth_files(
-        self, sample_doclaynet_files: list[Path]
+        self,
+        sample_doclaynet_files: list[Path],
     ) -> None:
         """Test evaluator with multiple ground truth files."""
         evaluator = DocLayNetEvaluator(
-            ground_truth_dir=sample_doclaynet_files[0].parent
+            ground_truth_dir=sample_doclaynet_files[0].parent,
         )
 
         # Verify can handle multiple files
@@ -179,7 +183,8 @@ class TestTextMetrics:
         assert chrf > 0.9
 
     def test_text_metrics_with_validation_data(
-        self, validation_dir: Path
+        self,
+        validation_dir: Path,
     ) -> None:
         """Test text metrics with actual validation data."""
         # Load validation data for simple text PDF

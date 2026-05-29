@@ -8,17 +8,16 @@ TableFormer, etc.) to measure performance trade-offs and optimize routing decisi
 import logging
 import time
 import tracemalloc
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 import yaml
 
 from data_ingestor.core.config import Settings
-from data_ingestor.core.models import Document, DocumentFormat
-from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.evaluation.base import BaseEvaluator
+from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class PerformanceMetrics:
 
     # Time metrics
     total_time_seconds: float
-    time_per_page_seconds: Optional[float]
+    time_per_page_seconds: float | None
     preprocessing_time: float
     processing_time: float
     postprocessing_time: float
@@ -44,14 +43,14 @@ class PerformanceMetrics:
     memory_growth_mb: float
 
     # GPU metrics (if available)
-    gpu_utilization_percent: Optional[float]
-    gpu_memory_used_mb: Optional[float]
+    gpu_utilization_percent: float | None
+    gpu_memory_used_mb: float | None
 
     # Quality metrics (if evaluator provided)
-    text_accuracy_score: Optional[float]
-    structure_preservation_score: Optional[float]
-    table_accuracy_score: Optional[float]
-    overall_quality_score: Optional[float]
+    text_accuracy_score: float | None
+    structure_preservation_score: float | None
+    table_accuracy_score: float | None
+    overall_quality_score: float | None
 
     # Cost metrics
     api_calls_count: int
@@ -64,14 +63,14 @@ class PerformanceMetrics:
 
     # Success status
     success: bool
-    error_message: Optional[str]
+    error_message: str | None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "PerformanceMetrics":
+    def from_dict(cls, data: dict) -> "PerformanceMetrics":
         """Create from dictionary."""
         return cls(**data)
 
@@ -86,18 +85,18 @@ class ConfigurationResult:
     """
 
     parser_type: str
-    configuration: Dict[str, Any]
+    configuration: dict[str, Any]
     configuration_name: str
     timestamp: str
-    document_results: List[Dict[str, Any]]  # Per-document metrics
-    aggregated_metrics: Dict[str, Any]  # Mean, median, p95, etc.
+    document_results: list[dict[str, Any]]  # Per-document metrics
+    aggregated_metrics: dict[str, Any]  # Mean, median, p95, etc.
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "ConfigurationResult":
+    def from_dict(cls, data: dict) -> "ConfigurationResult":
         """Create from dictionary."""
         return cls(**data)
 
@@ -113,17 +112,17 @@ class ConfigSuite:
     name: str
     description: str
     version: int
-    marker_configs: List[Dict[str, Any]]
-    docling_configs: List[Dict[str, Any]]
-    pymupdf4llm_configs: List[Dict[str, Any]]
-    pymupdf_configs: List[Dict[str, Any]]
+    marker_configs: list[dict[str, Any]]
+    docling_configs: list[dict[str, Any]]
+    pymupdf4llm_configs: list[dict[str, Any]]
+    pymupdf_configs: list[dict[str, Any]]
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "ConfigSuite":
+    def from_dict(cls, data: dict) -> "ConfigSuite":
         """Create from dictionary."""
         return cls(
             name=data.get("name", "Unnamed Suite"),
@@ -159,7 +158,7 @@ class ParserConfigurationTester:
     def __init__(
         self,
         config_suite: ConfigSuite,
-        settings: Optional[Settings] = None,
+        settings: Settings | None = None,
     ):
         """
         Initialize configuration tester.
@@ -179,9 +178,9 @@ class ParserConfigurationTester:
 
     def test_all_configurations(
         self,
-        documents: List[Path],
-        evaluator: Optional[BaseEvaluator] = None,
-    ) -> List[ConfigurationResult]:
+        documents: list[Path],
+        evaluator: BaseEvaluator | None = None,
+    ) -> list[ConfigurationResult]:
         """
         Test all configurations in suite on document set.
 
@@ -242,9 +241,9 @@ class ParserConfigurationTester:
     def test_configuration(
         self,
         parser_type: str,
-        config: Dict[str, Any],
-        documents: List[Path],
-        evaluator: Optional[BaseEvaluator] = None,
+        config: dict[str, Any],
+        documents: list[Path],
+        evaluator: BaseEvaluator | None = None,
     ) -> ConfigurationResult:
         """
         Test single parser configuration on document set.
@@ -274,10 +273,12 @@ class ParserConfigurationTester:
                 document=doc_path,
                 evaluator=evaluator,
             )
-            document_results.append({
-                "document_id": doc_path.stem,
-                "metrics": metrics.to_dict(),
-            })
+            document_results.append(
+                {
+                    "document_id": doc_path.stem,
+                    "metrics": metrics.to_dict(),
+                }
+            )
 
         # Aggregate metrics
         aggregated = self._aggregate_metrics(document_results)
@@ -301,7 +302,7 @@ class ParserConfigurationTester:
         self,
         parser: Any,
         document: Path,
-        evaluator: Optional[BaseEvaluator] = None,
+        evaluator: BaseEvaluator | None = None,
     ) -> PerformanceMetrics:
         """
         Execute parser on document and collect all metrics.
@@ -389,7 +390,9 @@ class ParserConfigurationTester:
                             table_accuracy = metrics.get("table_accuracy", None)
 
                             # Calculate overall quality (weighted average)
-                            scores = [s for s in [text_accuracy, structure_preservation, table_accuracy] if s is not None]
+                            scores = [
+                                s for s in [text_accuracy, structure_preservation, table_accuracy] if s is not None
+                            ]
                             if scores:
                                 overall_quality = sum(scores) / len(scores)
                 except Exception as e:
@@ -441,7 +444,7 @@ class ParserConfigurationTester:
             error_message=error_message,
         )
 
-    def _initialize_parser(self, parser_type: str, config: Dict[str, Any]) -> Any:
+    def _initialize_parser(self, parser_type: str, config: dict[str, Any]) -> Any:
         """
         Initialize parser with configuration.
 
@@ -460,18 +463,17 @@ class ParserConfigurationTester:
 
         if parser_type == "marker":
             return MarkerParser(parser_config)
-        elif parser_type == "docling":
+        if parser_type == "docling":
             # #TODO: Import DoclingParser when available
             logger.warning("DoclingParser not yet implemented, skipping")
             raise NotImplementedError("DoclingParser not yet available")
-        elif parser_type == "pymupdf4llm":
+        if parser_type == "pymupdf4llm":
             return PyMuPDF4LLMParser(parser_config)
-        elif parser_type == "pymupdf":
+        if parser_type == "pymupdf":
             return PyMuPDFParser(parser_config)
-        else:
-            raise ValueError(f"Unknown parser type: {parser_type}")
+        raise ValueError(f"Unknown parser type: {parser_type}")
 
-    def _get_gpu_metrics(self) -> tuple[Optional[float], Optional[float]]:
+    def _get_gpu_metrics(self) -> tuple[float | None, float | None]:
         """
         Get current GPU utilization and memory usage.
 
@@ -495,7 +497,7 @@ class ParserConfigurationTester:
 
         return None, None
 
-    def _aggregate_metrics(self, document_results: List[Dict]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, document_results: list[dict]) -> dict[str, Any]:
         """
         Aggregate metrics across all documents.
 
@@ -516,11 +518,11 @@ class ParserConfigurationTester:
         success_rate = successes / len(all_metrics)
 
         # Aggregate numeric metrics
-        def get_values(key: str) -> List[float]:
+        def get_values(key: str) -> list[float]:
             """Get all non-None values for a metric key."""
             return [m[key] for m in all_metrics if m[key] is not None]
 
-        def aggregate_stat(key: str) -> Dict[str, float]:
+        def aggregate_stat(key: str) -> dict[str, float]:
             """Calculate mean, median, p95 for a metric."""
             values = get_values(key)
             if not values:

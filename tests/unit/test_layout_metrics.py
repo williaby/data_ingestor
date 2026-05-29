@@ -5,8 +5,6 @@ Tests mAP (mean Average Precision) and IoU calculation with comprehensive
 coverage of all functions, branches, and edge cases.
 """
 
-import pytest
-
 from data_ingestor.evaluation.metrics.layout_metrics import calculate_map
 
 

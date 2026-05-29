@@ -15,17 +15,17 @@ Usage:
 """
 
 from data_ingestor.evaluation.base import BaseEvaluator
+from data_ingestor.evaluation.doclaynet_evaluator import DocLayNetEvaluator
 from data_ingestor.evaluation.models import (
     AggregatedMetrics,
     EvaluationResult,
     MetricScore,
 )
-from data_ingestor.evaluation.doclaynet_evaluator import DocLayNetEvaluator
 
 __all__ = [
+    "AggregatedMetrics",
     "BaseEvaluator",
+    "DocLayNetEvaluator",
     "EvaluationResult",
     "MetricScore",
-    "AggregatedMetrics",
-    "DocLayNetEvaluator",
 ]

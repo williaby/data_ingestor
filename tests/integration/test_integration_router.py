@@ -1,11 +1,9 @@
 """Integration tests for document router with real parsers."""
 
-import json
 from pathlib import Path
 
 import pytest
 
-from data_ingestor.core.config import Settings
 from data_ingestor.core.exceptions import ParserError, UnsupportedFormatError
 from data_ingestor.core.models import Document, DocumentFormat, ProcessingStatus
 from data_ingestor.parsers.pdf_parser import PyMuPDF4LLMParser, PyMuPDFParser
@@ -120,7 +118,8 @@ class TestDocumentRouterIntegration:
         assert router.is_duplicate(doc2) is True
 
     def test_route_document_with_single_parser(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test routing document to single parser."""
         router = DocumentRouter()
@@ -139,7 +138,9 @@ class TestDocumentRouterIntegration:
         assert doc.parser_used == "PyMuPDFParser"
 
     def test_route_document_with_fallback(
-        self, test_data_dir: Path, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test parser fallback when primary parser fails."""
         router = DocumentRouter()
@@ -178,7 +179,8 @@ class TestDocumentRouterIntegration:
         assert len(result.elements) > 0
 
     def test_route_document_all_parsers_fail(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test routing when all parsers fail."""
         router = DocumentRouter()
@@ -208,7 +210,8 @@ class TestDocumentRouterIntegration:
         assert doc.status == ProcessingStatus.FAILED
 
     def test_route_document_no_parsers_registered(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test routing when no parsers are registered."""
         router = DocumentRouter()
@@ -225,7 +228,9 @@ class TestEndToEndProcessing:
     """End-to-end integration tests."""
 
     def test_process_document_complete_flow(
-        self, test_data_dir: Path, validation_loader
+        self,
+        test_data_dir: Path,
+        validation_loader,
     ) -> None:
         """Test complete document processing flow."""
         router = DocumentRouter()
@@ -256,7 +261,8 @@ class TestEndToEndProcessing:
             assert phrase in content, f"Missing phrase: {phrase}"
 
     def test_process_document_with_duplicate(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test processing duplicate document."""
         router = DocumentRouter()
@@ -279,7 +285,8 @@ class TestEndToEndProcessing:
         assert doc2.status == ProcessingStatus.COMPLETED
 
     def test_process_document_skip_duplicate_check(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test processing with duplicate check disabled."""
         router = DocumentRouter()
@@ -298,7 +305,8 @@ class TestEndToEndProcessing:
         assert result2.metadata.get("cached") is not True
 
     def test_process_multiple_documents(
-        self, sample_pdf_paths: dict[str, Path]
+        self,
+        sample_pdf_paths: dict[str, Path],
     ) -> None:
         """Test processing multiple different documents."""
         router = DocumentRouter()
@@ -320,7 +328,8 @@ class TestEndToEndProcessing:
         assert len(processed_docs) > 0
 
     def test_process_document_with_metadata(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test processing document with custom metadata."""
         router = DocumentRouter()
@@ -335,7 +344,8 @@ class TestEndToEndProcessing:
         }
 
         doc, result = router.process_document(
-            source_path=pdf_path, metadata=custom_metadata
+            source_path=pdf_path,
+            metadata=custom_metadata,
         )
 
         # Custom metadata should be preserved (may be merged with parser metadata)
@@ -359,7 +369,10 @@ class TestRouterWithRealParsers:
         ],
     )
     def test_process_various_pdfs(
-        self, test_data_dir: Path, validation_loader, pdf_name: str
+        self,
+        test_data_dir: Path,
+        validation_loader,
+        pdf_name: str,
     ) -> None:
         """Test processing various PDF types with router."""
         router = DocumentRouter()
@@ -382,7 +395,8 @@ class TestRouterWithRealParsers:
             assert phrase in content, f"Missing phrase in {pdf_name}: {phrase}"
 
     def test_parser_selection_based_on_priority(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test that router selects parser based on priority."""
         router = DocumentRouter()
@@ -405,7 +419,8 @@ class TestRouterWithRealParsers:
         assert result.parser_name in [parser1.name, parser2.name]
 
     def test_router_preserves_parser_metadata(
-        self, test_data_dir: Path
+        self,
+        test_data_dir: Path,
     ) -> None:
         """Test that router preserves parser-specific metadata."""
         router = DocumentRouter()

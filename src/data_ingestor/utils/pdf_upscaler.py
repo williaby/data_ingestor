@@ -116,7 +116,9 @@ class PDFUpscaler:
 
                     # Convert to numpy array for OpenCV processing
                     img_data = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-                        pix.height, pix.width, pix.n
+                        pix.height,
+                        pix.width,
+                        pix.n,
                     )
 
                     # Convert RGB to BGR for OpenCV (if needed)
@@ -194,7 +196,7 @@ class PDFUpscaler:
             logger.info(
                 f"PDF upscaling complete: {input_path.name} -> {output_path.name} "
                 f"({pages_processed} pages, {processing_time:.2f}s, "
-                f"{before_size / 1024:.1f}KB -> {after_size / 1024:.1f}KB)"
+                f"{before_size / 1024:.1f}KB -> {after_size / 1024:.1f}KB)",
             )
 
             return result

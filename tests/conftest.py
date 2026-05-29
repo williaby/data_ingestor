@@ -539,6 +539,7 @@ def validation_loader(validation_dir: Path):
     Returns:
         Callable[[str], dict]: Function to load validation data by PDF name
     """
+
     def load(pdf_name: str) -> dict[str, Any]:
         """Load validation data for a PDF file."""
         validation_file = validation_dir / f"{pdf_name}.json"
@@ -546,6 +547,7 @@ def validation_loader(validation_dir: Path):
             raise FileNotFoundError(f"Validation file not found: {validation_file}")
         with open(validation_file) as f:
             return json.load(f)
+
     return load
 
 
@@ -585,8 +587,8 @@ def sample_realistic_document() -> Document:
         DocumentElement(
             element_type=ElementType.PARAGRAPH,
             content="This paper presents a comprehensive study of machine learning techniques "
-                   "applied to document processing. We demonstrate significant improvements "
-                   "in accuracy and performance across multiple benchmark datasets.",
+            "applied to document processing. We demonstrate significant improvements "
+            "in accuracy and performance across multiple benchmark datasets.",
             metadata=ElementMetadata(page_number=1),
         ),
         # Introduction
@@ -598,7 +600,7 @@ def sample_realistic_document() -> Document:
         DocumentElement(
             element_type=ElementType.PARAGRAPH,
             content="Natural language processing has seen remarkable advances in recent years. "
-                   "Deep learning models have revolutionized how we approach text understanding.",
+            "Deep learning models have revolutionized how we approach text understanding.",
             metadata=ElementMetadata(page_number=1),
         ),
         # Methods
@@ -671,8 +673,8 @@ def parsed_pdf_cache(sample_pdf_paths: dict[str, Path]) -> dict[str, Document]:
     Returns:
         dict[str, Document]: Cached parsed documents by name
     """
-    from data_ingestor.parsers.pdf_parser import PyMuPDFParser
     from data_ingestor.core.config import Settings
+    from data_ingestor.parsers.pdf_parser import PyMuPDFParser
 
     cache = {}
     parser = PyMuPDFParser(config=None)
@@ -711,6 +713,7 @@ def cached_simple_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["simple_text"])
 
 
@@ -722,6 +725,7 @@ def cached_multipage_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["multipage"])
 
 
@@ -733,6 +737,7 @@ def cached_formatted_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["formatted"])
 
 
@@ -744,6 +749,7 @@ def cached_tables_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["tables"])
 
 
@@ -755,6 +761,7 @@ def cached_mixed_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["mixed"])
 
 
@@ -766,6 +773,7 @@ def cached_complex_pdf(parsed_pdf_cache: dict[str, Document]) -> Document:
     Returns deep copy for test isolation.
     """
     import copy
+
     return copy.deepcopy(parsed_pdf_cache["complex"])
 
 
@@ -915,6 +923,7 @@ def doclaynet_ground_truth_loader(doclaynet_ground_truth_dir: Path):
     Returns:
         Callable[[str], dict]: Function to load ground truth data by PDF hash
     """
+
     def load(pdf_hash: str) -> dict[str, Any]:
         """Load ground truth data for a PDF hash."""
         gt_file = doclaynet_ground_truth_dir / f"{pdf_hash}.json"
@@ -922,6 +931,7 @@ def doclaynet_ground_truth_loader(doclaynet_ground_truth_dir: Path):
             raise FileNotFoundError(f"Ground truth file not found: {gt_file}")
         with open(gt_file) as f:
             return json.load(f)
+
     return load
 
 
@@ -953,6 +963,7 @@ def cli_runner():
         CliRunner: Click testing CLI runner instance
     """
     from click.testing import CliRunner
+
     return CliRunner()
 
 

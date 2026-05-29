@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -397,20 +397,25 @@ class TestAdvancedSessions:
 
         # Mock Path.exists() to return True
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, dir='.') as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir=".") as f:
             f.write("# Test script")
             script_name = f.name
 
         try:
             # Temporarily rename to expected name
             import os
+
             os.rename(script_name, "test_metrics_dashboard.py")
 
             noxfile.metrics(mock_session)
 
             # Should run the script
-            python_calls = [c for c in mock_session.run.call_args_list
-                          if "python" in str(c) and "test_metrics_dashboard.py" in str(c)]
+            python_calls = [
+                c
+                for c in mock_session.run.call_args_list
+                if "python" in str(c) and "test_metrics_dashboard.py" in str(c)
+            ]
             assert len(python_calls) > 0
         finally:
             # Clean up
@@ -626,7 +631,7 @@ class TestComplexUtilitySessions:
         mock_session = MagicMock()
         # Mock chdir and create_tmp to avoid actual directory operations
         mock_session.create_tmp.return_value = "/tmp/test"
-        
+
         # Mock chdir context manager
         mock_chdir = MagicMock()
         mock_chdir.__enter__ = MagicMock(return_value=None)
@@ -718,8 +723,7 @@ class TestComplexUtilitySessions:
         assert len(success_logs) > 0
 
         # Verify ZAP scan was attempted
-        docker_run_calls = [c for c in mock_session.run.call_args_list
-                          if "docker" in str(c) and "run" in str(c)]
+        docker_run_calls = [c for c in mock_session.run.call_args_list if "docker" in str(c) and "run" in str(c)]
         assert len(docker_run_calls) > 0
 
     def test_dast_scanning_exception_during_scan(self) -> None:

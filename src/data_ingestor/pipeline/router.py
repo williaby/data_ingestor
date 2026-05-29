@@ -221,7 +221,7 @@ class DocumentRouter:
                 if preflight_result.should_use_upscaled and preflight_result.upscaled_path:
                     logger.info(
                         f"Using upscaled PDF: {preflight_result.upscaled_path} "
-                        f"(upscaling took {preflight_result.upscaling_result.get('processing_time', 0):.2f}s)"
+                        f"(upscaling took {preflight_result.upscaling_result.get('processing_time', 0):.2f}s)",
                     )
                     document.source_path = preflight_result.upscaled_path
 

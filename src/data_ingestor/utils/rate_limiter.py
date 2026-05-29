@@ -7,7 +7,6 @@ to comply with OpenRouter's rate limiting policies.
 import logging
 import time
 from collections import deque
-from datetime import datetime, timedelta
 from threading import Lock
 from typing import Literal
 
@@ -58,7 +57,7 @@ class RateLimiter:
         self._total_wait_time = 0.0
 
         logger.info(
-            f"RateLimiter initialized: {rpm_limit} RPM, {daily_limit}/day ({tier} tier)"
+            f"RateLimiter initialized: {rpm_limit} RPM, {daily_limit}/day ({tier} tier)",
         )
 
     def acquire(self, timeout: float | None = None) -> bool:
@@ -93,7 +92,7 @@ class RateLimiter:
                     raise ValueError(
                         f"Daily limit ({self.daily_limit}) exceeded. "
                         f"Resets in {wait_seconds/3600:.1f} hours. "
-                        f"Consider upgrading to paid tier ($10+) for 1000/day limit."
+                        f"Consider upgrading to paid tier ($10+) for 1000/day limit.",
                     )
 
         # Wait for RPM slot
@@ -170,17 +169,13 @@ class RateLimiter:
             "total_requests": self._total_requests,
             "total_waits": self._total_waits,
             "total_wait_time": self._total_wait_time,
-            "avg_wait_time": (
-                self._total_wait_time / self._total_waits if self._total_waits > 0 else 0
-            ),
+            "avg_wait_time": (self._total_wait_time / self._total_waits if self._total_waits > 0 else 0),
             "current_rpm": current_rpm,
             "rpm_limit": self.rpm_limit,
             "rpm_utilization": current_rpm / self.rpm_limit if self.rpm_limit > 0 else 0,
             "current_daily": current_daily,
             "daily_limit": self.daily_limit,
-            "daily_utilization": (
-                current_daily / self.daily_limit if self.daily_limit > 0 else 0
-            ),
+            "daily_utilization": (current_daily / self.daily_limit if self.daily_limit > 0 else 0),
         }
 
     def reset(self) -> None:
@@ -269,9 +264,8 @@ class OpenRouterRateLimiter:
         if model.endswith(":free"):
             logger.debug(f"Using free tier rate limiter for {model}")
             return self.free_limiter.acquire(timeout=timeout)
-        else:
-            logger.debug(f"Using paid tier rate limiter for {model}")
-            return self.paid_limiter.acquire(timeout=timeout)
+        logger.debug(f"Using paid tier rate limiter for {model}")
+        return self.paid_limiter.acquire(timeout=timeout)
 
     def get_stats(self, model_type: Literal["free", "paid"] | None = None) -> dict:
         """Get rate limiter statistics.
@@ -284,10 +278,9 @@ class OpenRouterRateLimiter:
         """
         if model_type == "free":
             return {"free_models": self.free_limiter.get_stats()}
-        elif model_type == "paid":
+        if model_type == "paid":
             return {"paid_models": self.paid_limiter.get_stats()}
-        else:
-            return {
-                "free_models": self.free_limiter.get_stats(),
-                "paid_models": self.paid_limiter.get_stats(),
-            }
+        return {
+            "free_models": self.free_limiter.get_stats(),
+            "paid_models": self.paid_limiter.get_stats(),
+        }

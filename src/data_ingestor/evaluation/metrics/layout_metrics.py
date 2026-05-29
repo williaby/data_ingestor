@@ -5,12 +5,10 @@ Implements metrics for evaluating layout detection quality:
 - mAP (mean Average Precision): Layout class detection across document
 """
 
-from typing import Dict, List
-
 
 def calculate_map(
-    predicted_boxes: List[Dict],
-    ground_truth_boxes: List[Dict],
+    predicted_boxes: list[dict],
+    ground_truth_boxes: list[dict],
     iou_threshold: float = 0.5,
 ) -> float:
     """
@@ -57,8 +55,8 @@ def calculate_map(
 
 
 def _calculate_class_ap(
-    predicted: List[Dict],
-    ground_truth: List[Dict],
+    predicted: list[dict],
+    ground_truth: list[dict],
     target_class: str,
     iou_threshold: float,
 ) -> float:
@@ -112,7 +110,7 @@ def _calculate_class_ap(
     return ap
 
 
-def _calculate_iou(bbox1: List[float], bbox2: List[float]) -> float:
+def _calculate_iou(bbox1: list[float], bbox2: list[float]) -> float:
     """
     Calculate Intersection over Union (IoU) for two bounding boxes.
 

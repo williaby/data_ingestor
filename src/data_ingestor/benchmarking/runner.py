@@ -7,18 +7,16 @@ and result collection.
 
 import logging
 import time
-from concurrent.futures import ProcessPoolExecutor, TimeoutError, as_completed
 from pathlib import Path
-from typing import List
 
 from tqdm import tqdm
 
 from data_ingestor.core.config import Settings
 from data_ingestor.core.models import DocumentFormat
-from data_ingestor.pipeline.router import DocumentRouter
-from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.evaluation.base import BaseEvaluator
 from data_ingestor.evaluation.models import EvaluationResult
+from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
+from data_ingestor.pipeline.router import DocumentRouter
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +73,10 @@ class BenchmarkRunner:
 
     def run_batch(
         self,
-        document_files: List[Path],
+        document_files: list[Path],
         parser_name: str,
         evaluator: BaseEvaluator,
-    ) -> List[EvaluationResult]:
+    ) -> list[EvaluationResult]:
         """
         Process batch of documents with parallel workers.
 
@@ -97,8 +95,7 @@ class BenchmarkRunner:
         # Register only the requested parser
         if parser_name not in self.available_parsers:
             raise ValueError(
-                f"Unknown parser: {parser_name}. "
-                f"Available: {', '.join(self.available_parsers.keys())}"
+                f"Unknown parser: {parser_name}. " f"Available: {', '.join(self.available_parsers.keys())}",
             )
 
         parser_class = self.available_parsers[parser_name]
@@ -120,7 +117,10 @@ class BenchmarkRunner:
         # Phase 2 will add proper multiprocessing with shared state management
         for doc_file in tqdm(document_files, desc=f"  {parser_name}"):
             result = self._process_document(
-                doc_file, parser_name, evaluator, router
+                doc_file,
+                parser_name,
+                evaluator,
+                router,
             )
             results.append(result)
 
@@ -162,7 +162,7 @@ class BenchmarkRunner:
 
             if not document or not parse_result.success:
                 raise RuntimeError(
-                    f"Parsing failed: {parse_result.error_message}"
+                    f"Parsing failed: {parse_result.error_message}",
                 )
 
             # Load ground truth
@@ -189,10 +189,10 @@ class BenchmarkRunner:
 
     def run_batch_parallel(
         self,
-        document_files: List[Path],
+        document_files: list[Path],
         parser_name: str,
         evaluator: BaseEvaluator,
-    ) -> List[EvaluationResult]:
+    ) -> list[EvaluationResult]:
         """
         Process batch with ProcessPoolExecutor (for Phase 2).
 
@@ -219,7 +219,6 @@ class BenchmarkRunner:
         # #VERIFY: All components are picklable for multiprocessing
 
         logger.warning(
-            "Parallel processing not yet implemented. "
-            "Using sequential processing."
+            "Parallel processing not yet implemented. " "Using sequential processing.",
         )
         return self.run_batch(document_files, parser_name, evaluator)

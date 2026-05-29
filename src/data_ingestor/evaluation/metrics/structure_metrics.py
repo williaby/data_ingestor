@@ -7,12 +7,10 @@ Implements metrics for evaluating document structure preservation:
 - Kendall tau: Rank correlation for element ordering
 """
 
-from typing import List, Tuple
-
 
 def calculate_section_f1(
-    predicted_sections: List[Tuple[str, int]],
-    ground_truth_sections: List[Tuple[str, int]],
+    predicted_sections: list[tuple[str, int]],
+    ground_truth_sections: list[tuple[str, int]],
 ) -> float:
     """
     Calculate Section F1 score.
@@ -38,11 +36,7 @@ def calculate_section_f1(
     # Simple exact match implementation (Phase 1)
     # Phase 1.5 will add fuzzy matching and hierarchy weighting
 
-    matches = sum(
-        1
-        for pred in predicted_sections
-        if any(_sections_match(pred, gt) for gt in ground_truth_sections)
-    )
+    matches = sum(1 for pred in predicted_sections if any(_sections_match(pred, gt) for gt in ground_truth_sections))
 
     precision = matches / len(predicted_sections) if predicted_sections else 0.0
     recall = matches / len(ground_truth_sections) if ground_truth_sections else 0.0
@@ -55,8 +49,8 @@ def calculate_section_f1(
 
 
 def _sections_match(
-    pred: Tuple[str, int],
-    gt: Tuple[str, int],
+    pred: tuple[str, int],
+    gt: tuple[str, int],
     text_threshold: float = 0.8,
 ) -> bool:
     """Check if two sections match (text and level)."""
@@ -76,8 +70,8 @@ def _sections_match(
 
 
 def calculate_reading_order_f1(
-    predicted_order: List[str],
-    ground_truth_order: List[str],
+    predicted_order: list[str],
+    ground_truth_order: list[str],
 ) -> float:
     """
     Calculate Reading Order F1 score.
@@ -114,7 +108,7 @@ def calculate_reading_order_f1(
     gt_subseq = [e for e in ground_truth_order if e in common]
 
     # Count matching positions (simplified)
-    matches = sum(1 for p, g in zip(pred_subseq, gt_subseq) if p == g)
+    matches = sum(1 for p, g in zip(pred_subseq, gt_subseq, strict=False) if p == g)
 
     precision = matches / len(pred_subseq) if pred_subseq else 0.0
     recall = matches / len(gt_subseq) if gt_subseq else 0.0
@@ -127,8 +121,8 @@ def calculate_reading_order_f1(
 
 
 def calculate_kendall_tau(
-    predicted_order: List[str],
-    ground_truth_order: List[str],
+    predicted_order: list[str],
+    ground_truth_order: list[str],
 ) -> float:
     """
     Calculate Kendall's tau rank correlation coefficient.
@@ -151,14 +145,8 @@ def calculate_kendall_tau(
         return 0.0
 
     # Create rankings for common elements
-    pred_ranks = {
-        elem: i for i, elem in enumerate(predicted_order) if elem in common
-    }
-    gt_ranks = {
-        elem: i
-        for i, elem in enumerate(ground_truth_order)
-        if elem in common
-    }
+    pred_ranks = {elem: i for i, elem in enumerate(predicted_order) if elem in common}
+    gt_ranks = {elem: i for i, elem in enumerate(ground_truth_order) if elem in common}
 
     # Calculate concordant and discordant pairs
     concordant = 0
@@ -170,9 +158,7 @@ def calculate_kendall_tau(
             elem1, elem2 = common_list[i], common_list[j]
 
             # Compare relative orders
-            pred_order_correct = (pred_ranks[elem1] < pred_ranks[elem2]) == (
-                gt_ranks[elem1] < gt_ranks[elem2]
-            )
+            pred_order_correct = (pred_ranks[elem1] < pred_ranks[elem2]) == (gt_ranks[elem1] < gt_ranks[elem2])
 
             if pred_order_correct:
                 concordant += 1

@@ -141,8 +141,8 @@ class TestBenchmarkReporter:
                         "total_files": 5,
                         "successful": 5,
                         "failed": 0,
-                    }
-                }
+                    },
+                },
             },
             "overall": {
                 "total_files": 5,
@@ -169,8 +169,8 @@ class TestBenchmarkReporter:
                     "pymupdf": {
                         "total_files": 5,
                         "successful": 5,
-                    }
-                }
+                    },
+                },
             },
             "overall": {},
         }
@@ -230,10 +230,10 @@ class TestBenchmarkReporter:
                                 "failed_documents": 0,
                                 "success_rate": 1.0,
                                 "avg_processing_time": 0.5,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             "overall": {},
         }

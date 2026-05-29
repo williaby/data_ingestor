@@ -1,9 +1,10 @@
 """Unit tests for PDF upscaling."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import MagicMock, Mock, patch
+
 import numpy as np
+import pytest
 
 from data_ingestor.utils.pdf_upscaler import (
     PDFUpscaler,

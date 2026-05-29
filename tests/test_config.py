@@ -1,6 +1,5 @@
 """Comprehensive tests for configuration settings."""
 
-import os
 from pathlib import Path
 
 import pytest

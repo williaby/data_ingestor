@@ -8,11 +8,7 @@ Provides implementations of standard metrics used in document parsing evaluation
 - Layout: mAP for layout detection
 """
 
-from data_ingestor.evaluation.metrics.text_metrics import (
-    calculate_bleu,
-    calculate_cer,
-    calculate_chrf,
-)
+from data_ingestor.evaluation.metrics.layout_metrics import calculate_map
 from data_ingestor.evaluation.metrics.structure_metrics import (
     calculate_kendall_tau,
     calculate_reading_order_f1,
@@ -23,7 +19,11 @@ from data_ingestor.evaluation.metrics.table_metrics import (
     calculate_header_f1,
     calculate_teds,
 )
-from data_ingestor.evaluation.metrics.layout_metrics import calculate_map
+from data_ingestor.evaluation.metrics.text_metrics import (
+    calculate_bleu,
+    calculate_cer,
+    calculate_chrf,
+)
 
 __all__ = [
     # Text metrics

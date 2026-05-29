@@ -9,11 +9,11 @@ and performance tracking across different environments.
 import hashlib
 import logging
 import platform
-import psutil
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +47,9 @@ class HardwareProfile:
     cpu_cores: int
     cpu_threads: int
     cpu_frequency_mhz: float
-    gpu_model: Optional[str]
-    gpu_memory_gb: Optional[float]
-    cuda_version: Optional[str]
+    gpu_model: str | None
+    gpu_memory_gb: float | None
+    cuda_version: str | None
     ram_total_gb: float
     ram_available_gb: float
     storage_type: str
@@ -58,12 +58,12 @@ class HardwareProfile:
     fingerprint_hash: str
     timestamp: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "HardwareProfile":
+    def from_dict(cls, data: dict) -> "HardwareProfile":
         """Create from dictionary."""
         return cls(**data)
 
@@ -88,14 +88,14 @@ class DocumentCharacteristics:
 
     doc_id: str
     file_size_mb: float
-    page_count: Optional[int]
+    page_count: int | None
     document_type: str  # "digital", "scanned", "hybrid", "unknown"
     complexity_score: float
     has_tables: bool
     has_images: bool
-    language: Optional[str]
+    language: str | None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
@@ -123,22 +123,22 @@ class DatasetProfile:
 
     total_documents: int
     total_size_gb: float
-    size_distribution: Dict[str, int]  # small, medium, large
-    type_distribution: Dict[str, int]  # digital, scanned, hybrid
-    page_distribution: Dict[str, float]  # mean, median, p95
-    complexity_stats: Dict[str, float]  # mean, median, p95
+    size_distribution: dict[str, int]  # small, medium, large
+    type_distribution: dict[str, int]  # digital, scanned, hybrid
+    page_distribution: dict[str, float]  # mean, median, p95
+    complexity_stats: dict[str, float]  # mean, median, p95
     avg_file_size_mb: float
     median_file_size_mb: float
-    language_distribution: Dict[str, int]
+    language_distribution: dict[str, int]
     dataset_hash: str
     timestamp: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "DatasetProfile":
+    def from_dict(cls, data: dict) -> "DatasetProfile":
         """Create from dictionary."""
         return cls(**data)
 
@@ -228,7 +228,7 @@ class HardwareFingerprint:
         return profile
 
     @staticmethod
-    def _get_gpu_info() -> tuple[Optional[str], Optional[float], Optional[str]]:
+    def _get_gpu_info() -> tuple[str | None, float | None, str | None]:
         """
         Get GPU information if available.
 
@@ -277,15 +277,14 @@ class HardwareFingerprint:
                             if "nvme" in str(disk):
                                 return "NVMe"
                             return "SSD"
-                        else:
-                            return "HDD"
+                        return "HDD"
         except Exception as e:
             logger.debug(f"Storage type detection failed: {e}")
 
         return "Unknown"
 
     @staticmethod
-    def _generate_hash(data: Dict) -> str:
+    def _generate_hash(data: dict) -> str:
         """
         Generate stable hash for hardware configuration.
 
@@ -311,8 +310,8 @@ class DatasetFingerprint:
 
     @staticmethod
     def analyze_dataset(
-        documents: List[Path],
-        sample_size: Optional[int] = None,
+        documents: list[Path],
+        sample_size: int | None = None,
     ) -> DatasetProfile:
         """
         Analyze document collection and create profile.
@@ -334,6 +333,7 @@ class DatasetFingerprint:
         # Sample if requested
         if sample_size and sample_size < len(documents):
             import random
+
             documents = random.sample(documents, sample_size)
             logger.info(f"  Sampled {sample_size} documents for analysis")
 
@@ -386,7 +386,11 @@ class DatasetFingerprint:
         complexity_stats = {
             "mean": sum(complexity_scores) / len(complexity_scores),
             "median": sorted(complexity_scores)[len(complexity_scores) // 2],
-            "p95": sorted(complexity_scores)[int(len(complexity_scores) * 0.95)] if len(complexity_scores) > 20 else max(complexity_scores),
+            "p95": (
+                sorted(complexity_scores)[int(len(complexity_scores) * 0.95)]
+                if len(complexity_scores) > 20
+                else max(complexity_scores)
+            ),
         }
 
         # Language distribution
@@ -502,7 +506,7 @@ class DatasetFingerprint:
         )
 
     @staticmethod
-    def _generate_dataset_hash(characteristics: List[DocumentCharacteristics]) -> str:
+    def _generate_dataset_hash(characteristics: list[DocumentCharacteristics]) -> str:
         """
         Generate stable hash for dataset.
 

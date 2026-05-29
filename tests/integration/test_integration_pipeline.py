@@ -16,7 +16,10 @@ class TestFullPipeline:
     """End-to-end pipeline tests with real data."""
 
     def test_pdf_to_json_export_complete_flow(
-        self, test_data_dir: Path, validation_loader, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        validation_loader,
+        tmp_path: Path,
     ) -> None:
         """Test complete flow: PDF → Parse → Chunk → Export → Validate."""
         # Given: A real PDF file
@@ -69,7 +72,9 @@ class TestFullPipeline:
             assert phrase in full_text, f"Missing phrase: {phrase}"
 
     def test_pipeline_with_token_chunking(
-        self, test_data_dir: Path, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test pipeline with token-based chunking."""
         pdf_path = test_data_dir / "02_multipage_document.pdf"
@@ -114,7 +119,9 @@ class TestFullPipeline:
                 assert "metadata" in chunk_data
 
     def test_pipeline_with_table_preservation(
-        self, test_data_dir: Path, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test pipeline preserves tables correctly."""
         pdf_path = test_data_dir / "04_tabular_data.pdf"
@@ -128,6 +135,7 @@ class TestFullPipeline:
 
         # Check if we actually extracted table elements
         from data_ingestor.core.models import ElementType
+
         table_elements = [e for e in parse_result.elements if e.element_type == ElementType.TABLE]
 
         # Chunk with table preservation
@@ -164,7 +172,9 @@ class TestFullPipeline:
             assert len(all_content) > 0, "Should have extracted content"
 
     def test_pipeline_with_multiple_parsers(
-        self, test_data_dir: Path, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test pipeline works with different parsers."""
         pdf_path = test_data_dir / "01_simple_text.pdf"
@@ -196,7 +206,8 @@ class TestFullPipeline:
             assert len(chunks) > 0
 
     def test_pipeline_error_handling(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
     ) -> None:
         """Test pipeline handles errors gracefully."""
         # Create invalid PDF
@@ -218,7 +229,10 @@ class TestPipelinePerformance:
     """Performance-focused integration tests."""
 
     def test_large_document_processing(
-        self, test_data_dir: Path, tmp_path: Path, performance_metrics
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
+        performance_metrics,
     ) -> None:
         """Test pipeline performance with larger documents."""
         pdf_path = test_data_dir / "Where-does-wind-matter.pdf"
@@ -254,8 +268,9 @@ class TestPipelinePerformance:
         performance_metrics.stop()
 
         # Should complete in reasonable time
-        assert performance_metrics.duration < 30.0, \
-            f"Large document processing took {performance_metrics.duration}s (expected <30s)"
+        assert (
+            performance_metrics.duration < 30.0
+        ), f"Large document processing took {performance_metrics.duration}s (expected <30s)"
 
         # Verify output
         assert export_path.exists()
@@ -266,7 +281,10 @@ class TestPipelineDataQuality:
     """Data quality focused integration tests."""
 
     def test_content_preservation_through_pipeline(
-        self, test_data_dir: Path, validation_loader, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        validation_loader,
+        tmp_path: Path,
     ) -> None:
         """Test that content is preserved accurately through the pipeline."""
         pdf_path = test_data_dir / "03_formatted_text.pdf"
@@ -309,7 +327,9 @@ class TestPipelineDataQuality:
             assert "chunk_index" in chunk["metadata"]
 
     def test_metadata_propagation(
-        self, test_data_dir: Path, tmp_path: Path
+        self,
+        test_data_dir: Path,
+        tmp_path: Path,
     ) -> None:
         """Test that metadata propagates correctly through pipeline."""
         pdf_path = test_data_dir / "01_simple_text.pdf"

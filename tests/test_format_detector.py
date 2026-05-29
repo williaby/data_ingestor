@@ -11,9 +11,7 @@ Tests cover:
 - Edge cases and error handling
 """
 
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -128,9 +126,7 @@ class TestDetectFromPath:
                 file_path.write_bytes(b"fake video content")
 
                 result = detector.detect_from_path(file_path)
-                assert (
-                    result == expected_format
-                ), f"Failed for {filename}: expected {expected_format}, got {result}"
+                assert result == expected_format, f"Failed for {filename}: expected {expected_format}, got {result}"
 
     def test_detect_audio_formats(self, tmp_path):
         """Test audio format detection using extension fallback."""
@@ -181,7 +177,7 @@ class TestDetectFromPath:
             side_effect=Exception("Not available"),
         ):
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -201,7 +197,7 @@ class TestDetectFromPath:
             side_effect=Exception("Not available"),
         ):
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -221,7 +217,7 @@ class TestDetectFromPath:
         with patch("data_ingestor.utils.format_detector.magic.Magic") as magic_class:
             magic_class.return_value = mock_magic
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -405,7 +401,7 @@ class TestValidateFormat:
             side_effect=Exception("Not available"),
         ):
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -480,7 +476,7 @@ class TestGetMimeType:
             side_effect=Exception("Not available"),
         ):
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -522,7 +518,7 @@ class TestGetFormatInfo:
             side_effect=Exception("Not available"),
         ):
             with patch(
-                "data_ingestor.utils.format_detector.mimetypes.guess_type"
+                "data_ingestor.utils.format_detector.mimetypes.guess_type",
             ) as mock_guess:
                 mock_guess.return_value = (None, None)
 
@@ -553,10 +549,7 @@ class TestGetFormatInfo:
                 info = detector.get_format_info(docx_file)
 
                 assert info["format"] == DocumentFormat.DOCX
-                assert (
-                    info["mime_type"]
-                    == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                assert info["mime_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 assert info["extension"] == ".docx"
                 assert info["file_size_bytes"] == len(b"fake docx")
 
@@ -569,9 +562,7 @@ class TestMIMETypeMapping:
         detector = FormatDetector()
 
         # Test key MIME types
-        assert (
-            detector.MIME_TYPE_MAP["application/pdf"] == DocumentFormat.PDF
-        )
+        assert detector.MIME_TYPE_MAP["application/pdf"] == DocumentFormat.PDF
         assert detector.MIME_TYPE_MAP["text/html"] == DocumentFormat.HTML
         assert detector.MIME_TYPE_MAP["video/mp4"] == DocumentFormat.VIDEO
         assert detector.MIME_TYPE_MAP["audio/mpeg"] == DocumentFormat.AUDIO

@@ -48,7 +48,7 @@ for ds_name, ds_data in datasets.items():
 
         # Analyze failures
         if failed:
-            print(f"\n    Failure Analysis:")
+            print("\n    Failure Analysis:")
             error_types = Counter()
             for result in failed:
                 error = result.get("error", "Unknown error")
@@ -69,7 +69,7 @@ for ds_name, ds_data in datasets.items():
 
         # Analyze metrics
         if successful:
-            print(f"\n    Metrics (successful documents):")
+            print("\n    Metrics (successful documents):")
 
             # Collect all metrics
             all_metrics = {}

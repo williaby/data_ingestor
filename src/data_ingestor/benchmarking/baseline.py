@@ -7,15 +7,15 @@ comparison tools for tracking performance across code changes.
 
 import json
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-import numpy as np
+from typing import Any
+
 from scipy import stats
 
 from data_ingestor.benchmarking.config_tester import ConfigurationResult
-from data_ingestor.benchmarking.fingerprint import HardwareProfile, DatasetProfile
+from data_ingestor.benchmarking.fingerprint import DatasetProfile, HardwareProfile
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +42,11 @@ class Baseline:
     version: int
     hardware_profile: HardwareProfile
     dataset_profile: DatasetProfile
-    results: List[ConfigurationResult]
+    results: list[ConfigurationResult]
     created_at: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
             "name": self.name,
@@ -59,7 +59,7 @@ class Baseline:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "Baseline":
+    def from_dict(cls, data: dict) -> "Baseline":
         """Create from dictionary."""
         return cls(
             name=data["name"],
@@ -84,12 +84,12 @@ class ComparisonReport:
     baseline1_version: int
     baseline2_name: str
     baseline2_version: int
-    comparisons: List[Dict[str, Any]]
-    statistical_tests: Dict[str, Any]
-    summary: Dict[str, Any]
+    comparisons: list[dict[str, Any]]
+    statistical_tests: dict[str, Any]
+    summary: dict[str, Any]
     timestamp: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
@@ -105,12 +105,12 @@ class ConfigurationRecommendation:
     document_type: str
     optimization_target: str  # "speed", "accuracy", "balanced"
     recommended_parser: str
-    recommended_config: Dict[str, Any]
-    expected_performance: Dict[str, float]
+    recommended_config: dict[str, Any]
+    expected_performance: dict[str, float]
     confidence: float
     rationale: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
@@ -155,8 +155,8 @@ class BaselineManager:
         name: str,
         hardware_profile: HardwareProfile,
         dataset_profile: DatasetProfile,
-        results: List[ConfigurationResult],
-        metadata: Optional[Dict[str, Any]] = None,
+        results: list[ConfigurationResult],
+        metadata: dict[str, Any] | None = None,
     ) -> Baseline:
         """
         Create new baseline with automatic versioning.
@@ -197,7 +197,7 @@ class BaselineManager:
     def load_baseline(
         self,
         name: str,
-        version: Optional[int] = None,
+        version: int | None = None,
     ) -> Baseline:
         """
         Load baseline (latest or specific version).
@@ -229,7 +229,7 @@ class BaselineManager:
         logger.info(f"Loaded baseline: {name} v{version}")
         return baseline
 
-    def list_baselines(self) -> List[Dict[str, Any]]:
+    def list_baselines(self) -> list[dict[str, Any]]:
         """
         List all available baselines.
 
@@ -243,12 +243,14 @@ class BaselineManager:
             try:
                 with open(baseline_file) as f:
                     data = json.load(f)
-                baselines.append({
-                    "name": data["name"],
-                    "version": data["version"],
-                    "created_at": data["created_at"],
-                    "num_results": len(data["results"]),
-                })
+                baselines.append(
+                    {
+                        "name": data["name"],
+                        "version": data["version"],
+                        "created_at": data["created_at"],
+                        "num_results": len(data["results"]),
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Could not load baseline {baseline_file}: {e}")
 
@@ -273,7 +275,9 @@ class BaselineManager:
         Returns:
             ComparisonReport with detailed comparison
         """
-        logger.info(f"Comparing baselines: {baseline1.name} v{baseline1.version} vs {baseline2.name} v{baseline2.version}")
+        logger.info(
+            f"Comparing baselines: {baseline1.name} v{baseline1.version} vs {baseline2.name} v{baseline2.version}"
+        )
 
         # Compare each configuration that appears in both baselines
         comparisons = []
@@ -282,8 +286,10 @@ class BaselineManager:
             # Find matching result in baseline2
             matching_result = None
             for result2 in baseline2.results:
-                if (result1.parser_type == result2.parser_type and
-                    result1.configuration_name == result2.configuration_name):
+                if (
+                    result1.parser_type == result2.parser_type
+                    and result1.configuration_name == result2.configuration_name
+                ):
                     matching_result = result2
                     break
 
@@ -324,7 +330,7 @@ class BaselineManager:
         hardware_profile: HardwareProfile,
         dataset_profile: DatasetProfile,
         tolerance: float = 0.2,
-    ) -> List[Baseline]:
+    ) -> list[Baseline]:
         """
         Find baselines with similar hardware and dataset.
 
@@ -395,7 +401,7 @@ class BaselineManager:
         latest = self._get_latest_version(name)
         return 1 if latest is None else latest + 1
 
-    def _get_latest_version(self, name: str) -> Optional[int]:
+    def _get_latest_version(self, name: str) -> int | None:
         """Get latest version number for baseline name."""
         baseline_dir = self.storage_path / "baselines"
         versions = []
@@ -414,7 +420,7 @@ class BaselineManager:
         result1: ConfigurationResult,
         result2: ConfigurationResult,
         significance_level: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Compare two configuration results statistically.
 
@@ -424,20 +430,27 @@ class BaselineManager:
         agg2 = result2.aggregated_metrics
 
         # Calculate percentage changes
-        time_change_pct = ((agg2["mean_total_time"] - agg1["mean_total_time"]) /
-                           agg1["mean_total_time"] * 100) if agg1["mean_total_time"] > 0 else 0
+        time_change_pct = (
+            ((agg2["mean_total_time"] - agg1["mean_total_time"]) / agg1["mean_total_time"] * 100)
+            if agg1["mean_total_time"] > 0
+            else 0
+        )
 
-        memory_change_pct = ((agg2["mean_peak_memory_mb"] - agg1["mean_peak_memory_mb"]) /
-                             agg1["mean_peak_memory_mb"] * 100) if agg1["mean_peak_memory_mb"] > 0 else 0
+        memory_change_pct = (
+            ((agg2["mean_peak_memory_mb"] - agg1["mean_peak_memory_mb"]) / agg1["mean_peak_memory_mb"] * 100)
+            if agg1["mean_peak_memory_mb"] > 0
+            else 0
+        )
 
-        quality_change_pct = ((agg2["mean_quality_score"] - agg1["mean_quality_score"]) /
-                              agg1["mean_quality_score"] * 100) if agg1["mean_quality_score"] > 0 else 0
+        quality_change_pct = (
+            ((agg2["mean_quality_score"] - agg1["mean_quality_score"]) / agg1["mean_quality_score"] * 100)
+            if agg1["mean_quality_score"] > 0
+            else 0
+        )
 
         # Extract time measurements for t-test
-        times1 = [d["metrics"]["total_time_seconds"] for d in result1.document_results
-                  if d["metrics"]["success"]]
-        times2 = [d["metrics"]["total_time_seconds"] for d in result2.document_results
-                  if d["metrics"]["success"]]
+        times1 = [d["metrics"]["total_time_seconds"] for d in result1.document_results if d["metrics"]["success"]]
+        times2 = [d["metrics"]["total_time_seconds"] for d in result2.document_results if d["metrics"]["success"]]
 
         # Perform t-test if we have enough data
         t_test_result = None
@@ -472,20 +485,18 @@ class BaselineManager:
         baseline1: Baseline,
         baseline2: Baseline,
         significance_level: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run statistical tests across all configurations."""
         # Collect all times from both baselines
         all_times1 = []
         all_times2 = []
 
         for result in baseline1.results:
-            times = [d["metrics"]["total_time_seconds"] for d in result.document_results
-                     if d["metrics"]["success"]]
+            times = [d["metrics"]["total_time_seconds"] for d in result.document_results if d["metrics"]["success"]]
             all_times1.extend(times)
 
         for result in baseline2.results:
-            times = [d["metrics"]["total_time_seconds"] for d in result.document_results
-                     if d["metrics"]["success"]]
+            times = [d["metrics"]["total_time_seconds"] for d in result.document_results if d["metrics"]["success"]]
             all_times2.extend(times)
 
         tests = {}
@@ -506,9 +517,9 @@ class BaselineManager:
 
     def _generate_comparison_summary(
         self,
-        comparisons: List[Dict[str, Any]],
-        statistical_tests: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        comparisons: list[dict[str, Any]],
+        statistical_tests: dict[str, Any],
+    ) -> dict[str, Any]:
         """Generate summary statistics for comparison."""
         if not comparisons:
             return {"note": "No comparable configurations found"}
@@ -557,7 +568,9 @@ class BaselineManager:
     ) -> bool:
         """Check if two dataset profiles are compatible within tolerance."""
         # Check document count similarity
-        count_diff = abs(profile1.total_documents - profile2.total_documents) / max(profile1.total_documents, profile2.total_documents)
+        count_diff = abs(profile1.total_documents - profile2.total_documents) / max(
+            profile1.total_documents, profile2.total_documents
+        )
 
         return count_diff <= tolerance
 
@@ -576,8 +589,8 @@ class ComparativeAnalyzer:
 
     def analyze_results(
         self,
-        results: List[ConfigurationResult],
-    ) -> Dict[str, Any]:
+        results: list[ConfigurationResult],
+    ) -> dict[str, Any]:
         """
         Perform statistical analysis on configuration results.
 
@@ -608,7 +621,7 @@ class ComparativeAnalyzer:
 
     def recommend_configuration(
         self,
-        results: List[ConfigurationResult],
+        results: list[ConfigurationResult],
         document_type: str,
         optimization_target: str = "balanced",
     ) -> ConfigurationRecommendation:
@@ -646,10 +659,12 @@ class ComparativeAnalyzer:
                 quality_score = agg.get("mean_quality_score", 0.5)
                 score = (time_score * quality_score) ** 0.5  # Geometric mean
 
-            scored_configs.append({
-                "result": result,
-                "score": score,
-            })
+            scored_configs.append(
+                {
+                    "result": result,
+                    "score": score,
+                }
+            )
 
         # Sort by score
         scored_configs.sort(key=lambda x: x["score"], reverse=True)
@@ -686,23 +701,25 @@ class ComparativeAnalyzer:
             rationale=rationale,
         )
 
-    def _analyze_tradeoffs(self, results: List[ConfigurationResult]) -> Dict[str, Any]:
+    def _analyze_tradeoffs(self, results: list[ConfigurationResult]) -> dict[str, Any]:
         """Analyze speed vs accuracy trade-offs."""
         trade_offs = []
 
         for result in results:
             agg = result.aggregated_metrics
-            trade_offs.append({
-                "configuration": result.configuration_name,
-                "parser": result.parser_type,
-                "speed": agg["mean_total_time"],
-                "quality": agg.get("mean_quality_score", 0.0),
-                "memory": agg["mean_peak_memory_mb"],
-            })
+            trade_offs.append(
+                {
+                    "configuration": result.configuration_name,
+                    "parser": result.parser_type,
+                    "speed": agg["mean_total_time"],
+                    "quality": agg.get("mean_quality_score", 0.0),
+                    "memory": agg["mean_peak_memory_mb"],
+                }
+            )
 
         return {"points": trade_offs}
 
-    def _find_best_configurations(self, results: List[ConfigurationResult]) -> Dict[str, Any]:
+    def _find_best_configurations(self, results: list[ConfigurationResult]) -> dict[str, Any]:
         """Find best configurations by different metrics."""
         best = {}
 
@@ -734,7 +751,7 @@ class ComparativeAnalyzer:
 
         return best
 
-    def _test_significance(self, results: List[ConfigurationResult]) -> Dict[str, Any]:
+    def _test_significance(self, results: list[ConfigurationResult]) -> dict[str, Any]:
         """Test statistical significance between configurations."""
         # #TODO: Implement pairwise comparisons with Bonferroni correction
         return {"note": "Statistical significance testing to be implemented in Phase 2"}
