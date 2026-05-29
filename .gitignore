@@ -226,7 +226,9 @@ zen-mcp-server/
 
 # Project-specific test data
 data/test_pdfs/
-scripts/
+scripts/*
+# Keep the FIPS compatibility checker required by the fips-compatibility workflow
+!scripts/check_fips_compatibility.py
 
 # Benchmarking & Testing (Phase 1.5)
 # =================================
