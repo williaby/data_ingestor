@@ -24,12 +24,10 @@ fi
 
 echo "Python version $PYTHON_VERSION is compatible with Atheris"
 
-# Install uv
-pip3 install uv
-
-# Install project dependencies (runtime only, no dev) into the system environment
+# Install project dependencies (runtime only) into the system environment.
+# The OSS-Fuzz base image is pip-based; install the PEP 621 project directly.
 cd $SRC/data_ingestor
-uv pip install --system .
+pip3 install .
 
 # Use OSS-Fuzz helper to compile Python fuzz targets
 # This creates proper executables that ClusterFuzzLite recognizes

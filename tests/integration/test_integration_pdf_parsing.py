@@ -16,16 +16,24 @@ class TestPDFParsingIntegration:
     @pytest.fixture
     def test_pdfs_dir(self) -> Path:
         """Get the test PDFs directory."""
-        return Path("data/test_pdfs")
+        path = Path("data/test_pdfs")
+        if not path.exists() or not any(path.glob("*.pdf")):
+            pytest.skip("Sample test PDFs not available in data/test_pdfs")
+        return path
 
     @pytest.fixture
     def validation_dir(self) -> Path:
         """Get the validation directory."""
-        return Path("data/test_pdfs/validation")
+        path = Path("data/test_pdfs/validation")
+        if not path.exists():
+            pytest.skip("PDF validation data not available in data/test_pdfs/validation")
+        return path
 
     def load_validation_data(self, validation_dir: Path, pdf_name: str) -> dict[str, Any]:
         """Load validation data for a PDF file."""
         validation_file = validation_dir / f"{pdf_name}.json"
+        if not validation_file.exists():
+            pytest.skip(f"Validation data not available: {validation_file}")
         with open(validation_file) as f:
             return json.load(f)
 
@@ -162,12 +170,18 @@ class TestPDFParsingEdgeCases:
     @pytest.fixture
     def test_pdfs_dir(self) -> Path:
         """Get the test PDFs directory."""
-        return Path("data/test_pdfs")
+        path = Path("data/test_pdfs")
+        if not path.exists() or not any(path.glob("*.pdf")):
+            pytest.skip("Sample test PDFs not available in data/test_pdfs")
+        return path
 
     @pytest.fixture
     def validation_dir(self) -> Path:
         """Get the validation directory."""
-        return Path("data/test_pdfs/validation")
+        path = Path("data/test_pdfs/validation")
+        if not path.exists():
+            pytest.skip("PDF validation data not available in data/test_pdfs/validation")
+        return path
 
     def test_large_pdf_processing(self, test_pdfs_dir: Path) -> None:
         """Test processing larger PDF files."""
@@ -223,5 +237,7 @@ class TestPDFParsingEdgeCases:
     def load_validation_data(self, validation_dir: Path, pdf_name: str) -> dict[str, Any]:
         """Load validation data for a PDF file."""
         validation_file = validation_dir / f"{pdf_name}.json"
+        if not validation_file.exists():
+            pytest.skip(f"Validation data not available: {validation_file}")
         with open(validation_file) as f:
             return json.load(f)

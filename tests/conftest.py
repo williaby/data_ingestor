@@ -509,7 +509,10 @@ def test_data_dir() -> Path:
     Returns:
         Path: Path to test data directory
     """
-    return Path("data/test_pdfs")
+    path = Path("data/test_pdfs")
+    if not path.exists() or not any(path.glob("*.pdf")):
+        pytest.skip("Sample test PDFs not available in data/test_pdfs")
+    return path
 
 
 @pytest.fixture(scope="session")
@@ -641,7 +644,7 @@ def sample_pdf_paths(test_data_dir: Path) -> dict[str, Path]:
     Returns:
         dict[str, Path]: Dictionary mapping PDF names to paths
     """
-    return {
+    paths = {
         "simple_text": test_data_dir / "01_simple_text.pdf",
         "multipage": test_data_dir / "02_multipage_document.pdf",
         "formatted": test_data_dir / "03_formatted_text.pdf",
@@ -649,6 +652,10 @@ def sample_pdf_paths(test_data_dir: Path) -> dict[str, Path]:
         "mixed": test_data_dir / "05_mixed_content.pdf",
         "complex": test_data_dir / "06_complex_layout.pdf",
     }
+    missing = [str(p) for p in paths.values() if not p.exists()]
+    if missing:
+        pytest.skip("Sample test PDFs not available in data/test_pdfs")
+    return paths
 
 
 @pytest.fixture(scope="session")

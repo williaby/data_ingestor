@@ -5,14 +5,12 @@ import tempfile
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
+import cv2  # type: ignore[import-untyped]
 import fitz  # PyMuPDF  # type: ignore[import-untyped]
+import numpy as np  # type: ignore[import-untyped]
 from PIL import Image
-
-if TYPE_CHECKING:
-    import cv2  # type: ignore[import-untyped]
-    import numpy as np  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +83,6 @@ class PDFUpscaler:
         if not input_path.exists():
             msg = f"Input PDF not found: {input_path}"
             raise FileNotFoundError(msg)
-
-        # Runtime import to avoid module-level dependency
-        import cv2  # type: ignore[import-untyped]
-        import numpy as np  # type: ignore[import-untyped]
 
         start_time = time.time()
         before_size = input_path.stat().st_size
@@ -232,10 +226,6 @@ class PDFUpscaler:
         Returns:
             Upscaled image as numpy array
         """
-        # Runtime import to avoid module-level dependency
-        import cv2  # type: ignore[import-untyped]
-        import numpy as np  # type: ignore[import-untyped]
-
         # Map algorithm to OpenCV/PIL methods
         if self.algorithm == UpscaleAlgorithm.BICUBIC:
             return cv2.resize(img, (target_width, target_height), interpolation=cv2.INTER_CUBIC)

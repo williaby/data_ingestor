@@ -1,5 +1,6 @@
 """Comprehensive tests for PDF parser implementations."""
 
+import importlib.util
 import logging
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -9,6 +10,13 @@ import pytest
 from data_ingestor.core.exceptions import ParserError
 from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementType, ParserResult
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
+
+# The marker-pdf package is an optional extra (advanced-pdf) that is not always
+# installed. Tests that import or patch the real marker package require it.
+requires_marker = pytest.mark.skipif(
+    importlib.util.find_spec("marker") is None,
+    reason="marker-pdf not installed (optional advanced-pdf extra)",
+)
 
 
 class TestPyMuPDFParser:
@@ -254,6 +262,7 @@ class TestMarkerParser:
             assert parser.name == "MarkerParser"
             assert parser._marker_available is False
 
+    @requires_marker
     @patch("data_ingestor.parsers.pdf_parser.torch", create=True)
     @patch("data_ingestor.parsers.pdf_parser.marker", create=True)
     def test_initialization_with_gpu(self, mock_marker, mock_torch) -> None:
@@ -638,6 +647,7 @@ class TestPyMuPDFParserExtended:
         assert result == expected_type, f"Failed for case: {reason}"
 
 
+@requires_marker
 class TestMarkerParserParseMethod:
     """Comprehensive tests for MarkerParser.parse() method with LLM processing."""
 
@@ -973,6 +983,7 @@ class TestMarkerParserParseMethod:
 class TestMarkerParserHelperMethods:
     """Tests for MarkerParser helper methods to improve coverage."""
 
+    @requires_marker
     def test_process_with_llm_configures_service(self, temp_test_file: Path) -> None:
         """Test _process_with_llm configures LLM service correctly."""
         with patch("marker.config.parser.ConfigParser") as mock_config_parser, \
@@ -1003,6 +1014,7 @@ class TestMarkerParserHelperMethods:
             mock_config_parser.assert_called_once()
             assert result == mock_output
 
+    @requires_marker
     def test_process_without_llm_disables_llm(self, temp_test_file: Path) -> None:
         """Test _process_without_llm disables LLM correctly."""
         with patch("marker.config.parser.ConfigParser") as mock_config_parser, \

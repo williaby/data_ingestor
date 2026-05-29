@@ -26,17 +26,14 @@ class TestBenchmarkRunnerExtended:
     """Extended tests for BenchmarkRunner with comprehensive coverage."""
 
     def test_runner_initialization_registers_parsers(self) -> None:
-        """Test runner initializes and registers all available parsers."""
+        """Test runner initializes with the available parsers configured."""
         runner = BenchmarkRunner()
 
-        # Should have router with registered parsers
-        assert runner.router is not None
-        assert runner.router.parser_registry is not None
-
-        # Check parsers were registered
-        from data_ingestor.core.models import DocumentFormat
-        parsers = runner.router.parser_registry.get_parsers(DocumentFormat.PDF)
-        assert len(parsers) >= 1  # At least PyMuPDFParser should be registered
+        # Parsers are registered per benchmark run; the runner exposes the
+        # available parser classes it can register.
+        assert runner.available_parsers is not None
+        assert "pymupdf" in runner.available_parsers
+        assert len(runner.available_parsers) >= 1  # At least PyMuPDFParser available
 
     def test_run_batch_with_sample_documents(self, tmp_path: Path) -> None:
         """Test run_batch with sample PDF documents."""
@@ -177,11 +174,21 @@ class TestBenchmarkRunnerExtended:
         )
         mock_evaluator.evaluate_document.return_value = expected_result
 
+        # Build a router with the requested parser registered, as run_batch does.
+        from data_ingestor.core.models import DocumentFormat
+        from data_ingestor.pipeline.router import DocumentRouter
+
+        router = DocumentRouter(runner.settings)
+        parser_class = runner.available_parsers["pymupdf"]
+        parser = parser_class(runner.settings.get_parser_config("pymupdf"))
+        router.parser_registry.register(parser, [DocumentFormat.PDF])
+
         # Process document
         result = runner._process_document(
             doc_file=pdf_file,
             parser_name="pymupdf",
             evaluator=mock_evaluator,
+            router=router,
         )
 
         # Verify result
@@ -200,11 +207,21 @@ class TestBenchmarkRunnerExtended:
         mock_evaluator = Mock()
         mock_evaluator.dataset_name = "test"
 
+        # Build a router with the requested parser registered, as run_batch does.
+        from data_ingestor.core.models import DocumentFormat
+        from data_ingestor.pipeline.router import DocumentRouter
+
+        router = DocumentRouter(runner.settings)
+        parser_class = runner.available_parsers["pymupdf"]
+        parser = parser_class(runner.settings.get_parser_config("pymupdf"))
+        router.parser_registry.register(parser, [DocumentFormat.PDF])
+
         # Process document - should handle exception
         result = runner._process_document(
             doc_file=pdf_file,
             parser_name="pymupdf",
             evaluator=mock_evaluator,
+            router=router,
         )
 
         # Should return failure result with error

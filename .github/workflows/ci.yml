@@ -106,7 +106,8 @@ jobs:
           echo "📄 Validating document processing dependencies..."
           uv run --frozen python -c "
           import sys
-          required_deps = ['pdfplumber', 'pypdf', 'python_docx', 'markdown', 'tiktoken']
+          # Import names (not package names) for the project's core document deps
+          required_deps = ['pdfplumber', 'fitz', 'pymupdf4llm', 'docx', 'tiktoken']
           optional_deps = ['docling', 'transformers', 'torch']
 
           print('🔍 Core Dependencies:')

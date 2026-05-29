@@ -49,12 +49,12 @@ jobs:
           uv run --frozen python -c "
           import sys
 
-          # Critical dependencies for document processing
+          # Critical dependencies for document processing (import names)
           critical_deps = {
               'pdfplumber': 'PDF text extraction',
-              'pypdf': 'PDF manipulation',
-              'python_docx': 'Word document processing',
-              'markdown': 'Markdown generation',
+              'fitz': 'PyMuPDF PDF parsing',
+              'pymupdf4llm': 'LLM-optimized PDF extraction',
+              'docx': 'Word document processing',
               'tiktoken': 'Token counting',
               'pydantic': 'Data validation'
           }
