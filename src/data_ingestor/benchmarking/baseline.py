@@ -133,7 +133,7 @@ class BaselineManager:
         >>> loaded = manager.load_baseline("phase1d_initial", version=1)
     """
 
-    def __init__(self, storage_path: Path):
+    def __init__(self, storage_path: Path) -> None:
         """
         Initialize baseline manager.
 
@@ -249,7 +249,7 @@ class BaselineManager:
                         "version": data["version"],
                         "created_at": data["created_at"],
                         "num_results": len(data["results"]),
-                    }
+                    },
                 )
             except Exception as e:
                 logger.warning(f"Could not load baseline {baseline_file}: {e}")
@@ -276,7 +276,7 @@ class BaselineManager:
             ComparisonReport with detailed comparison
         """
         logger.info(
-            f"Comparing baselines: {baseline1.name} v{baseline1.version} vs {baseline2.name} v{baseline2.version}"
+            f"Comparing baselines: {baseline1.name} v{baseline1.version} vs {baseline2.name} v{baseline2.version}",
         )
 
         # Compare each configuration that appears in both baselines
@@ -374,19 +374,19 @@ class BaselineManager:
         logger.info(f"Found {len(compatible)} compatible baselines")
         return compatible
 
-    def _save_baseline(self, baseline: Baseline):
+    def _save_baseline(self, baseline: Baseline) -> None:
         """Save baseline to JSON file."""
         baseline_path = self._get_baseline_path(baseline.name, baseline.version)
         with open(baseline_path, "w") as f:
             json.dump(baseline.to_dict(), f, indent=2)
 
-    def _save_hardware_profile(self, profile: HardwareProfile):
+    def _save_hardware_profile(self, profile: HardwareProfile) -> None:
         """Save hardware profile for reuse."""
         profile_path = self.storage_path / "hardware_profiles" / f"{profile.fingerprint_hash}.json"
         with open(profile_path, "w") as f:
             json.dump(profile.to_dict(), f, indent=2)
 
-    def _save_dataset_profile(self, profile: DatasetProfile):
+    def _save_dataset_profile(self, profile: DatasetProfile) -> None:
         """Save dataset profile for reuse."""
         profile_path = self.storage_path / "dataset_profiles" / f"{profile.dataset_hash}.json"
         with open(profile_path, "w") as f:
@@ -569,7 +569,8 @@ class BaselineManager:
         """Check if two dataset profiles are compatible within tolerance."""
         # Check document count similarity
         count_diff = abs(profile1.total_documents - profile2.total_documents) / max(
-            profile1.total_documents, profile2.total_documents
+            profile1.total_documents,
+            profile2.total_documents,
         )
 
         return count_diff <= tolerance
@@ -583,7 +584,7 @@ class ComparativeAnalyzer:
     for different document types and optimization targets.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize comparative analyzer."""
         logger.info("Comparative analyzer initialized")
 
@@ -663,7 +664,7 @@ class ComparativeAnalyzer:
                 {
                     "result": result,
                     "score": score,
-                }
+                },
             )
 
         # Sort by score
@@ -714,7 +715,7 @@ class ComparativeAnalyzer:
                     "speed": agg["mean_total_time"],
                     "quality": agg.get("mean_quality_score", 0.0),
                     "memory": agg["mean_peak_memory_mb"],
-                }
+                },
             )
 
         return {"points": trade_offs}

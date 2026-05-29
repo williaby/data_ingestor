@@ -60,7 +60,7 @@ class DocLayNetEvaluator(BaseEvaluator):
     6. Page-header
     """
 
-    def __init__(self, ground_truth_dir: Path):
+    def __init__(self, ground_truth_dir: Path) -> None:
         """
         Initialize DocLayNet evaluator.
 
@@ -133,7 +133,7 @@ class DocLayNetEvaluator(BaseEvaluator):
                 )
             else:
                 logger.info(
-                    f"Skipping mAP calculation for {doc_id}: " f"Parser does not provide bounding boxes",
+                    f"Skipping mAP calculation for {doc_id}: Parser does not provide bounding boxes",
                 )
 
             # Calculate reading order metrics using bbox matching
@@ -476,7 +476,7 @@ class DocLayNetEvaluator(BaseEvaluator):
                 )
 
             logger.debug(
-                f"Found {len(formatted_annotations)} annotations for " f"{document_id} in {split}.json",
+                f"Found {len(formatted_annotations)} annotations for {document_id} in {split}.json",
             )
 
             return {"layout": {"annotations": formatted_annotations}}

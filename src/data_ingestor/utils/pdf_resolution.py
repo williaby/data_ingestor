@@ -124,7 +124,7 @@ class PDFResolutionAnalyzer:
                             "min_dpi": round(page_min_dpi, 2),
                             "avg_dpi": round(page_avg_dpi, 2),
                             "max_dpi": round(page_max_dpi, 2),
-                        }
+                        },
                     )
 
             doc.close()

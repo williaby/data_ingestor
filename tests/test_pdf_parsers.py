@@ -629,7 +629,7 @@ class TestPyMuPDFParserExtended:
         assert len(result.elements) == 3
 
     @pytest.mark.parametrize(
-        "text,font_size,expected_type,reason",
+        ("text", "font_size", "expected_type", "reason"),
         [
             ("Huge Title", 20, ElementType.TITLE, "large_font_size"),
             ("Exact Boundary", 15, ElementType.HEADING, "heading_threshold"),
@@ -989,10 +989,14 @@ class TestMarkerParserParseMethod:
 
             mock_elements = [
                 DocumentElement(
-                    element_type=ElementType.TITLE, content="Title", metadata=ElementMetadata(page_number=1)
+                    element_type=ElementType.TITLE,
+                    content="Title",
+                    metadata=ElementMetadata(page_number=1),
                 ),
                 DocumentElement(
-                    element_type=ElementType.PARAGRAPH, content="Content", metadata=ElementMetadata(page_number=3)
+                    element_type=ElementType.PARAGRAPH,
+                    content="Content",
+                    metadata=ElementMetadata(page_number=3),
                 ),
             ]
             mock_md_to_elements.return_value = mock_elements

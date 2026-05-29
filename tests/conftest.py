@@ -678,7 +678,7 @@ def parsed_pdf_cache(sample_pdf_paths: dict[str, Path]) -> dict[str, Document]:
 
     cache = {}
     parser = PyMuPDFParser(config=None)
-    settings = Settings()
+    Settings()
 
     print("\n[Session] Parsing PDFs once for caching...")
     for name, pdf_path in sample_pdf_paths.items():

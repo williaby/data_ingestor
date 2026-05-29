@@ -206,7 +206,7 @@ class TestDocLayNetEvaluatorEvaluateDocument:
 
         # Should skip mAP but still calculate reading order
         assert result.success is True
-        metric_names = [m.name for m in result.metrics]
+        [m.name for m in result.metrics]
         # mAP should be skipped when no bboxes
         # Reading order metrics may still be calculated
 

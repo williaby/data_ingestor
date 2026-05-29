@@ -322,7 +322,7 @@ class PyMuPDF4LLMParser(BaseParser):
             if line.startswith("# "):
                 element_type = ElementType.TITLE
                 content = line[2:].strip()
-            elif line.startswith("## ") or line.startswith("### "):
+            elif line.startswith(("## ", "### ")):
                 element_type = ElementType.HEADING
                 content = line.lstrip("#").strip()
             else:
@@ -423,7 +423,7 @@ class MarkerParser(BaseParser):
 
         # Check availability
         try:
-            import marker  # noqa: F401  # type: ignore[import-untyped]
+            import marker
 
             self._marker_available = True
 
@@ -903,10 +903,10 @@ class MarkerParser(BaseParser):
             if line_stripped.startswith("# "):
                 element_type = ElementType.TITLE
                 content = line_stripped[2:].strip()
-            elif line_stripped.startswith("## ") or line_stripped.startswith("### "):
+            elif line_stripped.startswith(("## ", "### ")):
                 element_type = ElementType.HEADING
                 content = line_stripped.lstrip("#").strip()
-            elif line_stripped.startswith("- ") or line_stripped.startswith("* "):
+            elif line_stripped.startswith(("- ", "* ")):
                 element_type = ElementType.LIST
                 content = line_stripped
             else:
@@ -938,8 +938,8 @@ class MarkerParser(BaseParser):
 
         try:
             # Try to import core marker modules
-            from marker.convert import convert_single_pdf  # noqa: F401
-            from marker.models import load_all_models  # noqa: F401
+            from marker.convert import convert_single_pdf
+            from marker.models import load_all_models
 
             return True
         except ImportError as e:
@@ -1062,7 +1062,7 @@ class MarkerParser(BaseParser):
         # Build hierarchy for parent_id assignment
         heading_stack: list[tuple[int, DocumentElement]] = []  # (level, element)
 
-        for i, element in enumerate(elements):
+        for _i, element in enumerate(elements):
             # Fix: Add confidence score based on element type
             # #ASSUME: Confidence Estimation: Element type indicates extraction confidence
             # #VERIFY: May need actual ML model confidence if available

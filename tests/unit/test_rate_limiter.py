@@ -216,7 +216,7 @@ class TestOpenRouterRateLimiter:
             paid_futures = [executor.submit(acquire_paid) for _ in range(15)]
 
             all_futures = free_futures + paid_futures
-            results = [f.result() for f in as_completed(all_futures)]
+            [f.result() for f in as_completed(all_futures)]
 
         # Paid models should mostly succeed (high limit)
         # Free models should be limited to 20 RPM

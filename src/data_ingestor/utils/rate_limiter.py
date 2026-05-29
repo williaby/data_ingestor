@@ -206,8 +206,7 @@ class RateLimiter:
             # Calculate when oldest request will be 60 seconds old
             if self._minute_requests:
                 oldest = self._minute_requests[0]
-                wait_time = max(0.0, 60 - (time.time() - oldest))
-                return wait_time
+                return max(0.0, 60 - (time.time() - oldest))
 
         return 0.0
 

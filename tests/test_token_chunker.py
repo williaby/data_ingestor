@@ -420,7 +420,7 @@ class TestEdgeCases:
     """Tests for edge cases and boundary conditions."""
 
     @pytest.mark.parametrize(
-        "chunk_size,overlap,content,expected_chunks_min",
+        ("chunk_size", "overlap", "content", "expected_chunks_min"),
         [
             (5, 1, "This is a test.", 1),  # Very small chunk size
             (50, 45, "Word " * 100, 1),  # Overlap close to chunk size

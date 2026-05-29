@@ -140,7 +140,7 @@ class PDFUpscaler:
                     # #CRITICAL: Page Dimensions: Must match original page size
                     # #VERIFY: Preserve aspect ratio and page dimensions
                     img_pil = Image.fromarray(upscaled_img)
-                    img_bytes = img_pil.tobytes("raw", "RGB")
+                    img_pil.tobytes("raw", "RGB")
 
                     # Calculate page dimensions in points (72 points = 1 inch)
                     page_width = page.rect.width

@@ -34,7 +34,7 @@ class BaseEvaluator(ABC):
         self,
         dataset_name: str,
         ground_truth_dir: Path,
-    ):
+    ) -> None:
         """
         Initialize evaluator.
 

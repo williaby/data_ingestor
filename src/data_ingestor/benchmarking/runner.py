@@ -42,7 +42,7 @@ class BenchmarkRunner:
         workers: int = 4,
         batch_size: int = 32,
         timeout: int = 120,
-    ):
+    ) -> None:
         """
         Initialize benchmark runner.
 
@@ -95,7 +95,7 @@ class BenchmarkRunner:
         # Register only the requested parser
         if parser_name not in self.available_parsers:
             raise ValueError(
-                f"Unknown parser: {parser_name}. " f"Available: {', '.join(self.available_parsers.keys())}",
+                f"Unknown parser: {parser_name}. Available: {', '.join(self.available_parsers.keys())}",
             )
 
         parser_class = self.available_parsers[parser_name]
@@ -219,6 +219,6 @@ class BenchmarkRunner:
         # #VERIFY: All components are picklable for multiprocessing
 
         logger.warning(
-            "Parallel processing not yet implemented. " "Using sequential processing.",
+            "Parallel processing not yet implemented. Using sequential processing.",
         )
         return self.run_batch(document_files, parser_name, evaluator)

@@ -23,12 +23,11 @@ def mock_document():
         DocumentElement(element_type=ElementType.TITLE, content="Test Title"),
         DocumentElement(element_type=ElementType.PARAGRAPH, content="This is a test paragraph" * 10),
     ]
-    doc = Document(
+    return Document(
         source_path=None,
         format=DocumentFormat.PDF,
         elements=elements,
     )
-    return doc
 
 
 class TestSetupLogging:

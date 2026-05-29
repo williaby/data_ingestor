@@ -29,7 +29,7 @@ class TestDocLayNetEvaluator:
 
         # Load ground truth
         with open(gt_file) as f:
-            gt_data = json.load(f)
+            json.load(f)
 
         # Initialize evaluator
         evaluator = DocLayNetEvaluator(ground_truth_dir=gt_file.parent)
@@ -78,7 +78,7 @@ class TestDocLayNetEvaluator:
 
         # Evaluator should raise FileNotFoundError for invalid directory
         with pytest.raises(FileNotFoundError):
-            evaluator = DocLayNetEvaluator(ground_truth_dir=invalid_dir)
+            DocLayNetEvaluator(ground_truth_dir=invalid_dir)
 
 
 @pytest.mark.integration
@@ -200,7 +200,7 @@ class TestTextMetrics:
         required_phrases = validation["content_validation"]["required_phrases"]
 
         # Simulate extraction result
-        extracted_text = " ".join(required_phrases)
+        " ".join(required_phrases)
 
         # Calculate metrics
         for phrase in required_phrases:

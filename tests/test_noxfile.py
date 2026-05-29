@@ -677,7 +677,7 @@ class TestComplexUtilitySessions:
         noxfile.mutation_testing(mock_session)
 
         # Verify exception handler was triggered
-        log_calls = [c for c in mock_session.log.call_args_list]
+        log_calls = list(mock_session.log.call_args_list)
         warning_logs = [c for c in log_calls if "⚠️" in str(c) or "warnings" in str(c)]
         assert len(warning_logs) > 0
 
@@ -718,7 +718,7 @@ class TestComplexUtilitySessions:
         noxfile.dast_scanning(mock_session)
 
         # Verify success logs
-        log_calls = [c for c in mock_session.log.call_args_list]
+        log_calls = list(mock_session.log.call_args_list)
         success_logs = [c for c in log_calls if "✅ Application is running" in str(c)]
         assert len(success_logs) > 0
 
@@ -744,7 +744,7 @@ class TestComplexUtilitySessions:
         noxfile.dast_scanning(mock_session)
 
         # Verify exception handler was triggered
-        log_calls = [c for c in mock_session.log.call_args_list]
+        log_calls = list(mock_session.log.call_args_list)
         warning_logs = [c for c in log_calls if "⚠️" in str(c) or "warnings" in str(c)]
         assert len(warning_logs) > 0
 

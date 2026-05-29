@@ -259,7 +259,9 @@ class TestChunkingEdgeCases:
 
         doc.elements = [
             DocumentElement(
-                element_type=ElementType.TITLE, content="Analysis", metadata=ElementMetadata(page_number=1)
+                element_type=ElementType.TITLE,
+                content="Analysis",
+                metadata=ElementMetadata(page_number=1),
             ),
             DocumentElement(
                 element_type=ElementType.PARAGRAPH,
@@ -267,7 +269,9 @@ class TestChunkingEdgeCases:
                 metadata=ElementMetadata(page_number=1),
             ),
             DocumentElement(
-                element_type=ElementType.FORMULA, content="E=mc^2", metadata=ElementMetadata(page_number=1)
+                element_type=ElementType.FORMULA,
+                content="E=mc^2",
+                metadata=ElementMetadata(page_number=1),
             ),
             DocumentElement(
                 element_type=ElementType.PARAGRAPH,
@@ -275,10 +279,14 @@ class TestChunkingEdgeCases:
                 metadata=ElementMetadata(page_number=1),
             ),
             DocumentElement(
-                element_type=ElementType.LIST, content="- Point 1\n- Point 2", metadata=ElementMetadata(page_number=1)
+                element_type=ElementType.LIST,
+                content="- Point 1\n- Point 2",
+                metadata=ElementMetadata(page_number=1),
             ),
             DocumentElement(
-                element_type=ElementType.TABLE, content="Data | Value\nA | 1", metadata=ElementMetadata(page_number=2)
+                element_type=ElementType.TABLE,
+                content="Data | Value\nA | 1",
+                metadata=ElementMetadata(page_number=2),
             ),
         ]
 

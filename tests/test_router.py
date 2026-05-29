@@ -427,7 +427,7 @@ class TestParserIntegration:
     ) -> None:
         """Test that document is updated with parser results."""
         doc = configured_router.create_document(source_path=temp_test_file)
-        result = configured_router.route_document(doc)
+        configured_router.route_document(doc)
 
         assert len(doc.elements) > 0
         assert doc.parser_used is not None

@@ -56,9 +56,7 @@ def calculate_teds(
     cell_sim = _calculate_cell_similarity(predicted_table, ground_truth_table)
 
     # Weighted combination
-    teds = 0.3 * row_sim + 0.3 * col_sim + 0.4 * cell_sim
-
-    return teds
+    return 0.3 * row_sim + 0.3 * col_sim + 0.4 * cell_sim
 
 
 def _calculate_cell_similarity(
@@ -83,8 +81,7 @@ def _calculate_cell_similarity(
                 matches += 1
                 break
 
-    similarity = matches / len(gt_cells)
-    return similarity
+    return matches / len(gt_cells)
 
 
 def _cells_match(pred: dict, gt: dict, threshold: float = 0.8) -> bool:
@@ -137,8 +134,7 @@ def calculate_cell_exact_match(
         if pred_text == gt_text:
             matches += 1
 
-    accuracy = matches / len(ground_truth_cells)
-    return accuracy
+    return matches / len(ground_truth_cells)
 
 
 def calculate_header_f1(
@@ -181,5 +177,4 @@ def calculate_header_f1(
     if precision + recall == 0:
         return 0.0
 
-    f1 = 2 * precision * recall / (precision + recall)
-    return f1
+    return 2 * precision * recall / (precision + recall)

@@ -29,7 +29,7 @@ class BenchmarkReporter:
         >>> reporter.generate_csv("metrics.csv")
     """
 
-    def __init__(self, results: dict):
+    def __init__(self, results: dict) -> None:
         """
         Initialize reporter with benchmark results.
 
@@ -69,7 +69,7 @@ class BenchmarkReporter:
         # Simple HTML report (Phase 1.5)
         # Phase 2 will add interactive charts with plotly/chart.js
 
-        html = f"""
+        return f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -187,7 +187,6 @@ class BenchmarkReporter:
 </body>
 </html>
 """
-        return html
 
     def _build_overall_section(self) -> str:
         """Build overall statistics section."""

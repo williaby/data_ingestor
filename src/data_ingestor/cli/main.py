@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -443,7 +444,7 @@ def benchmark_report(
             console.print(f"[cyan]{format_name}:[/cyan] {file_path}")
 
         if "html" in [f[0] for f in generated_files]:
-            html_file = [f[1] for f in generated_files if f[0] == "HTML"][0]
+            html_file = next(f[1] for f in generated_files if f[0] == "HTML")
             console.print(f"\n[dim]Open in browser:[/dim] file://{Path(html_file).absolute()}")
 
     except Exception as e:
@@ -551,10 +552,7 @@ def benchmark_configs(
 
         # Find documents
         docs_path = Path(documents)
-        if docs_path.is_file():
-            doc_files = [docs_path]
-        else:
-            doc_files = list(docs_path.glob("*.pdf"))
+        doc_files = [docs_path] if docs_path.is_file() else list(docs_path.glob("*.pdf"))
 
         console.print(f"[cyan]Documents:[/cyan] {len(doc_files)} files")
         console.print(f"[cyan]Workers:[/cyan] {workers}\n")

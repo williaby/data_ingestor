@@ -136,7 +136,7 @@ class TestPDFDocumentAnalyzerQualityAssessment:
         """Test resolution detection across different PDFs."""
         analyzer = PDFDocumentAnalyzer()
 
-        for name, pdf_path in diverse_test_pdfs.items():
+        for _name, pdf_path in diverse_test_pdfs.items():
             analysis = analyzer.analyze(str(pdf_path))
 
             # Should detect resolution info

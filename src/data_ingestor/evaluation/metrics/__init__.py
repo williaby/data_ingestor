@@ -26,18 +26,18 @@ from data_ingestor.evaluation.metrics.text_metrics import (
 )
 
 __all__ = [
+    "calculate_bleu",
+    "calculate_cell_exact_match",
     # Text metrics
     "calculate_cer",
-    "calculate_bleu",
     "calculate_chrf",
-    # Structure metrics
-    "calculate_section_f1",
-    "calculate_reading_order_f1",
-    "calculate_kendall_tau",
-    # Table metrics
-    "calculate_teds",
-    "calculate_cell_exact_match",
     "calculate_header_f1",
+    "calculate_kendall_tau",
     # Layout metrics
     "calculate_map",
+    "calculate_reading_order_f1",
+    # Structure metrics
+    "calculate_section_f1",
+    # Table metrics
+    "calculate_teds",
 ]

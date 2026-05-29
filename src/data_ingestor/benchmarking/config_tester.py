@@ -159,7 +159,7 @@ class ParserConfigurationTester:
         self,
         config_suite: ConfigSuite,
         settings: Settings | None = None,
-    ):
+    ) -> None:
         """
         Initialize configuration tester.
 
@@ -277,7 +277,7 @@ class ParserConfigurationTester:
                 {
                     "document_id": doc_path.stem,
                     "metrics": metrics.to_dict(),
-                }
+                },
             )
 
         # Aggregate metrics

@@ -181,7 +181,7 @@ class TestMemoryUsage:
         parser = PyMuPDFParser()
 
         # Process multiple PDFs in sequence
-        for name, pdf_path in diverse_test_pdfs.items():
+        for _name, pdf_path in diverse_test_pdfs.items():
             doc = Document(source_path=str(pdf_path), format=DocumentFormat.PDF)
             result = parser.parse(doc)
 

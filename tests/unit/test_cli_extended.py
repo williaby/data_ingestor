@@ -25,7 +25,7 @@ class TestCLIProcessCommand:
         # Create a real PDF file
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_bytes(
-            b"%PDF-1.4\n%Test PDF\n1 0 obj\n<</Type/Catalog>>\nendobj\ntrailer\n<</Root 1 0 R>>\nstartxref\n0\n%%EOF"
+            b"%PDF-1.4\n%Test PDF\n1 0 obj\n<</Type/Catalog>>\nendobj\ntrailer\n<</Root 1 0 R>>\nstartxref\n0\n%%EOF",
         )
 
         output_file = tmp_path / "output.json"

@@ -314,7 +314,7 @@ class TestEndToEndProcessing:
         router.parser_registry.register(parser, [DocumentFormat.PDF])
 
         processed_docs = []
-        for name, pdf_path in sample_pdf_paths.items():
+        for _name, pdf_path in sample_pdf_paths.items():
             if not pdf_path.exists():
                 continue
 

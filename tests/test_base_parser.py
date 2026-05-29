@@ -367,13 +367,13 @@ class TestEdgeCases:
 
     def test_validate_empty_string_path(self) -> None:
         """Test validation with empty string path."""
-        parser = TestConcreteParser()
+        TestConcreteParser()
         # This would fail in Document validation before reaching here
         # Testing the validator behavior
 
     def test_priority_with_invalid_type(self) -> None:
         """Test priority with invalid type in config."""
-        parser = TestConcreteParser({"priority": "invalid"})
+        TestConcreteParser({"priority": "invalid"})
         # get_priority will return the invalid value as-is (cast to int)
         # This could cause issues in sorting
 

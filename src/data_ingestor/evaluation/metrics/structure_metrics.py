@@ -44,8 +44,7 @@ def calculate_section_f1(
     if precision + recall == 0:
         return 0.0
 
-    f1 = 2 * precision * recall / (precision + recall)
-    return f1
+    return 2 * precision * recall / (precision + recall)
 
 
 def _sections_match(
@@ -116,8 +115,7 @@ def calculate_reading_order_f1(
     if precision + recall == 0:
         return 0.0
 
-    f1 = 2 * precision * recall / (precision + recall)
-    return f1
+    return 2 * precision * recall / (precision + recall)
 
 
 def calculate_kendall_tau(
@@ -169,5 +167,4 @@ def calculate_kendall_tau(
     if total_pairs == 0:
         return 0.0
 
-    tau = (concordant - discordant) / total_pairs
-    return tau
+    return (concordant - discordant) / total_pairs

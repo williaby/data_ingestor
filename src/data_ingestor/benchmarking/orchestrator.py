@@ -92,7 +92,7 @@ class BenchmarkOrchestrator:
         batch_size: int = 32,
         output_dir: str = "results",
         config_path: Path | None = None,
-    ):
+    ) -> None:
         """
         Initialize benchmark orchestrator.
 
@@ -433,8 +433,8 @@ class BenchmarkOrchestrator:
         total_failed = 0
         total_time = (end_time - start_time).total_seconds()
 
-        for dataset_name, dataset_data in dataset_results.items():
-            for parser_name, parser_data in dataset_data.get(
+        for _dataset_name, dataset_data in dataset_results.items():
+            for _parser_name, parser_data in dataset_data.get(
                 "parsers",
                 {},
             ).items():

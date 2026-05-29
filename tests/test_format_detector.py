@@ -172,39 +172,43 @@ class TestDetectFromPath:
         test_file = tmp_path / "document.pdf"
         test_file.write_bytes(b"content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
-        ):
-            with patch(
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch(
                 "data_ingestor.utils.format_detector.mimetypes.guess_type",
-            ) as mock_guess:
-                mock_guess.return_value = (None, None)
+            ) as mock_guess,
+        ):
+            mock_guess.return_value = (None, None)
 
-                detector = FormatDetector()
-                result = detector.detect_from_path(test_file)
+            detector = FormatDetector()
+            result = detector.detect_from_path(test_file)
 
-                # Should fall back to extension detection
-                assert result == DocumentFormat.PDF
+            # Should fall back to extension detection
+            assert result == DocumentFormat.PDF
 
     def test_detect_unknown_format(self, tmp_path):
         """Test detection of unknown file format."""
         unknown_file = tmp_path / "document.xyz"
         unknown_file.write_bytes(b"unknown content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
-        ):
-            with patch(
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch(
                 "data_ingestor.utils.format_detector.mimetypes.guess_type",
-            ) as mock_guess:
-                mock_guess.return_value = (None, None)
+            ) as mock_guess,
+        ):
+            mock_guess.return_value = (None, None)
 
-                detector = FormatDetector()
-                result = detector.detect_from_path(unknown_file)
+            detector = FormatDetector()
+            result = detector.detect_from_path(unknown_file)
 
-                assert result == DocumentFormat.UNKNOWN
+            assert result == DocumentFormat.UNKNOWN
 
     def test_detect_magic_returns_unmapped_mime_type(self, tmp_path):
         """Test when magic returns MIME type not in mapping."""
@@ -396,19 +400,21 @@ class TestValidateFormat:
         unknown_file = tmp_path / "document.xyz"
         unknown_file.write_bytes(b"content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
-        ):
-            with patch(
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch(
                 "data_ingestor.utils.format_detector.mimetypes.guess_type",
-            ) as mock_guess:
-                mock_guess.return_value = (None, None)
+            ) as mock_guess,
+        ):
+            mock_guess.return_value = (None, None)
 
-                detector = FormatDetector()
-                result = detector.validate_format(unknown_file, DocumentFormat.UNKNOWN)
+            detector = FormatDetector()
+            result = detector.validate_format(unknown_file, DocumentFormat.UNKNOWN)
 
-                assert result is True
+            assert result is True
 
 
 class TestGetMimeType:
@@ -454,36 +460,40 @@ class TestGetMimeType:
         pdf_file = tmp_path / "document.pdf"
         pdf_file.write_bytes(b"content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess,
         ):
-            with patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess:
-                mock_guess.return_value = ("application/pdf", None)
+            mock_guess.return_value = ("application/pdf", None)
 
-                detector = FormatDetector()
-                result = detector.get_mime_type(pdf_file)
+            detector = FormatDetector()
+            result = detector.get_mime_type(pdf_file)
 
-                assert result == "application/pdf"
+            assert result == "application/pdf"
 
     def test_get_mime_type_unknown(self, tmp_path):
         """Test MIME type retrieval for unknown format."""
         unknown_file = tmp_path / "document.xyz"
         unknown_file.write_bytes(b"content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
-        ):
-            with patch(
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch(
                 "data_ingestor.utils.format_detector.mimetypes.guess_type",
-            ) as mock_guess:
-                mock_guess.return_value = (None, None)
+            ) as mock_guess,
+        ):
+            mock_guess.return_value = (None, None)
 
-                detector = FormatDetector()
-                result = detector.get_mime_type(unknown_file)
+            detector = FormatDetector()
+            result = detector.get_mime_type(unknown_file)
 
-                assert result is None
+            assert result is None
 
 
 class TestGetFormatInfo:
@@ -513,45 +523,49 @@ class TestGetFormatInfo:
         """Test format info for nonexistent file."""
         nonexistent = tmp_path / "nonexistent.pdf"
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
-        ):
-            with patch(
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch(
                 "data_ingestor.utils.format_detector.mimetypes.guess_type",
-            ) as mock_guess:
-                mock_guess.return_value = (None, None)
+            ) as mock_guess,
+        ):
+            mock_guess.return_value = (None, None)
 
-                detector = FormatDetector()
-                info = detector.get_format_info(nonexistent)
+            detector = FormatDetector()
+            info = detector.get_format_info(nonexistent)
 
-                assert info["format"] == DocumentFormat.PDF  # From extension
-                assert info["file_name"] == "nonexistent.pdf"
-                assert info["extension"] == ".pdf"
-                assert info["file_size_bytes"] is None  # File doesn't exist
+            assert info["format"] == DocumentFormat.PDF  # From extension
+            assert info["file_name"] == "nonexistent.pdf"
+            assert info["extension"] == ".pdf"
+            assert info["file_size_bytes"] is None  # File doesn't exist
 
     def test_get_format_info_without_magic(self, tmp_path):
         """Test format info retrieval without magic library."""
         docx_file = tmp_path / "document.docx"
         docx_file.write_bytes(b"fake docx")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess,
         ):
-            with patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess:
-                mock_guess.return_value = (
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    None,
-                )
+            mock_guess.return_value = (
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                None,
+            )
 
-                detector = FormatDetector()
-                info = detector.get_format_info(docx_file)
+            detector = FormatDetector()
+            info = detector.get_format_info(docx_file)
 
-                assert info["format"] == DocumentFormat.DOCX
-                assert info["mime_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                assert info["extension"] == ".docx"
-                assert info["file_size_bytes"] == len(b"fake docx")
+            assert info["format"] == DocumentFormat.DOCX
+            assert info["mime_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            assert info["extension"] == ".docx"
+            assert info["file_size_bytes"] == len(b"fake docx")
 
 
 class TestMIMETypeMapping:
@@ -615,14 +629,16 @@ class TestStringPathHandling:
         pdf_file = tmp_path / "document.pdf"
         pdf_file.write_bytes(b"content")
 
-        with patch(
-            "data_ingestor.utils.format_detector.magic.Magic",
-            side_effect=Exception("Not available"),
+        with (
+            patch(
+                "data_ingestor.utils.format_detector.magic.Magic",
+                side_effect=Exception("Not available"),
+            ),
+            patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess,
         ):
-            with patch("data_ingestor.utils.format_detector.mimetypes.guess_type") as mock_guess:
-                mock_guess.return_value = ("application/pdf", None)
+            mock_guess.return_value = ("application/pdf", None)
 
-                detector = FormatDetector()
-                result = detector.get_mime_type(str(pdf_file))
+            detector = FormatDetector()
+            result = detector.get_mime_type(str(pdf_file))
 
-                assert result == "application/pdf"
+            assert result == "application/pdf"
