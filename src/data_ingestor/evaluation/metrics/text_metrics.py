@@ -20,11 +20,11 @@ def calculate_cer(prediction: str, reference: str) -> float:
     Lower values are better (0.0 = perfect match).
 
     Args:
-        prediction: Predicted text
-        reference: Reference (ground truth) text
+        prediction (str): Predicted text.
+        reference (str): Reference (ground truth) text.
 
     Returns:
-        CER score (0.0 = perfect, higher = more errors)
+        float: CER score (0.0 = perfect, higher = more errors).
 
     Formula:
         CER = (S + D + I) / N
@@ -76,12 +76,12 @@ def calculate_bleu(
     prediction and reference. Higher values are better (1.0 = perfect match).
 
     Args:
-        prediction: Predicted text
-        reference: Reference (ground truth) text
-        max_n: Maximum n-gram size (default: 4)
+        prediction (str): Predicted text.
+        reference (str): Reference (ground truth) text.
+        max_n (int): Maximum n-gram size (default: 4).
 
     Returns:
-        BLEU score (0.0-1.0, higher = better)
+        float: BLEU score (0.0-1.0, higher = better).
 
     Note:
         Uses simplified BLEU without smoothing. For production use, consider
@@ -174,13 +174,13 @@ def calculate_chrf(
     Higher values are better (1.0 = perfect match).
 
     Args:
-        prediction: Predicted text
-        reference: Reference (ground truth) text
-        beta: Beta parameter for F-score (default: 2.0, favors recall)
-        max_n: Maximum character n-gram size (default: 6)
+        prediction (str): Predicted text.
+        reference (str): Reference (ground truth) text.
+        beta (float): Beta parameter for F-score (default: 2.0, favors recall).
+        max_n (int): Maximum character n-gram size (default: 6).
 
     Returns:
-        chrF score (0.0-1.0, higher = better)
+        float: chrF score (0.0-1.0, higher = better).
 
     Reference:
         Popović, M. (2015). chrF: character n-gram F-score for automatic MT evaluation.
@@ -264,10 +264,10 @@ def normalize_text(text: str) -> str:
     - Remove punctuation (optional)
 
     Args:
-        text: Input text
+        text (str): Input text.
 
     Returns:
-        Normalized text
+        str: Normalized text.
     """
     # Lowercase
     text = text.lower()

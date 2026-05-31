@@ -10,7 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 class TokenChunker:
-    """Token-based document chunker with overlap support."""
+    """Token-based document chunker with overlap support.
+
+    Args:
+        chunk_size (int): Maximum tokens per chunk.
+        chunk_overlap (int): Number of overlapping tokens between chunks.
+        model_name (str): Tiktoken encoding model name.
+        preserve_tables (bool): Whether to keep tables intact.
+    """
 
     def __init__(
         self,
@@ -19,17 +26,8 @@ class TokenChunker:
         model_name: str = "cl100k_base",
         preserve_tables: bool = True,
     ) -> None:
-        """Initialize token chunker.
-
         # #CRITICAL: Token Counting: Encoding model must match target LLM
         # #VERIFY: Allow configuration of encoding model for different LLMs
-
-        Args:
-            chunk_size: Maximum tokens per chunk
-            chunk_overlap: Number of overlapping tokens between chunks
-            model_name: Tiktoken encoding model name
-            preserve_tables: Whether to keep tables intact
-        """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.preserve_tables = preserve_tables
@@ -47,10 +45,10 @@ class TokenChunker:
         # #VERIFY: Implement semantic boundary detection for better splits
 
         Args:
-            document: Document with extracted elements
+            document (Document): Document with extracted elements.
 
         Returns:
-            List of chunks
+            list[Chunk]: List of chunks.
         """
         if not document.elements:
             logger.warning(f"Document {document.document_id} has no elements to chunk")
@@ -102,11 +100,11 @@ class TokenChunker:
         """Chunk a list of elements with token-based splitting.
 
         Args:
-            elements: Elements to chunk
-            document: Source document
+            elements (list[DocumentElement]): Elements to chunk.
+            document (Document): Source document.
 
         Returns:
-            List of chunks
+            list[Chunk]: List of chunks.
         """
         chunks: list[Chunk] = []
         current_content: list[str] = []
@@ -172,12 +170,12 @@ class TokenChunker:
         """Create a chunk from content parts and elements.
 
         Args:
-            content_parts: List of text content
-            elements: List of document elements
-            document: Source document
+            content_parts (list[str]): List of text content.
+            elements (list[DocumentElement]): List of document elements.
+            document (Document): Source document.
 
         Returns:
-            Chunk instance
+            Chunk: Chunk instance.
         """
         content = "\n\n".join(content_parts)
         token_count = len(self.encoding.encode(content))
@@ -200,10 +198,10 @@ class TokenChunker:
         """Get overlap content from end of current chunk.
 
         Args:
-            content_parts: Current content parts
+            content_parts (list[str]): Current content parts.
 
         Returns:
-            Tuple of (overlap content parts, token count)
+            tuple[list[str], int]: Tuple of (overlap content parts, token count).
         """
         overlap_parts: list[str] = []
         overlap_tokens = 0
@@ -226,11 +224,11 @@ class TokenChunker:
         # #VERIFY: Use sentence tokenization for better splits
 
         Args:
-            element: Element to split
-            document: Source document
+            element (DocumentElement): Element to split.
+            document (Document): Source document.
 
         Returns:
-            List of chunks
+            list[Chunk]: List of chunks.
         """
         chunks: list[Chunk] = []
         text = element.content

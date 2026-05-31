@@ -27,9 +27,12 @@ class BaseEvaluator(ABC):
     Each dataset (ReadOC, DocLayNet, PubTables) has a specific evaluator
     that inherits from this class and implements dataset-specific metrics.
 
-    Attributes:
-        dataset_name: Name of the dataset (e.g., "readoc", "doclaynet")
-        ground_truth_dir: Path to ground truth annotations
+    Args:
+        dataset_name (str): Name of the dataset.
+        ground_truth_dir (Path): Path to ground truth annotations.
+
+    Raises:
+        FileNotFoundError: If ground_truth_dir does not exist.
     """
 
     def __init__(
@@ -37,13 +40,6 @@ class BaseEvaluator(ABC):
         dataset_name: str,
         ground_truth_dir: Path,
     ):
-        """
-        Initialize evaluator.
-
-        Args:
-            dataset_name: Name of the dataset
-            ground_truth_dir: Path to ground truth annotations
-        """
         self.dataset_name = dataset_name
         self.ground_truth_dir = Path(ground_truth_dir)
 
@@ -63,14 +59,14 @@ class BaseEvaluator(ABC):
         Evaluate a single document against ground truth.
 
         Args:
-            predicted: Parsed document from our pipeline
-            ground_truth: Ground truth annotations (format varies by dataset)
+            predicted (Document): Parsed document from our pipeline.
+            ground_truth (Dict): Ground truth annotations (format varies by dataset).
 
         Returns:
-            EvaluationResult with all computed metrics
+            EvaluationResult: Result with all computed metrics.
 
         Raises:
-            ValueError: If document or ground truth is invalid
+            ValueError: If document or ground truth is invalid.
         """
         pass
 
@@ -82,10 +78,10 @@ class BaseEvaluator(ABC):
         Evaluate multiple documents.
 
         Args:
-            documents: List of (predicted_doc, ground_truth) tuples
+            documents (List[tuple[Document, Dict]]): List of (predicted_doc, ground_truth) tuples.
 
         Returns:
-            List of EvaluationResult objects
+            List[EvaluationResult]: List of evaluation result objects.
         """
         results = []
 
@@ -122,10 +118,10 @@ class BaseEvaluator(ABC):
         Computes mean, std, min, max for each metric across all documents.
 
         Args:
-            results: List of EvaluationResult objects
+            results (List[EvaluationResult]): List of evaluation result objects.
 
         Returns:
-            AggregatedMetrics with statistics across all documents
+            AggregatedMetrics: Aggregated metrics with statistics across all documents.
         """
         # Filter successful evaluations
         successful_results = [r for r in results if r.success]
@@ -175,10 +171,10 @@ class BaseEvaluator(ABC):
         Load ground truth for a specific document.
 
         Args:
-            document_id: Document identifier
+            document_id (str): Document identifier.
 
         Returns:
-            Ground truth dict, or None if not found
+            Optional[Dict]: Ground truth dict, or None if not found.
 
         Note:
             Subclasses can override this for dataset-specific loading.
@@ -203,11 +199,11 @@ class BaseEvaluator(ABC):
         Validate document and ground truth are compatible.
 
         Args:
-            predicted: Parsed document
-            ground_truth: Ground truth annotations
+            predicted (Document): Parsed document.
+            ground_truth (Dict): Ground truth annotations.
 
         Raises:
-            ValueError: If validation fails
+            ValueError: If validation fails.
         """
         if not predicted:
             raise ValueError("Predicted document is None or empty")
@@ -225,7 +221,7 @@ class BaseEvaluator(ABC):
         Get baseline target metrics for this dataset.
 
         Returns:
-            Dict mapping metric names to target values
+            Dict[str, float]: Dict mapping metric names to target values.
 
         Note:
             Subclasses should override with dataset-specific targets.
@@ -240,18 +236,11 @@ class BaseEvaluator(ABC):
         Compare aggregated metrics to baseline targets.
 
         Args:
-            aggregated: Aggregated metrics to compare
+            aggregated (AggregatedMetrics): Aggregated metrics to compare.
 
         Returns:
-            Dict with comparison results:
-            {
-                "metric_name": {
-                    "value": actual_value,
-                    "target": target_value,
-                    "delta": difference,
-                    "meets_target": boolean
-                }
-            }
+            Dict[str, Dict[str, float]]: Comparison results keyed by metric name,
+            each containing value, target, delta, and meets_target fields.
         """
         targets = self.get_baseline_targets()
         comparison = {}

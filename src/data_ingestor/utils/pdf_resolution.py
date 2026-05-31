@@ -10,17 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 class PDFResolutionAnalyzer:
-    """Analyzes PDF resolution to determine if upscaling is needed."""
+    """Analyzes PDF resolution to determine if upscaling is needed.
+
+    Args:
+        min_dpi_threshold (int): Minimum DPI for acceptable quality (default: 300).
+    """
 
     def __init__(self, min_dpi_threshold: int = 300) -> None:
-        """Initialize PDF resolution analyzer.
-
         # #CRITICAL: DPI Threshold: 300 DPI is standard for high-quality OCR
         # #VERIFY: Threshold may need adjustment based on OCR engine requirements
-
-        Args:
-            min_dpi_threshold: Minimum DPI for acceptable quality (default: 300)
-        """
         self.min_dpi_threshold = min_dpi_threshold
 
     def analyze_pdf_resolution(self, pdf_path: str | Path) -> dict[str, Any]:
@@ -30,20 +28,15 @@ class PDFResolutionAnalyzer:
         # #VERIFY: Handle encryption and corruption gracefully
 
         Args:
-            pdf_path: Path to PDF file
+            pdf_path (str | Path): Path to PDF file.
 
         Returns:
-            Dictionary containing:
-                - needs_upscaling: bool indicating if upscaling is recommended
-                - min_dpi: Minimum DPI found across all images
-                - avg_dpi: Average DPI across all images
-                - max_dpi: Maximum DPI found
-                - image_count: Total number of images analyzed
-                - low_res_image_count: Number of images below threshold
-                - details: List of per-page resolution info
+            dict[str, Any]: Dictionary containing needs_upscaling, min_dpi,
+            avg_dpi, max_dpi, image_count, low_res_image_count, and details keys.
 
         Raises:
-            Exception: If PDF cannot be opened or analyzed
+            FileNotFoundError: If the PDF file is not found.
+            Exception: If PDF cannot be opened or analyzed.
         """
         pdf_path = Path(pdf_path)
 
@@ -180,11 +173,11 @@ def quick_resolution_check(pdf_path: str | Path, min_dpi: int = 300) -> bool:
     """Quick check if PDF needs upscaling.
 
     Args:
-        pdf_path: Path to PDF file
-        min_dpi: Minimum acceptable DPI (default: 300)
+        pdf_path (str | Path): Path to PDF file.
+        min_dpi (int): Minimum acceptable DPI (default: 300).
 
     Returns:
-        True if upscaling is recommended, False otherwise
+        bool: True if upscaling is recommended, False otherwise.
     """
     analyzer = PDFResolutionAnalyzer(min_dpi_threshold=min_dpi)
     try:

@@ -44,10 +44,10 @@ class MetricScore:
     Individual metric score with metadata.
 
     Attributes:
-        name: Metric name (from MetricType)
-        value: Metric value (interpretation depends on metric type)
-        confidence: Optional confidence interval or std dev
-        metadata: Additional metric-specific information
+        name (str): Metric name (from MetricType).
+        value (float): Metric value (interpretation depends on metric type).
+        confidence (Optional[float]): Optional confidence interval or std dev.
+        metadata (Dict[str, Any]): Additional metric-specific information.
     """
 
     name: str
@@ -78,13 +78,13 @@ class EvaluationResult:
     Contains all metrics computed for one document against its ground truth.
 
     Attributes:
-        document_id: Unique document identifier
-        dataset: Dataset name (readoc, doclaynet, pubtables)
-        metrics: List of metric scores
-        success: Whether evaluation succeeded
-        error: Error message if evaluation failed
-        processing_time: Time taken for evaluation (seconds)
-        timestamp: When evaluation was performed
+        document_id (str): Unique document identifier.
+        dataset (str): Dataset name (readoc, doclaynet, pubtables).
+        metrics (List[MetricScore]): List of metric scores.
+        success (bool): Whether evaluation succeeded.
+        error (Optional[str]): Error message if evaluation failed.
+        processing_time (float): Time taken for evaluation (seconds).
+        timestamp (datetime): When evaluation was performed.
     """
 
     document_id: str
@@ -100,10 +100,10 @@ class EvaluationResult:
         Get specific metric by name.
 
         Args:
-            metric_name: Name of metric to retrieve
+            metric_name (str): Name of metric to retrieve.
 
         Returns:
-            MetricScore if found, None otherwise
+            Optional[MetricScore]: MetricScore if found, None otherwise.
         """
         for metric in self.metrics:
             if metric.name == metric_name:
@@ -115,10 +115,10 @@ class EvaluationResult:
         Get metric value by name.
 
         Args:
-            metric_name: Name of metric to retrieve
+            metric_name (str): Name of metric to retrieve.
 
         Returns:
-            Metric value if found, None otherwise
+            Optional[float]: Metric value if found, None otherwise.
         """
         metric = self.get_metric(metric_name)
         return metric.value if metric else None
@@ -144,16 +144,16 @@ class AggregatedMetrics:
     Computed from a collection of EvaluationResult objects.
 
     Attributes:
-        dataset: Dataset name
-        total_documents: Total number of documents evaluated
-        successful_documents: Number of successful evaluations
-        failed_documents: Number of failed evaluations
-        mean_metrics: Mean value for each metric
-        std_metrics: Standard deviation for each metric
-        min_metrics: Minimum value for each metric
-        max_metrics: Maximum value for each metric
-        processing_time_total: Total processing time (seconds)
-        timestamp: When aggregation was performed
+        dataset (str): Dataset name.
+        total_documents (int): Total number of documents evaluated.
+        successful_documents (int): Number of successful evaluations.
+        failed_documents (int): Number of failed evaluations.
+        mean_metrics (Dict[str, float]): Mean value for each metric.
+        std_metrics (Dict[str, float]): Standard deviation for each metric.
+        min_metrics (Dict[str, float]): Minimum value for each metric.
+        max_metrics (Dict[str, float]): Maximum value for each metric.
+        processing_time_total (float): Total processing time (seconds).
+        timestamp (datetime): When aggregation was performed.
     """
 
     dataset: str

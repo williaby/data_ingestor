@@ -24,6 +24,9 @@ class BenchmarkReporter:
     Creates comprehensive reports with visualizations, metrics tables,
     parser comparisons, and failure analysis.
 
+    Args:
+        results (Dict): Results dictionary from BenchmarkOrchestrator.run().
+
     Example:
         >>> reporter = BenchmarkReporter(results)
         >>> reporter.generate_html("report.html")
@@ -31,12 +34,6 @@ class BenchmarkReporter:
     """
 
     def __init__(self, results: Dict):
-        """
-        Initialize reporter with benchmark results.
-
-        Args:
-            results: Results dictionary from BenchmarkOrchestrator.run()
-        """
         self.results = results
         self.metadata = results.get("metadata", {})
         self.datasets = results.get("datasets", {})
@@ -47,10 +44,10 @@ class BenchmarkReporter:
         Generate HTML report with visualizations.
 
         Args:
-            output_path: Output file path
+            output_path (Path): Output file path.
 
         Returns:
-            Path to generated HTML file
+            Path: Path to generated HTML file.
         """
         logger.info(f"Generating HTML report: {output_path}")
 
@@ -349,10 +346,10 @@ class BenchmarkReporter:
         Generate JSON report.
 
         Args:
-            output_path: Output file path
+            output_path (Path): Output file path.
 
         Returns:
-            Path to generated JSON file
+            Path: Path to generated JSON file.
         """
         logger.info(f"Generating JSON report: {output_path}")
 
@@ -370,10 +367,10 @@ class BenchmarkReporter:
         Generate CSV report with metrics.
 
         Args:
-            output_path: Output file path
+            output_path (Path): Output file path.
 
         Returns:
-            Path to generated CSV file
+            Path: Path to generated CSV file.
         """
         logger.info(f"Generating CSV report: {output_path}")
 

@@ -126,10 +126,10 @@ class Settings(BaseSettings):
         """Get configuration for a specific parser.
 
         Args:
-            parser_name: Name of the parser
+            parser_name (str): Name of the parser.
 
         Returns:
-            Configuration dictionary for the parser
+            dict[str, Any]: Configuration dictionary for the parser.
         """
         return {
             "max_file_size_mb": self.max_file_size_mb,

@@ -19,7 +19,6 @@ class ParserRegistry:
     """Registry for managing document parsers with fallback chains."""
 
     def __init__(self) -> None:
-        """Initialize parser registry."""
         self._parsers: dict[DocumentFormat, list[BaseParser]] = {
             DocumentFormat.PDF: [],
             DocumentFormat.DOCX: [],
@@ -32,8 +31,8 @@ class ParserRegistry:
         """Register a parser for specific formats.
 
         Args:
-            parser: Parser instance to register
-            formats: List of formats this parser supports
+            parser (BaseParser): Parser instance to register.
+            formats (list[DocumentFormat]): List of formats this parser supports.
         """
         for fmt in formats:
             if fmt not in self._parsers:
@@ -51,10 +50,10 @@ class ParserRegistry:
         # #VERIFY: Must validate parser availability before processing
 
         Args:
-            document_format: Document format to get parsers for
+            document_format (DocumentFormat): Document format to get parsers for.
 
         Returns:
-            List of parsers ordered by priority
+            list[BaseParser]: List of parsers ordered by priority.
         """
         return self._parsers.get(document_format, [])
 
@@ -62,10 +61,10 @@ class ParserRegistry:
         """Get highest priority parser for format.
 
         Args:
-            document_format: Document format
+            document_format (DocumentFormat): Document format.
 
         Returns:
-            Primary parser or None if no parsers available
+            BaseParser | None: Primary parser or None if no parsers available.
         """
         parsers = self.get_parsers(document_format)
         return parsers[0] if parsers else None
@@ -74,7 +73,7 @@ class ParserRegistry:
         """Check health of all registered parsers.
 
         Returns:
-            Dictionary with health status for each parser
+            dict[str, Any]: Dictionary with health status for each parser.
         """
         health_status: dict[str, Any] = {}
         for fmt, parsers in self._parsers.items():
@@ -90,14 +89,13 @@ class ParserRegistry:
 
 
 class DocumentRouter:
-    """Routes documents to appropriate parsers with fallback support."""
+    """Routes documents to appropriate parsers with fallback support.
+
+    Args:
+        settings (Settings | None): Optional settings instance.
+    """
 
     def __init__(self, settings: Settings | None = None) -> None:
-        """Initialize document router.
-
-        Args:
-            settings: Optional settings instance
-        """
         self.settings = settings or Settings()
         self.format_detector = FormatDetector()
         self.parser_registry = ParserRegistry()
@@ -118,16 +116,16 @@ class DocumentRouter:
         # #VERIFY: Handle file not found, network errors gracefully
 
         Args:
-            source_path: Path to source file
-            source_url: URL to source content
-            metadata: Optional metadata dictionary
+            source_path (str | Path | None): Path to source file.
+            source_url (str | None): URL to source content.
+            metadata (dict[str, Any] | None): Optional metadata dictionary.
 
         Returns:
-            Document instance
+            Document: Document instance.
 
         Raises:
-            ValueError: If neither path nor URL provided
-            UnsupportedFormatError: If format cannot be detected
+            ValueError: If neither path nor URL provided.
+            UnsupportedFormatError: If format cannot be detected.
         """
         if not source_path and not source_url:
             msg = "Either source_path or source_url must be provided"
@@ -164,10 +162,10 @@ class DocumentRouter:
         # #VERIFY: May need content-based similarity for near-duplicates
 
         Args:
-            document: Document to check
+            document (Document): Document to check.
 
         Returns:
-            True if document is duplicate, False otherwise
+            bool: True if document is duplicate, False otherwise.
         """
         if not document.source_path:
             return False
@@ -199,14 +197,14 @@ class DocumentRouter:
         # Phase 1c: Perform PDF pre-flight analysis and upscaling if needed
 
         Args:
-            document: Document to process
+            document (Document): Document to process.
 
         Returns:
-            ParserResult from successful parser
+            ParserResult: Parser result from successful parser.
 
         Raises:
-            UnsupportedFormatError: If no parsers available for format
-            ParserError: If all parsers fail
+            UnsupportedFormatError: If no parsers available for format.
+            ParserError: If all parsers fail.
         """
         # Phase 1c: Perform pre-flight analysis for PDFs
         preflight_result: PDFPreflightResult | None = None
@@ -323,18 +321,13 @@ class DocumentRouter:
         """Process a document end-to-end.
 
         Args:
-            source_path: Path to source file
-            source_url: URL to source content
-            metadata: Optional metadata dictionary
-            skip_duplicate_check: Skip deduplication check
+            source_path (str | Path | None): Path to source file.
+            source_url (str | None): URL to source content.
+            metadata (dict[str, Any] | None): Optional metadata dictionary.
+            skip_duplicate_check (bool): Skip deduplication check.
 
         Returns:
-            Tuple of (Document, ParserResult)
-
-        Raises:
-            ValueError: If neither path nor URL provided
-            UnsupportedFormatError: If format not supported
-            ParserError: If processing fails
+            tuple[Document, ParserResult]: Tuple of (Document, ParserResult).
         """
         # Create document
         document = self.create_document(source_path=source_path, source_url=source_url, metadata=metadata)

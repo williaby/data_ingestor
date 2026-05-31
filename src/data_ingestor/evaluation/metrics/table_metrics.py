@@ -21,11 +21,11 @@ def calculate_teds(
     by computing normalized tree edit distance on the table's HTML structure.
 
     Args:
-        predicted_table: Predicted table structure
-        ground_truth_table: Ground truth table structure
+        predicted_table (Dict): Predicted table structure.
+        ground_truth_table (Dict): Ground truth table structure.
 
     Returns:
-        TEDS score (0.0-1.0, higher = better)
+        float: TEDS score (0.0-1.0, higher = better).
 
     Reference:
         Zhong, X., ShafieiBavani, E., & Jimeno Yepes, A. (2020).
@@ -112,11 +112,11 @@ def calculate_cell_exact_match(
     Measures how many cells have exact content and position match.
 
     Args:
-        predicted_cells: List of predicted cells with row, col, text
-        ground_truth_cells: List of ground truth cells
+        predicted_cells (List[Dict]): List of predicted cells with row, col, text.
+        ground_truth_cells (List[Dict]): List of ground truth cells.
 
     Returns:
-        Accuracy score (0.0-1.0, higher = better)
+        float: Accuracy score (0.0-1.0, higher = better).
     """
     if not ground_truth_cells:
         return 1.0 if not predicted_cells else 0.0
@@ -156,11 +156,11 @@ def calculate_header_f1(
     Measures how well header rows/columns are detected.
 
     Args:
-        predicted_headers: List of predicted header cells
-        ground_truth_headers: List of ground truth header cells
+        predicted_headers (List[Dict]): List of predicted header cells.
+        ground_truth_headers (List[Dict]): List of ground truth header cells.
 
     Returns:
-        F1 score (0.0-1.0, higher = better)
+        float: F1 score (0.0-1.0, higher = better).
     """
     if not ground_truth_headers:
         return 1.0 if not predicted_headers else 0.0

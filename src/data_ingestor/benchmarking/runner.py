@@ -30,6 +30,11 @@ class BenchmarkRunner:
     Coordinates parallel document processing, tracks progress, handles
     timeouts and errors, and collects evaluation results.
 
+    Args:
+        workers (int): Number of parallel workers.
+        batch_size (int): Documents per batch.
+        timeout (int): Maximum seconds per document.
+
     Example:
         >>> runner = BenchmarkRunner(workers=4, batch_size=32)
         >>> results = runner.run_batch(
@@ -45,14 +50,6 @@ class BenchmarkRunner:
         batch_size: int = 32,
         timeout: int = 120,
     ):
-        """
-        Initialize benchmark runner.
-
-        Args:
-            workers: Number of parallel workers
-            batch_size: Documents per batch
-            timeout: Maximum seconds per document
-        """
         self.workers = workers
         self.batch_size = batch_size
         self.timeout = timeout
@@ -83,12 +80,16 @@ class BenchmarkRunner:
         Process batch of documents with parallel workers.
 
         Args:
-            document_files: List of document file paths
-            parser_name: Parser to use (e.g., "pymupdf", "pymupdf4llm", "marker")
-            evaluator: Evaluator instance for this dataset
+            document_files (List[Path]): List of document file paths.
+            parser_name (str): Parser to use (e.g., "pymupdf", "pymupdf4llm", "marker").
+            evaluator (BaseEvaluator): Evaluator instance for this dataset.
 
         Returns:
-            List of EvaluationResult objects
+            List[EvaluationResult]: List of evaluation result objects.
+
+        Raises:
+            ValueError: If parser_name is unknown.
+            RuntimeError: If parser initialization fails.
         """
         # Create fresh router with ONLY the specified parser
         # #CRITICAL: Each benchmark run must use isolated parser to ensure accurate results
@@ -138,13 +139,17 @@ class BenchmarkRunner:
         Process single document with timeout and error handling.
 
         Args:
-            doc_file: Document file path
-            parser_name: Parser name
-            evaluator: Evaluator instance
-            router: DocumentRouter with registered parser
+            doc_file (Path): Document file path.
+            parser_name (str): Parser name.
+            evaluator (BaseEvaluator): Evaluator instance.
+            router (DocumentRouter): DocumentRouter with registered parser.
 
         Returns:
-            EvaluationResult
+            EvaluationResult: Evaluation result for this document.
+
+        Raises:
+            RuntimeError: If parsing fails.
+            ValueError: If ground truth is not found.
         """
         doc_id = doc_file.stem
 
@@ -200,12 +205,12 @@ class BenchmarkRunner:
         Currently not used due to complexity of sharing DocumentRouter state.
 
         Args:
-            document_files: List of document paths
-            parser_name: Parser name
-            evaluator: Evaluator instance
+            document_files (List[Path]): List of document paths.
+            parser_name (str): Parser name.
+            evaluator (BaseEvaluator): Evaluator instance.
 
         Returns:
-            List of EvaluationResult objects
+            List[EvaluationResult]: List of evaluation result objects.
 
         Note:
             Parallel processing requires:

@@ -25,6 +25,11 @@ class RateLimiter:
 
     # #CRITICAL: Rate Limit Compliance: Must not exceed OpenRouter limits
     # #VERIFY: 20 RPM for free models, daily limits based on tier
+
+    Args:
+        rpm_limit (int): Requests per minute limit (default: 20 for OpenRouter).
+        daily_limit (int): Daily request limit (default: 50 for free tier).
+        tier (Literal["free", "paid"]): Account tier, affects daily limits.
     """
 
     def __init__(
@@ -33,13 +38,6 @@ class RateLimiter:
         daily_limit: int = 50,
         tier: Literal["free", "paid"] = "free",
     ) -> None:
-        """Initialize rate limiter.
-
-        Args:
-            rpm_limit: Requests per minute limit (default: 20 for OpenRouter)
-            daily_limit: Daily request limit (default: 50 for free tier)
-            tier: Account tier ("free" or "paid") - affects daily limits
-        """
         self.rpm_limit = rpm_limit
         self.daily_limit = daily_limit
         self.tier = tier
@@ -70,13 +68,13 @@ class RateLimiter:
         # #VERIFY: Implement timeout and periodic checks
 
         Args:
-            timeout: Maximum time to wait in seconds (None = wait indefinitely)
+            timeout (float | None): Maximum time to wait in seconds (None = wait indefinitely).
 
         Returns:
-            True if permission granted, False if timeout reached
+            bool: True if permission granted, False if timeout reached.
 
         Raises:
-            ValueError: If daily limit would be exceeded
+            ValueError: If daily limit would be exceeded.
         """
         start_time = time.time()
 
@@ -156,7 +154,7 @@ class RateLimiter:
         """Get rate limiter statistics.
 
         Returns:
-            Dictionary with statistics
+            dict[str, int | float]: Dictionary with statistics.
         """
         with self._minute_lock:
             self._cleanup_minute_window()
@@ -199,7 +197,7 @@ class RateLimiter:
         """Get estimated wait time until next request slot is available.
 
         Returns:
-            Estimated wait time in seconds (0 if slot immediately available)
+            float: Estimated wait time in seconds (0 if slot immediately available).
         """
         with self._minute_lock:
             self._cleanup_minute_window()
@@ -224,14 +222,13 @@ class OpenRouterRateLimiter:
 
     # #CRITICAL: Model Routing: Must route to correct rate limiter
     # #VERIFY: Free models use 20 RPM limit, paid models have no limit
+
+    Args:
+        tier (Literal["free", "paid"]): Account tier ("free" < $10 credits,
+            "paid" >= $10 credits).
     """
 
     def __init__(self, tier: Literal["free", "paid"] = "free") -> None:
-        """Initialize OpenRouter rate limiter.
-
-        Args:
-            tier: Account tier ("free" < $10 credits, "paid" >= $10 credits)
-        """
         self.tier = tier
 
         # Free model rate limiter (20 RPM, tier-based daily limit)
@@ -256,14 +253,11 @@ class OpenRouterRateLimiter:
         """Acquire permission for API request based on model.
 
         Args:
-            model: Model name (e.g., "meta-llama/llama-4-maverick:free")
-            timeout: Maximum time to wait in seconds
+            model (str): Model name (e.g., "meta-llama/llama-4-maverick:free").
+            timeout (float | None): Maximum time to wait in seconds.
 
         Returns:
-            True if permission granted, False if timeout reached
-
-        Raises:
-            ValueError: If daily limit exceeded
+            bool: True if permission granted, False if timeout reached.
         """
         # Route to appropriate rate limiter
         if model.endswith(":free"):
@@ -277,10 +271,10 @@ class OpenRouterRateLimiter:
         """Get rate limiter statistics.
 
         Args:
-            model_type: "free" or "paid" (None = both)
+            model_type (Literal["free", "paid"] | None): "free" or "paid" (None = both).
 
         Returns:
-            Statistics dictionary
+            dict: Statistics dictionary.
         """
         if model_type == "free":
             return {"free_models": self.free_limiter.get_stats()}

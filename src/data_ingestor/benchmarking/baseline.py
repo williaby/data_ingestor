@@ -29,13 +29,13 @@ class Baseline:
     fingerprints for reproducible comparisons.
 
     Attributes:
-        name: Baseline identifier
-        version: Baseline version number
-        hardware_profile: Hardware configuration
-        dataset_profile: Dataset characteristics
-        results: List of configuration test results
-        created_at: Creation timestamp
-        metadata: Additional metadata dictionary
+        name (str): Baseline identifier.
+        version (int): Baseline version number.
+        hardware_profile (HardwareProfile): Hardware configuration.
+        dataset_profile (DatasetProfile): Dataset characteristics.
+        results (List[ConfigurationResult]): List of configuration test results.
+        created_at (str): Creation timestamp.
+        metadata (Dict[str, Any]): Additional metadata dictionary.
     """
 
     name: str
@@ -122,6 +122,9 @@ class BaselineManager:
     Stores baselines with automatic versioning and provides retrieval
     and comparison capabilities.
 
+    Args:
+        storage_path (Path): Directory for baseline storage.
+
     Example:
         >>> manager = BaselineManager(Path("data/baselines"))
         >>> baseline = manager.create_baseline(
@@ -134,12 +137,6 @@ class BaselineManager:
     """
 
     def __init__(self, storage_path: Path):
-        """
-        Initialize baseline manager.
-
-        Args:
-            storage_path: Directory for baseline storage
-        """
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
@@ -162,14 +159,14 @@ class BaselineManager:
         Create new baseline with automatic versioning.
 
         Args:
-            name: Baseline identifier
-            hardware_profile: Hardware configuration
-            dataset_profile: Dataset characteristics
-            results: Configuration test results
-            metadata: Optional additional metadata
+            name (str): Baseline identifier.
+            hardware_profile (HardwareProfile): Hardware configuration.
+            dataset_profile (DatasetProfile): Dataset characteristics.
+            results (List[ConfigurationResult]): Configuration test results.
+            metadata (Optional[Dict[str, Any]]): Optional additional metadata.
 
         Returns:
-            Created Baseline object
+            Baseline: Created Baseline object.
         """
         # Determine next version number
         version = self._get_next_version(name)
@@ -203,14 +200,14 @@ class BaselineManager:
         Load baseline (latest or specific version).
 
         Args:
-            name: Baseline identifier
-            version: Specific version (None for latest)
+            name (str): Baseline identifier.
+            version (Optional[int]): Specific version (None for latest).
 
         Returns:
-            Loaded Baseline object
+            Baseline: Loaded Baseline object.
 
         Raises:
-            FileNotFoundError: If baseline not found
+            FileNotFoundError: If baseline not found.
         """
         if version is None:
             version = self._get_latest_version(name)
@@ -234,7 +231,7 @@ class BaselineManager:
         List all available baselines.
 
         Returns:
-            List of baseline info dictionaries
+            List[Dict[str, Any]]: List of baseline info dictionaries.
         """
         baselines = []
         baseline_dir = self.storage_path / "baselines"
@@ -266,12 +263,12 @@ class BaselineManager:
         Compare two baselines with statistical tests.
 
         Args:
-            baseline1: First baseline
-            baseline2: Second baseline
-            significance_level: p-value threshold for significance
+            baseline1 (Baseline): First baseline.
+            baseline2 (Baseline): Second baseline.
+            significance_level (float): p-value threshold for significance.
 
         Returns:
-            ComparisonReport with detailed comparison
+            ComparisonReport: Comparison report with detailed comparison.
         """
         logger.info(f"Comparing baselines: {baseline1.name} v{baseline1.version} vs {baseline2.name} v{baseline2.version}")
 
@@ -329,12 +326,12 @@ class BaselineManager:
         Find baselines with similar hardware and dataset.
 
         Args:
-            hardware_profile: Hardware configuration to match
-            dataset_profile: Dataset characteristics to match
-            tolerance: Tolerance for matching (0.0-1.0)
+            hardware_profile (HardwareProfile): Hardware configuration to match.
+            dataset_profile (DatasetProfile): Dataset characteristics to match.
+            tolerance (float): Tolerance for matching (0.0-1.0).
 
         Returns:
-            List of compatible baselines
+            List[Baseline]: List of compatible baselines.
         """
         compatible = []
 
@@ -571,7 +568,6 @@ class ComparativeAnalyzer:
     """
 
     def __init__(self):
-        """Initialize comparative analyzer."""
         logger.info("Comparative analyzer initialized")
 
     def analyze_results(
@@ -582,10 +578,10 @@ class ComparativeAnalyzer:
         Perform statistical analysis on configuration results.
 
         Args:
-            results: List of configuration test results
+            results (List[ConfigurationResult]): List of configuration test results.
 
         Returns:
-            Analysis report dictionary
+            Dict[str, Any]: Analysis report dictionary.
         """
         if not results:
             return {"error": "No results to analyze"}
@@ -616,12 +612,15 @@ class ComparativeAnalyzer:
         Recommend optimal configuration for document type.
 
         Args:
-            results: Configuration test results
-            document_type: Document type ("digital", "scanned", "hybrid")
-            optimization_target: Optimization goal ("speed", "accuracy", "balanced")
+            results (List[ConfigurationResult]): Configuration test results.
+            document_type (str): Document type ("digital", "scanned", "hybrid").
+            optimization_target (str): Optimization goal ("speed", "accuracy", "balanced").
 
         Returns:
-            ConfigurationRecommendation
+            ConfigurationRecommendation: Configuration recommendation.
+
+        Raises:
+            ValueError: If no configurations to recommend.
         """
         logger.info(f"Generating recommendation for {document_type} documents, target: {optimization_target}")
 

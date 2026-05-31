@@ -150,6 +150,10 @@ class ParserConfigurationTester:
     Systematically tests parser variants (e.g., Marker with/without LLM)
     to measure performance trade-offs and guide routing optimization.
 
+    Args:
+        config_suite (ConfigSuite): Configuration suite to test.
+        settings (Optional[Settings]): Optional settings instance.
+
     Example:
         >>> suite = ConfigSuite.from_yaml("config_suite.yaml")
         >>> tester = ParserConfigurationTester(suite)
@@ -161,13 +165,6 @@ class ParserConfigurationTester:
         config_suite: ConfigSuite,
         settings: Optional[Settings] = None,
     ):
-        """
-        Initialize configuration tester.
-
-        Args:
-            config_suite: Configuration suite to test
-            settings: Optional settings instance
-        """
         self.config_suite = config_suite
         self.settings = settings or Settings()
 
@@ -186,11 +183,11 @@ class ParserConfigurationTester:
         Test all configurations in suite on document set.
 
         Args:
-            documents: List of document paths to process
-            evaluator: Optional evaluator for quality metrics
+            documents (List[Path]): List of document paths to process.
+            evaluator (Optional[BaseEvaluator]): Optional evaluator for quality metrics.
 
         Returns:
-            List of ConfigurationResult objects
+            List[ConfigurationResult]: List of configuration result objects.
         """
         logger.info(f"Testing {self._count_total_configs()} configurations on {len(documents)} documents")
 
@@ -250,13 +247,13 @@ class ParserConfigurationTester:
         Test single parser configuration on document set.
 
         Args:
-            parser_type: Parser type ("marker", "docling", "pymupdf4llm", "pymupdf")
-            config: Configuration dictionary for parser
-            documents: List of document paths
-            evaluator: Optional evaluator for quality metrics
+            parser_type (str): Parser type ("marker", "docling", "pymupdf4llm", "pymupdf").
+            config (Dict[str, Any]): Configuration dictionary for parser.
+            documents (List[Path]): List of document paths.
+            evaluator (Optional[BaseEvaluator]): Optional evaluator for quality metrics.
 
         Returns:
-            ConfigurationResult with all metrics
+            ConfigurationResult: Configuration result with all metrics.
         """
         config_name = config.get("name", f"{parser_type}_unnamed")
         logger.info(f"\nTesting configuration: {config_name}")
@@ -307,12 +304,12 @@ class ParserConfigurationTester:
         Execute parser on document and collect all metrics.
 
         Args:
-            parser: Parser instance
-            document: Document path
-            evaluator: Optional evaluator for quality metrics
+            parser (Any): Parser instance.
+            document (Path): Document path.
+            evaluator (Optional[BaseEvaluator]): Optional evaluator for quality metrics.
 
         Returns:
-            PerformanceMetrics for this run
+            PerformanceMetrics: Performance metrics for this run.
         """
         doc_id = document.stem
 
@@ -446,14 +443,15 @@ class ParserConfigurationTester:
         Initialize parser with configuration.
 
         Args:
-            parser_type: Parser type
-            config: Configuration dictionary
+            parser_type (str): Parser type.
+            config (Dict[str, Any]): Configuration dictionary.
 
         Returns:
-            Parser instance
+            Any: Parser instance.
 
         Raises:
-            ValueError: If parser type unknown
+            NotImplementedError: If parser type is not yet implemented.
+            ValueError: If parser type is unknown.
         """
         # Extract just the parser config (remove "name" field)
         parser_config = {k: v for k, v in config.items() if k != "name"}
@@ -476,7 +474,7 @@ class ParserConfigurationTester:
         Get current GPU utilization and memory usage.
 
         Returns:
-            Tuple of (utilization_percent, memory_used_mb)
+            tuple[Optional[float], Optional[float]]: Tuple of (utilization_percent, memory_used_mb).
         """
         # #EDGE: GPU metrics may not be available
         # #VERIFY: Graceful fallback to None
@@ -500,10 +498,10 @@ class ParserConfigurationTester:
         Aggregate metrics across all documents.
 
         Args:
-            document_results: List of per-document results
+            document_results (List[Dict]): List of per-document results.
 
         Returns:
-            Dictionary with aggregated statistics
+            Dict[str, Any]: Dictionary with aggregated statistics.
         """
         if not document_results:
             return {}

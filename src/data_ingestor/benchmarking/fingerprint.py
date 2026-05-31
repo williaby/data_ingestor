@@ -27,20 +27,20 @@ class HardwareProfile:
     across different environments.
 
     Attributes:
-        cpu_model: CPU model name
-        cpu_cores: Number of physical CPU cores
-        cpu_threads: Number of logical CPU threads
-        cpu_frequency_mhz: Maximum CPU frequency in MHz
-        gpu_model: GPU model name (None if no GPU)
-        gpu_memory_gb: GPU memory in GB (None if no GPU)
-        cuda_version: CUDA version string (None if no CUDA)
-        ram_total_gb: Total system RAM in GB
-        ram_available_gb: Available RAM at capture time
-        storage_type: Storage type (SSD, HDD, NVMe)
-        os_info: Operating system information
-        python_version: Python version string
-        fingerprint_hash: Unique hash for this hardware configuration
-        timestamp: When this profile was captured
+        cpu_model (str): CPU model name.
+        cpu_cores (int): Number of physical CPU cores.
+        cpu_threads (int): Number of logical CPU threads.
+        cpu_frequency_mhz (float): Maximum CPU frequency in MHz.
+        gpu_model (Optional[str]): GPU model name (None if no GPU).
+        gpu_memory_gb (Optional[float]): GPU memory in GB (None if no GPU).
+        cuda_version (Optional[str]): CUDA version string (None if no CUDA).
+        ram_total_gb (float): Total system RAM in GB.
+        ram_available_gb (float): Available RAM at capture time.
+        storage_type (str): Storage type (SSD, HDD, NVMe).
+        os_info (str): Operating system information.
+        python_version (str): Python version string.
+        fingerprint_hash (str): Unique hash for this hardware configuration.
+        timestamp (str): When this profile was captured.
     """
 
     cpu_model: str
@@ -76,14 +76,14 @@ class DocumentCharacteristics:
     Used for document classification and routing optimization.
 
     Attributes:
-        doc_id: Document identifier
-        file_size_mb: File size in megabytes
-        page_count: Number of pages (for PDFs)
-        document_type: Classification (digital, scanned, hybrid)
-        complexity_score: Estimated processing complexity (0.0-1.0)
-        has_tables: Whether document contains tables
-        has_images: Whether document contains images
-        language: Primary language (if detectable)
+        doc_id (str): Document identifier.
+        file_size_mb (float): File size in megabytes.
+        page_count (Optional[int]): Number of pages (for PDFs).
+        document_type (str): Classification (digital, scanned, hybrid).
+        complexity_score (float): Estimated processing complexity (0.0-1.0).
+        has_tables (bool): Whether document contains tables.
+        has_images (bool): Whether document contains images.
+        language (Optional[str]): Primary language (if detectable).
     """
 
     doc_id: str
@@ -108,17 +108,17 @@ class DatasetProfile:
     Summarizes document collection properties for baseline comparison.
 
     Attributes:
-        total_documents: Total number of documents
-        total_size_gb: Total dataset size in GB
-        size_distribution: Distribution by size (small, medium, large)
-        type_distribution: Distribution by type (digital, scanned, hybrid)
-        page_distribution: Page count statistics
-        complexity_stats: Complexity score statistics
-        avg_file_size_mb: Average file size
-        median_file_size_mb: Median file size
-        language_distribution: Distribution by language
-        dataset_hash: Unique hash for this dataset
-        timestamp: When this profile was created
+        total_documents (int): Total number of documents.
+        total_size_gb (float): Total dataset size in GB.
+        size_distribution (Dict[str, int]): Distribution by size (small, medium, large).
+        type_distribution (Dict[str, int]): Distribution by type (digital, scanned, hybrid).
+        page_distribution (Dict[str, float]): Page count statistics.
+        complexity_stats (Dict[str, float]): Complexity score statistics.
+        avg_file_size_mb (float): Average file size.
+        median_file_size_mb (float): Median file size.
+        language_distribution (Dict[str, int]): Distribution by language.
+        dataset_hash (str): Unique hash for this dataset.
+        timestamp (str): When this profile was created.
     """
 
     total_documents: int
@@ -157,7 +157,7 @@ class HardwareFingerprint:
         Capture current hardware configuration.
 
         Returns:
-            HardwareProfile with current system characteristics
+            HardwareProfile: Hardware profile with current system characteristics.
 
         Example:
             >>> profile = HardwareFingerprint.capture()
@@ -233,7 +233,7 @@ class HardwareFingerprint:
         Get GPU information if available.
 
         Returns:
-            Tuple of (gpu_model, gpu_memory_gb, cuda_version)
+            tuple[Optional[str], Optional[float], Optional[str]]: Tuple of (gpu_model, gpu_memory_gb, cuda_version).
         """
         # #EDGE: GPU detection may fail on systems without GPU libraries
         # #VERIFY: Graceful fallback to None values
@@ -259,7 +259,7 @@ class HardwareFingerprint:
         Estimate storage type based on disk characteristics.
 
         Returns:
-            Storage type string ("SSD", "HDD", "NVMe", "Unknown")
+            str: Storage type string ("SSD", "HDD", "NVMe", "Unknown").
         """
         # #ASSUME: Storage type estimation may not be accurate
         # #EDGE: May require platform-specific detection methods
@@ -290,10 +290,10 @@ class HardwareFingerprint:
         Generate stable hash for hardware configuration.
 
         Args:
-            data: Configuration data to hash
+            data (Dict): Configuration data to hash.
 
         Returns:
-            Hex string hash
+            str: Hex string hash.
         """
         # Sort keys for stable hashing
         sorted_data = {k: data[k] for k in sorted(data.keys())}
@@ -318,11 +318,14 @@ class DatasetFingerprint:
         Analyze document collection and create profile.
 
         Args:
-            documents: List of document file paths
-            sample_size: Optionally sample N documents for analysis
+            documents (List[Path]): List of document file paths.
+            sample_size (Optional[int]): Optionally sample N documents for analysis.
 
         Returns:
-            DatasetProfile with collection characteristics
+            DatasetProfile: Dataset profile with collection characteristics.
+
+        Raises:
+            ValueError: If no documents could be analyzed.
 
         Example:
             >>> docs = list(Path("data/benchmarks").glob("*.pdf"))
@@ -424,10 +427,10 @@ class DatasetFingerprint:
         Classify single document characteristics.
 
         Args:
-            doc_path: Path to document file
+            doc_path (Path): Path to document file.
 
         Returns:
-            DocumentCharacteristics for this document
+            DocumentCharacteristics: Document characteristics for this document.
         """
         # #ASSUME: Basic file-based classification is sufficient for Phase 1
         # #TODO: Phase 2 could add content-based classification
@@ -507,10 +510,10 @@ class DatasetFingerprint:
         Generate stable hash for dataset.
 
         Args:
-            characteristics: List of document characteristics
+            characteristics (List[DocumentCharacteristics]): List of document characteristics.
 
         Returns:
-            Hex string hash
+            str: Hex string hash.
         """
         # Use sorted doc IDs and total count for hash
         doc_ids = sorted([c.doc_id for c in characteristics])

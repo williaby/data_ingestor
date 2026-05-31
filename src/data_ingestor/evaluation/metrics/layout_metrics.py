@@ -20,12 +20,12 @@ def calculate_map(
     Uses IoU (Intersection over Union) for bounding box matching.
 
     Args:
-        predicted_boxes: List of predicted boxes with class, bbox coordinates
-        ground_truth_boxes: List of ground truth boxes
-        iou_threshold: IoU threshold for considering a match (default: 0.5)
+        predicted_boxes (List[Dict]): List of predicted boxes with class, bbox coordinates.
+        ground_truth_boxes (List[Dict]): List of ground truth boxes.
+        iou_threshold (float): IoU threshold for considering a match (default: 0.5).
 
     Returns:
-        mAP score (0.0-1.0, higher = better)
+        float: mAP score (0.0-1.0, higher = better).
 
     # TODO(Phase 1.5): Implement proper mAP calculation with per-class AP
     # TODO(Phase 1.5): Use COCO-style mAP with multiple IoU thresholds
@@ -117,11 +117,11 @@ def _calculate_iou(bbox1: List[float], bbox2: List[float]) -> float:
     Calculate Intersection over Union (IoU) for two bounding boxes.
 
     Args:
-        bbox1: [x1, y1, x2, y2] coordinates
-        bbox2: [x1, y1, x2, y2] coordinates
+        bbox1 (List[float]): [x1, y1, x2, y2] coordinates.
+        bbox2 (List[float]): [x1, y1, x2, y2] coordinates.
 
     Returns:
-        IoU score (0.0-1.0)
+        float: IoU score (0.0-1.0).
     """
     if len(bbox1) != 4 or len(bbox2) != 4:
         return 0.0
