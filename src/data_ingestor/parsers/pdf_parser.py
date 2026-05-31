@@ -15,14 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 class PyMuPDFParser(BaseParser):
-    """PDF parser using PyMuPDF library."""
+    """PDF parser using PyMuPDF library.
+
+    Args:
+        config (dict[str, Any] | None): Optional configuration dictionary.
+    """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
-        """Initialize PyMuPDF parser.
-
-        Args:
-            config: Optional configuration dictionary
-        """
         super().__init__(config)
         self.name = "PyMuPDFParser"
 
@@ -30,10 +29,10 @@ class PyMuPDFParser(BaseParser):
         """Check if this parser supports PDF format.
 
         Args:
-            document_format: Format to check
+            document_format (DocumentFormat): Format to check.
 
         Returns:
-            True if PDF, False otherwise
+            bool: True if PDF, False otherwise.
         """
         return document_format == DocumentFormat.PDF
 
@@ -44,13 +43,13 @@ class PyMuPDFParser(BaseParser):
         # #VERIFY: Process page-by-page to limit memory usage
 
         Args:
-            document: Document to parse
+            document (Document): Document to parse.
 
         Returns:
-            ParserResult with extracted elements
+            ParserResult: Parser result with extracted elements.
 
         Raises:
-            ParserError: If parsing fails
+            ParserError: If parsing fails.
         """
         if not document.source_path:
             raise ParserError(
@@ -140,10 +139,10 @@ class PyMuPDFParser(BaseParser):
         """Extract metadata from PDF document.
 
         Args:
-            pdf_doc: PyMuPDF document object
+            pdf_doc (fitz.Document): PyMuPDF document object.
 
         Returns:
-            Dictionary with metadata
+            dict[str, Any]: Dictionary with metadata.
         """
         metadata = pdf_doc.metadata or {}
 
@@ -166,11 +165,11 @@ class PyMuPDFParser(BaseParser):
         # #VERIFY: Use more sophisticated NLP-based classification
 
         Args:
-            text: Text content
-            font_size: Font size in points
+            text (str): Text content.
+            font_size (float): Font size in points.
 
         Returns:
-            Classified element type
+            ElementType: Classified element type.
         """
         # Large font = likely heading or title
         if font_size > 16:
@@ -189,7 +188,7 @@ class PyMuPDFParser(BaseParser):
         """Check if PyMuPDF is working correctly.
 
         Returns:
-            True if operational
+            bool: True if operational.
         """
         try:
             # Try to access PyMuPDF version
@@ -201,14 +200,13 @@ class PyMuPDFParser(BaseParser):
 
 
 class PyMuPDF4LLMParser(BaseParser):
-    """PDF parser using PyMuPDF4LLM for LLM-optimized extraction."""
+    """PDF parser using PyMuPDF4LLM for LLM-optimized extraction.
+
+    Args:
+        config (dict[str, Any] | None): Optional configuration dictionary.
+    """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
-        """Initialize PyMuPDF4LLM parser.
-
-        Args:
-            config: Optional configuration dictionary
-        """
         super().__init__(config)
         self.name = "PyMuPDF4LLMParser"
 
@@ -216,10 +214,10 @@ class PyMuPDF4LLMParser(BaseParser):
         """Check if this parser supports PDF format.
 
         Args:
-            document_format: Format to check
+            document_format (DocumentFormat): Format to check.
 
         Returns:
-            True if PDF, False otherwise
+            bool: True if PDF, False otherwise.
         """
         return document_format == DocumentFormat.PDF
 
@@ -230,13 +228,13 @@ class PyMuPDF4LLMParser(BaseParser):
         # #VERIFY: Gracefully degrade if library unavailable
 
         Args:
-            document: Document to parse
+            document (Document): Document to parse.
 
         Returns:
-            ParserResult with extracted elements
+            ParserResult: Parser result with extracted elements.
 
         Raises:
-            ParserError: If parsing fails
+            ParserError: If parsing fails.
         """
         if not document.source_path:
             raise ParserError(
@@ -298,10 +296,10 @@ class PyMuPDF4LLMParser(BaseParser):
         """Convert markdown text to document elements.
 
         Args:
-            markdown: Markdown text
+            markdown (str): Markdown text.
 
         Returns:
-            List of document elements
+            list[DocumentElement]: List of document elements.
         """
         elements: list[DocumentElement] = []
         lines = markdown.split("\n")
@@ -331,7 +329,7 @@ class PyMuPDF4LLMParser(BaseParser):
         """Check if PyMuPDF4LLM is available.
 
         Returns:
-            True if operational
+            bool: True if operational.
         """
         try:
             import pymupdf4llm
@@ -355,17 +353,14 @@ class MarkerParser(BaseParser):
     - Multi-column layout handling
     - Image extraction and positioning
     - Better handling of complex PDFs
+
+    Args:
+        config (dict[str, Any] | None): Optional configuration dictionary.
     """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
-        """Initialize Marker parser.
-
         # #CRITICAL: GPU Availability: Marker performs best with GPU
         # #VERIFY: Must detect GPU and configure appropriately
-
-        Args:
-            config: Optional configuration dictionary
-        """
         super().__init__(config)
         self.name = "MarkerParser"
         self._marker_available = False
@@ -441,10 +436,10 @@ class MarkerParser(BaseParser):
         """Check if this parser supports PDF format.
 
         Args:
-            document_format: Format to check
+            document_format (DocumentFormat): Format to check.
 
         Returns:
-            True if PDF and Marker is available, False otherwise
+            bool: True if PDF and Marker is available, False otherwise.
         """
         return document_format == DocumentFormat.PDF and self._marker_available
 
@@ -458,13 +453,14 @@ class MarkerParser(BaseParser):
         # #VERIFY: Consider async processing or timeout limits
 
         Args:
-            document: Document to parse
+            document (Document): Document to parse.
 
         Returns:
-            ParserResult with extracted elements
+            ParserResult: Parser result with extracted elements.
 
         Raises:
-            ParserError: If parsing fails
+            ParserError: If parsing fails.
+            Exception: For unexpected errors during parsing.
         """
         if not document.source_path:
             raise ParserError(
@@ -698,16 +694,18 @@ class MarkerParser(BaseParser):
         # #VERIFY: Implement exponential backoff on 429 errors
 
         Args:
-            source_path: Path to PDF file
-            model_dict: Marker model dictionary
-            config: Configuration dictionary
-            llm_model: LLM model to use
+            source_path (str): Path to PDF file.
+            model_dict (dict): Marker model dictionary.
+            config (dict): Configuration dictionary.
+            llm_model (str): LLM model to use.
 
         Returns:
-            MarkdownOutput object from Marker
+            Any: MarkdownOutput object from Marker.
 
         Raises:
-            Exception: If processing fails or rate limit exceeded
+            ValueError: If rate limit timeout exceeded.
+            RuntimeError: If retry logic reaches unexpected code path.
+            Exception: If processing fails or rate limit exceeded.
         """
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter
@@ -788,15 +786,12 @@ class MarkerParser(BaseParser):
         """Process PDF without LLM enhancement.
 
         Args:
-            source_path: Path to PDF file
-            model_dict: Marker model dictionary
-            config: Configuration dictionary
+            source_path (str): Path to PDF file.
+            model_dict (dict): Marker model dictionary.
+            config (dict): Configuration dictionary.
 
         Returns:
-            MarkdownOutput object from Marker
-
-        Raises:
-            Exception: If processing fails
+            Any: MarkdownOutput object from Marker.
         """
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter
@@ -822,10 +817,10 @@ class MarkerParser(BaseParser):
         # #VERIFY: May need more sophisticated parsing for complex structures
 
         Args:
-            markdown: Markdown text from Marker
+            markdown (str): Markdown text from Marker.
 
         Returns:
-            List of document elements
+            list[DocumentElement]: List of document elements.
         """
         import re
 
@@ -921,7 +916,7 @@ class MarkerParser(BaseParser):
         """Check if Marker is available and operational.
 
         Returns:
-            True if operational
+            bool: True if operational.
         """
         if not self._marker_available:
             return False
@@ -946,10 +941,10 @@ class MarkerParser(BaseParser):
         # #VERIFY: May need more sophisticated logic for complex documents
 
         Args:
-            elements: List of document elements
+            elements (list[DocumentElement]): List of document elements.
 
         Returns:
-            Table of contents as list of dictionaries with title, level, and page
+            list[dict[str, Any]]: Table of contents as list of dicts with title, level, and page.
         """
         toc: list[dict[str, Any]] = []
 
@@ -981,10 +976,10 @@ class MarkerParser(BaseParser):
         # #VERIFY: Gracefully degrade if library unavailable
 
         Args:
-            elements: List of document elements
+            elements (list[DocumentElement]): List of document elements.
 
         Returns:
-            List of detected language codes (ISO 639-1)
+            list[str]: List of detected language codes (ISO 639-1).
         """
         try:
             from collections import Counter
@@ -1043,11 +1038,11 @@ class MarkerParser(BaseParser):
         # Fix 4: Add confidence scores and improve metadata fields
 
         Args:
-            elements: List of document elements
-            marker_metadata: Metadata from Marker
+            elements (list[DocumentElement]): List of document elements.
+            marker_metadata (dict[str, Any]): Metadata from Marker.
 
         Returns:
-            Enhanced list of document elements
+            list[DocumentElement]: Enhanced list of document elements.
         """
         # Build hierarchy for parent_id assignment
         heading_stack: list[tuple[int, DocumentElement]] = []  # (level, element)
@@ -1097,10 +1092,10 @@ class MarkerParser(BaseParser):
         # #VERIFY: Compare with actual extraction accuracy metrics
 
         Args:
-            element: Document element
+            element (DocumentElement): Document element.
 
         Returns:
-            Confidence score between 0.0 and 1.0
+            float: Confidence score between 0.0 and 1.0.
         """
         # Base confidence by element type
         type_confidence = {
@@ -1131,6 +1126,6 @@ class MarkerParser(BaseParser):
         but falls back to simpler parsers on failure.
 
         Returns:
-            Priority value (10 = high priority)
+            int: Priority value (10 = high priority).
         """
         return cast(int, self.config.get("priority", 10))

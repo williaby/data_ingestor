@@ -30,7 +30,7 @@ def TestOneInput(data: bytes) -> None:
     """Fuzz target for PDF parsing.
 
     Args:
-        data: Arbitrary byte sequence to use as PDF input
+        data (bytes): Arbitrary byte sequence to use as PDF input.
     """
     # Skip inputs that are too small to be valid PDFs
     if len(data) < 10:

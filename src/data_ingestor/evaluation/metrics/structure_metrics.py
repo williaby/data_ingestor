@@ -20,11 +20,11 @@ def calculate_section_f1(
     Measures how well section headings are detected and their hierarchy preserved.
 
     Args:
-        predicted_sections: List of (heading_text, level) tuples
-        ground_truth_sections: List of (heading_text, level) tuples
+        predicted_sections (List[Tuple[str, int]]): List of (heading_text, level) tuples.
+        ground_truth_sections (List[Tuple[str, int]]): List of (heading_text, level) tuples.
 
     Returns:
-        F1 score (0.0-1.0, higher = better)
+        float: F1 score (0.0-1.0, higher = better).
 
     # TODO(Phase 1.5): Implement fuzzy matching for heading text
     # TODO(Phase 1.5): Consider both text and hierarchy in scoring
@@ -85,11 +85,11 @@ def calculate_reading_order_f1(
     Measures how well the reading order (sequence) of elements is preserved.
 
     Args:
-        predicted_order: List of element IDs in predicted order
-        ground_truth_order: List of element IDs in correct order
+        predicted_order (List[str]): List of element IDs in predicted order.
+        ground_truth_order (List[str]): List of element IDs in correct order.
 
     Returns:
-        F1 score (0.0-1.0, higher = better)
+        float: F1 score (0.0-1.0, higher = better).
 
     # TODO(Phase 1.5): Implement longest common subsequence (LCS) approach
     # TODO(Phase 1.5): Consider partial credit for near-miss orderings
@@ -136,11 +136,11 @@ def calculate_kendall_tau(
     Measures correlation between two rankings. Values range from -1 to 1.
 
     Args:
-        predicted_order: List of element IDs in predicted order
-        ground_truth_order: List of element IDs in correct order
+        predicted_order (List[str]): List of element IDs in predicted order.
+        ground_truth_order (List[str]): List of element IDs in correct order.
 
     Returns:
-        Kendall's tau (-1.0 to 1.0, higher = better)
+        float: Kendall's tau (-1.0 to 1.0, higher = better).
 
     # TODO(Phase 1.5): Use scipy.stats.kendalltau for proper implementation
     """

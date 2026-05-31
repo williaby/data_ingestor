@@ -29,7 +29,7 @@ def TestOneInput(data: bytes) -> None:
     """Fuzz target for DocumentRouter.
 
     Args:
-        data: Arbitrary byte sequence to use as file input
+        data (bytes): Arbitrary byte sequence to use as file input.
     """
     # Skip inputs that are too small
     if len(data) < 4:

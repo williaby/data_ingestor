@@ -59,15 +59,12 @@ class DocLayNetEvaluator(BaseEvaluator):
     4. List-item   10. Text
     5. Page-footer 11. Title
     6. Page-header
+
+    Args:
+        ground_truth_dir (Path): Path to DocLayNet ground truth annotations (JSON).
     """
 
     def __init__(self, ground_truth_dir: Path):
-        """
-        Initialize DocLayNet evaluator.
-
-        Args:
-            ground_truth_dir: Path to DocLayNet ground truth annotations (JSON)
-        """
         super().__init__("doclaynet", ground_truth_dir)
 
         # Cache for COCO JSON data (loaded once for efficiency)
@@ -90,11 +87,14 @@ class DocLayNetEvaluator(BaseEvaluator):
         Evaluate a document against DocLayNet ground truth.
 
         Args:
-            predicted: Parsed document from our pipeline
-            ground_truth: Dict with 'layout' annotations (COCO format)
+            predicted (Document): Parsed document from our pipeline.
+            ground_truth (Dict): Dict with 'layout' annotations (COCO format).
 
         Returns:
-            EvaluationResult with layout and reading order metrics
+            EvaluationResult: Result with layout and reading order metrics.
+
+        Raises:
+            ValueError: If ground truth layout annotations are missing.
         """
         # Validate inputs
         self.validate_document(predicted, ground_truth)
@@ -182,10 +182,10 @@ class DocLayNetEvaluator(BaseEvaluator):
         Convert document elements to bounding boxes for mAP calculation.
 
         Args:
-            document: Parsed document
+            document (Document): Parsed document.
 
         Returns:
-            List of boxes with class and bbox coordinates
+            List[Dict]: List of boxes with class and bbox coordinates.
         """
         boxes = []
 
@@ -217,10 +217,10 @@ class DocLayNetEvaluator(BaseEvaluator):
         Convert COCO-format annotations to boxes.
 
         Args:
-            layout: COCO-format layout annotations
+            layout (Dict): COCO-format layout annotations.
 
         Returns:
-            List of boxes
+            List[Dict]: List of boxes.
         """
         boxes = []
 
@@ -249,12 +249,12 @@ class DocLayNetEvaluator(BaseEvaluator):
         Match predicted elements to ground truth annotations using bbox IoU.
 
         Args:
-            document: Parsed document with elements
-            gt_layout: Ground truth layout annotations
-            iou_threshold: Minimum IoU for considering a match
+            document (Document): Parsed document with elements.
+            gt_layout (Dict): Ground truth layout annotations.
+            iou_threshold (float): Minimum IoU for considering a match.
 
         Returns:
-            Dict mapping element index to annotation ID
+            Dict[int, str]: Dict mapping element index to annotation ID.
         """
         from data_ingestor.evaluation.metrics.layout_metrics import _calculate_iou
 
@@ -303,11 +303,11 @@ class DocLayNetEvaluator(BaseEvaluator):
         Extract reading order from document elements.
 
         Args:
-            document: Parsed document
-            element_to_annotation_map: Optional mapping from element index to annotation ID
+            document (Document): Parsed document.
+            element_to_annotation_map (Optional[Dict[int, str]]): Optional mapping from element index to annotation ID.
 
         Returns:
-            List of element IDs in reading order
+            List[str]: List of element IDs in reading order.
         """
         # If we have a mapping from bbox matching, use annotation IDs
         if element_to_annotation_map:
@@ -326,10 +326,10 @@ class DocLayNetEvaluator(BaseEvaluator):
         Extract ground truth reading order.
 
         Args:
-            layout: Layout annotations with reading order
+            layout (Dict): Layout annotations with reading order.
 
         Returns:
-            List of element IDs in correct reading order
+            List[str]: List of element IDs in correct reading order.
         """
         annotations = layout.get("annotations", [])
 
@@ -414,10 +414,10 @@ class DocLayNetEvaluator(BaseEvaluator):
         extracts annotations, and returns in expected format.
 
         Args:
-            document_id: Document identifier (PDF filename without extension)
+            document_id (str): Document identifier (PDF filename without extension).
 
         Returns:
-            Dict with 'layout' key containing 'annotations', or None if not found
+            Optional[Dict]: Dict with 'layout' key containing 'annotations', or None if not found.
         """
         if not self._coco_data:
             logger.error("COCO data not loaded")

@@ -137,6 +137,7 @@ bandit = {extras = ["toml"], version = "1.7.7"}
 safety = ">=3.0.1"
 detect-secrets = ">=1.5.0"
 pre-commit = ">=4.0.0"
+pydoclint = ">=0.8.4"
 nox = ">=2025.1.0"
 ipython = ">=9.0.0"
 ipdb = ">=0.13.13"
@@ -478,3 +479,13 @@ autosave = true
 save = ".benchmarks"
 compare = "0001"
 compare_fail = ["min:5%", "max:5%", "mean:5%", "median:5%", "stddev:5%"]
+
+[tool.pydoclint]
+style = "google"
+exclude = '\.git|tests/|scripts/|benchmarks/|tools/|noxfile\.py|\.claude/'
+arg-type-hints-in-docstring = true
+arg-type-hints-in-signature = true
+skip-checking-raises = false
+require-return-section-when-returning-nothing = false
+require-return-section-when-returning-values = false
+require-yield-section-when-yielding-values = false

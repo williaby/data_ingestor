@@ -28,7 +28,7 @@ def TestOneInput(data: bytes) -> None:
     """Fuzz target for document chunkers.
 
     Args:
-        data: Arbitrary byte sequence to create document elements
+        data (bytes): Arbitrary byte sequence to create document elements.
     """
     # Skip inputs that are too small
     if len(data) < 10:

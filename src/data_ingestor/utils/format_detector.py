@@ -51,7 +51,6 @@ class FormatDetector:
     }
 
     def __init__(self) -> None:
-        """Initialize format detector."""
         # Initialize magic for file type detection
         try:
             self.magic_detector: magic.Magic | None = magic.Magic(mime=True)
@@ -67,10 +66,10 @@ class FormatDetector:
         # #VERIFY: Should validate detection confidence and allow manual override
 
         Args:
-            file_path: Path to the file
+            file_path (str | Path): Path to the file.
 
         Returns:
-            Detected document format
+            DocumentFormat: Detected document format.
         """
         path = Path(file_path)
 
@@ -110,10 +109,10 @@ class FormatDetector:
         # #VERIFY: Should validate after download
 
         Args:
-            url: URL to analyze
+            url (str): URL to analyze.
 
         Returns:
-            Detected document format (may be HTML or UNKNOWN)
+            DocumentFormat: Detected document format (may be HTML or UNKNOWN).
         """
         url_lower = url.lower()
 
@@ -132,11 +131,11 @@ class FormatDetector:
         """Validate that file matches expected format.
 
         Args:
-            file_path: Path to the file
-            expected_format: Expected document format
+            file_path (str | Path): Path to the file.
+            expected_format (DocumentFormat): Expected document format.
 
         Returns:
-            True if format matches, False otherwise
+            bool: True if format matches, False otherwise.
         """
         detected_format = self.detect_from_path(file_path)
         return detected_format == expected_format
@@ -145,10 +144,10 @@ class FormatDetector:
         """Get MIME type for file.
 
         Args:
-            file_path: Path to the file
+            file_path (str | Path): Path to the file.
 
         Returns:
-            MIME type string or None if detection fails
+            str | None: MIME type string or None if detection fails.
         """
         path = Path(file_path)
 
@@ -165,10 +164,10 @@ class FormatDetector:
         """Get comprehensive format information.
 
         Args:
-            file_path: Path to the file
+            file_path (str | Path): Path to the file.
 
         Returns:
-            Dictionary with format information
+            dict[str, Any]: Dictionary with format information.
         """
         path = Path(file_path)
         detected_format = self.detect_from_path(path)

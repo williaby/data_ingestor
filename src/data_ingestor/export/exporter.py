@@ -27,7 +27,7 @@ class DocumentExporter:
     """
 
     def __init__(self) -> None:
-        """Initialize the document exporter."""
+        pass
 
     def export(
         self,
@@ -38,15 +38,16 @@ class DocumentExporter:
         """Export document in specified format.
 
         Args:
-            document: Document to export
-            format: Output format
-            output_path: Optional output file path (for BOTH format, will create .json and .md)
+            document (Document): Document to export.
+            format (OutputFormat): Output format.
+            output_path (str | Path | None): Optional output file path
+                (for BOTH format, will create .json and .md).
 
         Returns:
-            Exported data in requested format
+            dict[str, Any] | str | tuple[dict[str, Any], str]: Exported data in requested format.
 
         Raises:
-            ValueError: If format is unsupported
+            ValueError: If format is unsupported.
         """
         if format == OutputFormat.JSON:
             json_result = self.to_json(document)
@@ -84,10 +85,10 @@ class DocumentExporter:
         """Export document as JSON with full metadata.
 
         Args:
-            document: Document to export
+            document (Document): Document to export.
 
         Returns:
-            JSON-serializable dictionary
+            dict[str, Any]: JSON-serializable dictionary.
         """
         return {
             "document_id": document.document_id,
@@ -124,11 +125,11 @@ class DocumentExporter:
         Preserves document structure, metadata, and formatting in LLM-friendly format.
 
         Args:
-            document: Document to export
-            include_chunks: Whether to include chunk information
+            document (Document): Document to export.
+            include_chunks (bool): Whether to include chunk information.
 
         Returns:
-            Markdown-formatted string with YAML front matter
+            str: Markdown-formatted string with YAML front matter.
         """
         lines: list[str] = []
 
@@ -181,10 +182,10 @@ class DocumentExporter:
         """Export document as plain text.
 
         Args:
-            document: Document to export
+            document (Document): Document to export.
 
         Returns:
-            Plain text content
+            str: Plain text content.
         """
         return "\n\n".join(element.content for element in document.elements)
 
@@ -192,10 +193,10 @@ class DocumentExporter:
         """Convert element to dictionary.
 
         Args:
-            element: Element to convert
+            element (DocumentElement): Element to convert.
 
         Returns:
-            Dictionary representation
+            dict[str, Any]: Dictionary representation.
         """
         return {
             "element_id": element.metadata.element_id,
@@ -219,10 +220,10 @@ class DocumentExporter:
         """Convert chunk to dictionary.
 
         Args:
-            chunk: Chunk to convert
+            chunk (Chunk): Chunk to convert.
 
         Returns:
-            Dictionary representation
+            dict[str, Any]: Dictionary representation.
         """
         return {
             "chunk_id": chunk.chunk_id,
@@ -239,10 +240,10 @@ class DocumentExporter:
         """Convert element to markdown representation.
 
         Args:
-            element: Element to convert
+            element (DocumentElement): Element to convert.
 
         Returns:
-            Markdown-formatted string
+            str: Markdown-formatted string.
         """
         element_type = element.element_type
 
@@ -296,8 +297,8 @@ class DocumentExporter:
         """Write JSON data to file.
 
         Args:
-            data: JSON data
-            path: Output file path
+            data (dict[str, Any]): JSON data.
+            path (Path): Output file path.
         """
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -306,7 +307,7 @@ class DocumentExporter:
         """Write markdown content to file.
 
         Args:
-            content: Markdown content
-            path: Output file path
+            content (str): Markdown content.
+            path (Path): Output file path.
         """
         path.write_text(content, encoding="utf-8")

@@ -8,14 +8,13 @@ from data_ingestor.core.models import Document, DocumentFormat, ParserResult
 
 
 class BaseParser(ABC):
-    """Abstract base class for document parsers."""
+    """Abstract base class for document parsers.
+
+    Args:
+        config (dict[str, Any] | None): Optional configuration dictionary for parser-specific settings.
+    """
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
-        """Initialize parser with optional configuration.
-
-        Args:
-            config: Optional configuration dictionary for parser-specific settings
-        """
         self.config = config or {}
         self.name = self.__class__.__name__
 
@@ -24,10 +23,10 @@ class BaseParser(ABC):
         """Check if this parser supports the given document format.
 
         Args:
-            document_format: The format to check
+            document_format (DocumentFormat): The format to check.
 
         Returns:
-            True if format is supported, False otherwise
+            bool: True if format is supported, False otherwise.
         """
 
     @abstractmethod
@@ -41,14 +40,14 @@ class BaseParser(ABC):
         # #VERIFY: Implement streaming or chunked processing for large files
 
         Args:
-            document: Document to parse
+            document (Document): Document to parse.
 
         Returns:
-            ParserResult with extracted elements and metadata
+            ParserResult: Parser result with extracted elements and metadata.
 
         Raises:
-            ParserError: If parsing fails
-            UnsupportedFormatError: If format is not supported
+            ParserError: If parsing fails.
+            UnsupportedFormatError: If format is not supported.
         """
 
     @abstractmethod
@@ -59,7 +58,7 @@ class BaseParser(ABC):
         # #VERIFY: Should test actual parsing capability, not just initialization
 
         Returns:
-            True if parser is healthy, False otherwise
+            bool: True if parser is healthy, False otherwise.
         """
 
     def validate_document(self, document: Document) -> bool:
@@ -69,10 +68,10 @@ class BaseParser(ABC):
         # #VERIFY: Must validate file format, size limits, and accessibility
 
         Args:
-            document: Document to validate
+            document (Document): Document to validate.
 
         Returns:
-            True if document is valid, False otherwise
+            bool: True if document is valid, False otherwise.
         """
         # Check format support
         if not self.supports_format(document.format):
@@ -100,6 +99,6 @@ class BaseParser(ABC):
         """Get parser priority (lower = higher priority).
 
         Returns:
-            Priority value (default: 100)
+            int: Priority value (default: 100).
         """
         return cast(int, self.config.get("priority", 100))

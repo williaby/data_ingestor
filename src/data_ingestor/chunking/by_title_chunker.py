@@ -28,6 +28,14 @@ class ByTitleChunker:
     - Chunks never span across title boundaries
     - Small sections can be combined using combine_text_under_n_chars
     - Page boundaries can be optionally respected
+
+    Args:
+        chunk_size (int): Maximum tokens per chunk (soft limit).
+        chunk_overlap (int): Number of overlapping tokens between chunks within same section.
+        model_name (str): Tiktoken encoding model name.
+        preserve_tables (bool): Whether to keep tables intact.
+        combine_text_under_n_chars (int | None): Combine sections smaller than this character count.
+        respect_page_boundaries (bool): If True, never chunk across page boundaries.
     """
 
     def __init__(
@@ -39,16 +47,6 @@ class ByTitleChunker:
         combine_text_under_n_chars: int | None = None,
         respect_page_boundaries: bool = False,
     ) -> None:
-        """Initialize by_title chunker.
-
-        Args:
-            chunk_size: Maximum tokens per chunk (soft limit)
-            chunk_overlap: Number of overlapping tokens between chunks within same section
-            model_name: Tiktoken encoding model name
-            preserve_tables: Whether to keep tables intact
-            combine_text_under_n_chars: Combine sections smaller than this character count
-            respect_page_boundaries: If True, never chunk across page boundaries
-        """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.preserve_tables = preserve_tables
@@ -68,10 +66,10 @@ class ByTitleChunker:
         # #VERIFY: Validate that no chunk contains elements from different sections
 
         Args:
-            document: Document with extracted elements
+            document (Document): Document with extracted elements.
 
         Returns:
-            List of chunks
+            list[Chunk]: List of chunks.
         """
         if not document.elements:
             logger.warning(f"Document {document.document_id} has no elements to chunk")
@@ -130,10 +128,10 @@ class ByTitleChunker:
         """Group elements by section boundaries (title elements).
 
         Args:
-            elements: All document elements
+            elements (list[DocumentElement]): All document elements.
 
         Returns:
-            List of sections, where each section is a list of elements
+            list[list[DocumentElement]]: List of sections, where each section is a list of elements.
         """
         sections: list[list[DocumentElement]] = []
         current_section: list[DocumentElement] = []
@@ -169,10 +167,10 @@ class ByTitleChunker:
         """Combine sections smaller than combine_text_under_n_chars.
 
         Args:
-            sections: List of sections to potentially combine
+            sections (list[list[DocumentElement]]): List of sections to potentially combine.
 
         Returns:
-            List of sections with small ones combined
+            list[list[DocumentElement]]: List of sections with small ones combined.
         """
         if not self.combine_text_under_n_chars:
             return sections
@@ -210,11 +208,11 @@ class ByTitleChunker:
         """Chunk elements within a single section.
 
         Args:
-            section_elements: Elements in this section
-            document: Source document
+            section_elements (list[DocumentElement]): Elements in this section.
+            document (Document): Source document.
 
         Returns:
-            List of chunks for this section
+            list[Chunk]: List of chunks for this section.
         """
         chunks: list[Chunk] = []
         current_content: list[str] = []
@@ -287,12 +285,12 @@ class ByTitleChunker:
         """Create a chunk from content parts and elements.
 
         Args:
-            content_parts: List of text content
-            elements: List of document elements
-            document: Source document
+            content_parts (list[str]): List of text content.
+            elements (list[DocumentElement]): List of document elements.
+            document (Document): Source document.
 
         Returns:
-            Chunk instance
+            Chunk: Chunk instance.
         """
         content = "\n\n".join(content_parts)
         token_count = len(self.encoding.encode(content))
@@ -325,11 +323,11 @@ class ByTitleChunker:
         """Create a standalone chunk for a table element.
 
         Args:
-            table: Table element
-            document: Source document
+            table (DocumentElement): Table element.
+            document (Document): Source document.
 
         Returns:
-            Chunk instance
+            Chunk: Chunk instance.
         """
         content = table.content
         token_count = len(self.encoding.encode(content))

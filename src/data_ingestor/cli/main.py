@@ -27,10 +27,10 @@ def setup_logging(debug: bool = False) -> Console:
     """Set up logging configuration and return console instance.
 
     Args:
-        debug: Enable debug logging
+        debug (bool): Enable debug logging.
 
     Returns:
-        Console instance for this CLI invocation
+        Console: Console instance for this CLI invocation.
     """
     # Create console per invocation for thread-safety
     console = Console()
@@ -94,6 +94,17 @@ def process(
     include_chunks: bool,
 ) -> None:
     """Process a single document.
+
+    Args:
+        ctx (click.Context): Click context object.
+        file_path (str): Path to the document file.
+        output (str | None): Output file path.
+        format (str): Output format (json, markdown, both, text).
+        chunk_size (int): Chunk size in tokens.
+        chunk_overlap (int): Chunk overlap in tokens.
+        chunking_strategy (str): Chunking strategy (basic or by_title).
+        combine_under (int | None): Combine sections under N characters.
+        include_chunks (bool): Include chunks in markdown output.
 
     Examples:
         # Export as JSON
@@ -303,6 +314,14 @@ def benchmark(
 ) -> None:
     """Run comprehensive benchmark on DocLayNet dataset (Phase 1b baseline).
 
+    Args:
+        ctx (click.Context): Click context object.
+        datasets (tuple[str, ...]): Datasets to evaluate.
+        parsers (tuple[str, ...]): Parsers to test.
+        workers (int): Number of parallel workers.
+        output (str | None): Output JSON file path.
+        output_dir (str): Output directory for results.
+
     Examples:
         # Run benchmark on DocLayNet
         data-ingestor benchmark
@@ -389,6 +408,12 @@ def benchmark_report(
 ) -> None:
     """Generate reports from benchmark results.
 
+    Args:
+        ctx (click.Context): Click context object.
+        results_file (str): Path to results JSON file.
+        format (str): Report format (html, json, csv, all).
+        output (str | None): Output file path.
+
     Examples:
         # Generate HTML report
         data-ingestor benchmark-report results/baseline.json
@@ -457,8 +482,8 @@ def _display_preview(document: Any, console: Console) -> None:
     """Display document preview in console.
 
     Args:
-        document: Document to display
-        console: Console instance for output
+        document (Any): Document to display.
+        console (Console): Console instance for output.
     """
     console.print("\n[bold]Document Preview:[/bold]\n")
 
@@ -525,6 +550,13 @@ def benchmark_configs(
     Tests different parser configurations (Marker with/without LLM,
     Docling with/without TableFormer, etc.) to measure performance
     trade-offs and optimize routing decisions.
+
+    Args:
+        ctx (click.Context): Click context object.
+        suite (str): Path to configuration suite YAML file.
+        documents (str): Directory containing documents to test.
+        output (str | None): Output JSON file for results.
+        workers (int): Number of parallel workers.
 
     Examples:
         # Run comprehensive test suite
@@ -627,6 +659,13 @@ def baseline_create(
     auto_fingerprint: bool,
 ) -> None:
     """Create versioned baseline from configuration test results.
+
+    Args:
+        ctx (click.Context): Click context object.
+        name (str): Baseline name.
+        results (str): Path to configuration test results JSON file.
+        description (str | None): Baseline description.
+        auto_fingerprint (bool): Automatically capture hardware and dataset fingerprints.
 
     Examples:
         # Create baseline with auto-fingerprinting
@@ -786,6 +825,15 @@ def baseline_compare(
 ) -> None:
     """Compare two baselines or baseline against results.
 
+    Args:
+        ctx (click.Context): Click context object.
+        baseline1 (str): First baseline (name:version or name:latest).
+        baseline2 (str | None): Second baseline (if not provided, compares against results).
+        results (str | None): Configuration results file path.
+        output (str | None): Output HTML report path.
+        statistical_tests (bool): Run statistical significance tests.
+        significance_level (float): P-value threshold for significance.
+
     Examples:
         # Compare two baselines
         data-ingestor baseline-compare \\
@@ -930,6 +978,15 @@ def compare_configs(
 
     Generates comparative analysis reports showing performance trade-offs
     between different parser configurations.
+
+    Args:
+        ctx (click.Context): Click context object.
+        results_file (str): Path to configuration test results JSON file.
+        output_format (str): Output format (html, json, both).
+        output (str | None): Output file path.
+        recommend (bool): Generate configuration recommendations.
+        optimization_target (str): Optimization target (speed, accuracy, balanced).
+        document_type (str): Document type for recommendations.
 
     Examples:
         # Generate HTML comparison report

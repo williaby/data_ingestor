@@ -34,12 +34,14 @@ class BenchmarkConfig:
     Configuration for benchmark run.
 
     Attributes:
-        datasets: List of datasets to evaluate (doclaynet - Phase 1 only)
-        parsers: List of parser names to test
-        workers: Number of parallel workers
-        batch_size: Documents per batch
-        output_dir: Directory for results
-        timeout_per_doc: Maximum seconds per document
+        datasets (List[str]): List of datasets to evaluate (doclaynet - Phase 1 only).
+        parsers (List[str]): List of parser names to test.
+        workers (int): Number of parallel workers.
+        batch_size (int): Documents per batch.
+        output_dir (Path): Directory for results.
+        timeout_per_doc (int): Maximum seconds per document.
+        save_predictions (bool): Whether to save predictions.
+        config_path (Optional[Path]): Path to config YAML.
     """
 
     datasets: List[str]
@@ -76,6 +78,14 @@ class BenchmarkOrchestrator:
     Coordinates the complete benchmarking workflow including dataset loading,
     parser initialization, parallel processing, result aggregation, and reporting.
 
+    Args:
+        datasets (Optional[List[str]]): List of datasets to evaluate (default: all).
+        parsers (Optional[List[str]]): List of parsers to test (default: all available).
+        workers (int): Number of parallel workers (default: 4).
+        batch_size (int): Documents per batch (default: 32).
+        output_dir (str): Output directory for results.
+        config_path (Optional[Path]): Path to config YAML (default: data/benchmarks/config.yaml).
+
     Example:
         >>> orchestrator = BenchmarkOrchestrator(
         ...     datasets=["readoc", "doclaynet"],
@@ -95,17 +105,6 @@ class BenchmarkOrchestrator:
         output_dir: str = "results",
         config_path: Optional[Path] = None,
     ):
-        """
-        Initialize benchmark orchestrator.
-
-        Args:
-            datasets: List of datasets to evaluate (default: all)
-            parsers: List of parsers to test (default: all available)
-            workers: Number of parallel workers (default: 4)
-            batch_size: Documents per batch (default: 32)
-            output_dir: Output directory for results
-            config_path: Path to config YAML (default: data/benchmarks/config.yaml)
-        """
         # Load configuration
         if config_path is None:
             config_path = Path("data/benchmarks/config.yaml")
@@ -147,10 +146,10 @@ class BenchmarkOrchestrator:
         Load dataset configuration from YAML.
 
         Args:
-            config_path: Path to config file
+            config_path (Path): Path to config file.
 
         Returns:
-            Configuration dictionary
+            Dict: Configuration dictionary.
         """
         if not config_path.exists():
             logger.warning(
@@ -169,7 +168,7 @@ class BenchmarkOrchestrator:
         Initialize evaluators for each dataset.
 
         Returns:
-            Dict mapping dataset name to evaluator instance
+            Dict[str, BaseEvaluator]: Dict mapping dataset name to evaluator instance.
         """
         evaluators = {}
 
@@ -213,23 +212,10 @@ class BenchmarkOrchestrator:
         aggregates results, and returns comprehensive metrics.
 
         Returns:
-            Dict with results:
-            {
-                "metadata": {...},
-                "datasets": {
-                    "readoc": {
-                        "parsers": {
-                            "pymupdf": AggregatedMetrics,
-                            ...
-                        }
-                    },
-                    ...
-                },
-                "overall": {...}
-            }
+            Dict[str, any]: Dict with metadata, datasets, and overall keys.
 
         Raises:
-            RuntimeError: If no evaluators are initialized
+            RuntimeError: If no evaluators are initialized.
         """
         if not self.evaluators:
             raise RuntimeError(
@@ -286,11 +272,11 @@ class BenchmarkOrchestrator:
         Run benchmark for a single dataset across all parsers.
 
         Args:
-            dataset_name: Dataset identifier
-            evaluator: Evaluator instance for this dataset
+            dataset_name (str): Dataset identifier.
+            evaluator (BaseEvaluator): Evaluator instance for this dataset.
 
         Returns:
-            Dict with parser results and aggregated metrics
+            Dict[str, any]: Dict with parser results and aggregated metrics.
         """
         dataset_results = {"parsers": {}, "aggregated": {}}
 
@@ -363,13 +349,13 @@ class BenchmarkOrchestrator:
         Find all document files in directory with optional sampling.
 
         Args:
-            docs_dir: Directory containing documents
-            sample_size: Number of documents to sample (None = all documents)
-            strategy: Sampling strategy ('random', 'sequential', 'stratified')
-            seed: Random seed for reproducibility
+            docs_dir (Path): Directory containing documents.
+            sample_size (Optional[int]): Number of documents to sample (None = all documents).
+            strategy (str): Sampling strategy ('random', 'sequential', 'stratified').
+            seed (int): Random seed for reproducibility.
 
         Returns:
-            List of document file paths
+            List[Path]: List of document file paths.
         """
         import random as rand
 
@@ -420,12 +406,12 @@ class BenchmarkOrchestrator:
         Calculate overall statistics across all datasets and parsers.
 
         Args:
-            dataset_results: Results for all datasets
-            start_time: Benchmark start time
-            end_time: Benchmark end time
+            dataset_results (Dict): Results for all datasets.
+            start_time (datetime): Benchmark start time.
+            end_time (datetime): Benchmark end time.
 
         Returns:
-            Overall statistics dict
+            Dict: Overall statistics dict.
         """
         total_docs = 0
         total_successful = 0
@@ -468,11 +454,11 @@ class BenchmarkOrchestrator:
         Save benchmark results to JSON file.
 
         Args:
-            results: Results dictionary from run()
-            output_file: Output filename (default: timestamp-based)
+            results (Dict): Results dictionary from run().
+            output_file (Optional[str]): Output filename (default: timestamp-based).
 
         Returns:
-            Path to saved file
+            Path: Path to saved file.
         """
         if output_file is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -491,10 +477,10 @@ class BenchmarkOrchestrator:
         Load benchmark results from JSON file.
 
         Args:
-            results_file: Path to results file
+            results_file (Path): Path to results file.
 
         Returns:
-            Results dictionary
+            Dict: Results dictionary.
         """
         with open(results_file) as f:
             results = json.load(f)
