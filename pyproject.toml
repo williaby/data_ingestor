@@ -150,9 +150,9 @@ isort = "^6.0.1"
 datasets = "^4.4.0"
 
 [tool.poetry.group.azure.dependencies]
-azure-identity = "^1.15.0"
+azure-identity = "^1.25.3"
 azure-keyvault-secrets = "^4.11.0"
-azure-storage-blob = "^12.19.0"
+azure-storage-blob = "^12.30.0"
 
 [tool.poetry.group.ml.dependencies]
 sentence-transformers = ">=3.0.0,<6.0.0"
