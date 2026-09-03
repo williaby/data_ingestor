@@ -74,8 +74,8 @@ jobs:
           # Critical dependencies for document processing
           critical_deps = {
               'pdfplumber': 'PDF text extraction',
-              'pypdf': 'PDF manipulation',
-              'python_docx': 'Word document processing',
+              'pymupdf': 'PDF manipulation',
+              'docx': 'Word document processing',
               'markdown': 'Markdown generation',
               'tiktoken': 'Token counting',
               'pydantic': 'Data validation'
