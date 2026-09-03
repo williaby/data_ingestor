@@ -116,7 +116,7 @@ jobs:
           echo "📄 Validating document processing dependencies..."
           poetry run python -c "
           import sys
-          required_deps = ['pdfplumber', 'pypdf', 'python_docx', 'markdown', 'tiktoken']
+          required_deps = ['pdfplumber', 'pymupdf', 'docx', 'markdown', 'tiktoken']
           optional_deps = ['docling', 'transformers', 'torch']
 
           print('🔍 Core Dependencies:')

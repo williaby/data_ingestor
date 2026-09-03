@@ -86,7 +86,7 @@ jobs:
           # Verify critical security-sensitive packages
           poetry run python -c "
           import sys
-          critical_deps = ['pdfplumber', 'pypdf', 'pydantic', 'tiktoken']
+          critical_deps = ['pdfplumber', 'pymupdf', 'pydantic', 'tiktoken']
           for dep in critical_deps:
               try:
                   __import__(dep.replace('-', '_'))
