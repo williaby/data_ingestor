@@ -269,17 +269,26 @@ jobs:
           # Check basic Python syntax
           echo "Checking Python syntax..."
           find src -name "*.py" -print0 | while IFS= read -r -d '' file; do
+            # #CRITICAL the embedded Python below must stay indented to at
+            # least this block's baseline (10 spaces) so the YAML literal
+            # block scalar keeps it as content; a previous zero-indent
+            # version dedented past the scalar's own indentation, which
+            # made the whole file fail to parse (zero jobs, zero check
+            # runs, including this job's required "Dependency & Standards
+            # Validation" context). #VERIFY with `python3 -c "import yaml;
+            # yaml.safe_load(open('pr-validation.yml'))"` after any edit
+            # to this step.
             poetry run python -c "
-import ast
-import sys
+          import ast
+          import sys
 
-try:
-    with open('$file', 'r') as f:
-        ast.parse(f.read())
-    print('✅ $file: Valid syntax')
-except SyntaxError as e:
-    print('❌ $file: Syntax error - ' + str(e))
-    sys.exit(1)
+          try:
+              with open('$file', 'r') as f:
+                  ast.parse(f.read())
+              print('✅ $file: Valid syntax')
+          except SyntaxError as e:
+              print('❌ $file: Syntax error - ' + str(e))
+              sys.exit(1)
             " || exit 1
           done
 
