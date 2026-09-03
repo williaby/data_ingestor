@@ -30,15 +30,16 @@ name: Security Analysis
 
 on:
   pull_request:
+    # No `paths:` filter here. This workflow emits the required status
+    # check "Security Gate Validation" (see security-gate-success below).
+    # A required context that is gated behind a paths filter never
+    # reports on PRs that do not touch those paths, which leaves the PR
+    # permanently BLOCKED waiting on a check that was never queued. Do
+    # not reintroduce a paths filter on this trigger.
     branches:
       - main
       - develop
       - 'feature/**'
-    paths:
-      - '**/*.py'
-      - '.github/workflows/security-analysis.yml'
-      - 'pyproject.toml'
-      - 'poetry.lock'
   schedule:
     - cron: '30 2 * * 1'  # Weekly Monday 2:30 AM UTC
   workflow_dispatch:  # Manual trigger
