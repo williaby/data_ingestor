@@ -62,7 +62,12 @@ class BenchmarkRunner:
         # #VERIFY: Router is thread-safe or process-safe
         settings = Settings()
         self.settings = settings
-        self.workers = workers
+
+        # Router exposed for introspection (health checks, tests). run_batch()
+        # below intentionally builds its own short-lived router per benchmark
+        # so each run is isolated to exactly one parser; this instance never
+        # has a parser registered and must not be used for actual processing.
+        self.router = DocumentRouter(self.settings)
 
         # Store available parsers (don't register yet - will register per benchmark)
         self.available_parsers = {
