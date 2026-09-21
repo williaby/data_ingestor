@@ -165,7 +165,7 @@ nltk = ">=3.8.0,<4.0.0"
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.0"
 mkdocs-material = "^9.5.32"
-mkdocstrings = {extras = ["python"], version = "^0.24.0"}
+mkdocstrings = {extras = ["python"], version = "^0.30.1"}
 
 [tool.poetry.group.test.dependencies]
 pytest-benchmark = ">=4.0.0"
