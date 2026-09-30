@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
     embedding_model: str = "Qwen3-Embedding-0.6B-Q8_0"
 
+    # Vector store (Qdrant)
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: SecretStr | None = None
+    family_collection: str = "family-docs"
+
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     enable_quality_checks: bool = True
