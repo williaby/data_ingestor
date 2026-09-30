@@ -95,3 +95,7 @@ class StorageError(DataIngestorError):
 
 class ChunkingError(DataIngestorError):
     """Exception raised when document chunking fails."""
+
+
+class ConfigurationError(DataIngestorError):
+    """Exception raised when configuration is unsafe or invalid and the component must not start."""
