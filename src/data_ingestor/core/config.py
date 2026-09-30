@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any, cast
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     chunk_size: int = 1000  # tokens
     chunk_overlap: int = 200  # tokens
     preserve_tables: bool = True
+
+    # Conversion service (docling-serve). The base URL always comes from configuration.
+    docling_serve_url: str = "http://localhost:5001"
+    docling_serve_api_key: SecretStr | None = None
+    docling_serve_timeout: float = 300.0  # seconds
+
+    # Chunking for retrieval (HybridChunker)
+    chunk_tokenizer: str = "Qwen/Qwen3-Embedding-0.6B"  # must match the embedding model
+    chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
+    embedding_model: str = "Qwen3-Embedding-0.6B-Q8_0"
 
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
