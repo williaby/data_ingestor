@@ -36,6 +36,28 @@ def point_id(document_id: str, chunk_index: int) -> str:
     return str(uuid.uuid5(_POINT_NAMESPACE, f"{document_id}:{chunk_index}"))
 
 
+def ensure_collection(
+    client: QdrantClient,
+    collection: str,
+    indexed_fields: dict[str, models.PayloadSchemaType] | None = None,
+) -> None:
+    """Create a collection with "dense" and "sparse" named vectors if it does not exist.
+
+    # #CRITICAL: Schema: Qdrant cannot add a sparse vector to an existing collection
+    # #VERIFY: Every collection is created through this function so the sparse slot always exists
+    """
+    if client.collection_exists(collection):
+        return
+    client.create_collection(
+        collection_name=collection,
+        vectors_config={DENSE_VECTOR: models.VectorParams(size=DENSE_DIMENSIONS, distance=models.Distance.COSINE)},
+        sparse_vectors_config={SPARSE_VECTOR: models.SparseVectorParams()},
+    )
+    for field, schema in (indexed_fields or {}).items():
+        client.create_payload_index(collection, field_name=field, field_schema=schema)
+    logger.info("Created Qdrant collection %s", collection)
+
+
 class QdrantChunkWriter:
     """Writes chunks and their dense vectors into one Qdrant collection."""
 
@@ -51,18 +73,7 @@ class QdrantChunkWriter:
 
     def ensure_collection(self) -> None:
         """Create the collection with both named vectors and payload indexes if absent."""
-        if self._client.collection_exists(self.collection):
-            return
-        self._client.create_collection(
-            collection_name=self.collection,
-            vectors_config={
-                DENSE_VECTOR: models.VectorParams(size=DENSE_DIMENSIONS, distance=models.Distance.COSINE),
-            },
-            sparse_vectors_config={SPARSE_VECTOR: models.SparseVectorParams()},
-        )
-        for field, schema in _INDEXED_FIELDS.items():
-            self._client.create_payload_index(self.collection, field_name=field, field_schema=schema)
-        logger.info("Created Qdrant collection %s", self.collection)
+        ensure_collection(self._client, self.collection, _INDEXED_FIELDS)
 
     def delete_document(self, document_id: str) -> None:
         """Delete every point belonging to a document."""

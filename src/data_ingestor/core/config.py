@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     qdrant_api_key: SecretStr | None = None
     family_collection: str = "family-docs"
     tax_law_collection: str = "tax-law"
+    tax_law_path: Path | None = None  # knowledge-base JSON to index; never stored in this repo
 
     # Search service. Every /api/v1 route requires this key; with no key configured the app refuses to start.
     service_api_key: SecretStr | None = None
