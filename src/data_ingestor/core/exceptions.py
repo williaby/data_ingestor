@@ -103,3 +103,7 @@ class ConversionError(DataIngestorError):
 
 class EmbeddingError(DataIngestorError):
     """Exception raised when the embedding service call fails or returns bad data."""
+
+
+class ConfigurationError(DataIngestorError):
+    """Exception raised when configuration is unsafe or invalid and the component must not start."""
