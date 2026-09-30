@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
     family_collection: str = "family-docs"
+    tax_law_collection: str = "tax-law"
+
+    # Search service. Every /api/v1 route requires this key; with no key configured the app refuses to start.
+    service_api_key: SecretStr | None = None
 
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
