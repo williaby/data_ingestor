@@ -99,3 +99,7 @@ class ChunkingError(DataIngestorError):
 
 class ConversionError(DataIngestorError):
     """Exception raised when a conversion service call fails."""
+
+
+class EmbeddingError(DataIngestorError):
+    """Exception raised when the embedding service call fails or returns bad data."""

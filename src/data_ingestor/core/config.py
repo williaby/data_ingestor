@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
     embedding_model: str = "Qwen3-Embedding-0.6B-Q8_0"
 
+    # Embedding service (OpenAI-compatible POST /v1/embeddings). Host and key come from configuration only.
+    embed_base_url: str = "http://localhost:8080"
+    embed_api_key: SecretStr | None = None
+    embed_batch_size: int = Field(default=32, ge=1)
+    embed_timeout: float = 60.0  # seconds
+
     # Vector store (Qdrant)
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
