@@ -1035,6 +1035,7 @@ class TestMarkerParserHelperMethods:
 
             parser = MarkerParser()
             parser.openrouter_api_key = "test-key"
+            parser.llm_base_url = "http://127.0.0.1:8081/v1"  # LLM mode only talks to a local endpoint
 
             result = parser._process_with_llm(
                 str(temp_test_file),

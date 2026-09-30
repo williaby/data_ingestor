@@ -99,3 +99,7 @@ class ChunkingError(DataIngestorError):
 
 class ConversionError(DataIngestorError):
     """Exception raised when a conversion service call fails."""
+
+
+class ConfigurationError(DataIngestorError):
+    """Exception raised when configuration is unsafe or invalid and the component must not start."""
