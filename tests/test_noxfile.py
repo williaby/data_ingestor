@@ -47,7 +47,7 @@ class TestTestsSessions:
         noxfile.tests(mock_session)
 
         # Verify uv sync was called
-        mock_session.run.assert_any_call("uv", "sync", "--frozen", external=True)
+        mock_session.run.assert_any_call("uv", "sync", "--frozen", "--active", external=True)
         # Verify pytest was called with coverage args
         assert any("pytest" in str(call) for call in mock_session.run.call_args_list)
 
@@ -388,7 +388,7 @@ class TestAdvancedSessions:
         noxfile.metrics(mock_session)
 
         # Should run uv sync
-        mock_session.run.assert_any_call("uv", "sync", "--frozen", external=True)
+        mock_session.run.assert_any_call("uv", "sync", "--frozen", "--active", external=True)
 
     def test_metrics_session_with_existing_script(self) -> None:
         """Test metrics session when script exists."""

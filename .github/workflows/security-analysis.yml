@@ -70,7 +70,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        run: pip install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
 
       # Install only main dependencies for CodeQL analysis
       - name: Install Document Processing Dependencies
@@ -155,10 +155,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv and Dependencies
-        run: |
-          pip install uv
-          uv sync --frozen
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+
+      - name: Install Dependencies
+        run: uv sync --frozen
 
       # Bandit static analysis for document processing code
       - name: Bandit Security Analysis
@@ -219,10 +220,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+
       - name: Install Dependencies
-        run: |
-          pip install uv
-          uv sync --frozen
+        run: uv sync --frozen
 
       # Validate file processing security
       - name: Validate File Processing Security
