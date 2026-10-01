@@ -28,7 +28,9 @@ def _points(client: QdrantClient, collection: str) -> list:
 
 
 def test_one_point_per_non_empty_subtopic(
-    qdrant_client: QdrantClient, collection_name: str, embedder: EmbeddingClient,
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    embedder: EmbeddingClient,
 ) -> None:
     count = index_tax_law(FIXTURE, qdrant_client, embedder, collection_name)
     points = _points(qdrant_client, collection_name)

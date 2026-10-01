@@ -212,7 +212,8 @@ def test_results_merge_across_collections_by_score(stack: tuple[TestClient, Qdra
 def test_top_k_is_capped_at_eight(stack: tuple[TestClient, QdrantClient]) -> None:
     client, qdrant = stack
     _seed_family(
-        qdrant, [_chunk(f"d{i}", f"shared words here {i}", confidential=False, entity=ENTITY_A) for i in range(12)],
+        qdrant,
+        [_chunk(f"d{i}", f"shared words here {i}", confidential=False, entity=ENTITY_A) for i in range(12)],
     )
     assert len(_search(client, query="shared words here", collections=["family-docs"], top_k=50)["results"]) == 8
     assert len(_search(client, query="shared words here", collections=["family-docs"], top_k=2)["results"]) == 2
@@ -239,7 +240,8 @@ def test_validation_error_does_not_echo_input(stack: tuple[TestClient, QdrantCli
 
 
 def test_embedding_outage_is_502_without_text(
-    stack: tuple[TestClient, QdrantClient], embed_server: FakeEmbeddingServer,
+    stack: tuple[TestClient, QdrantClient],
+    embed_server: FakeEmbeddingServer,
 ) -> None:
     client, _ = stack
     embed_server.fail_with = 500
