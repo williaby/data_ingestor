@@ -1,0 +1,36 @@
+{
+  "knowledgeBase": [
+    {
+      "id": "topic-widgets",
+      "topic": "Widget Credits",
+      "subtopics": [
+        {
+          "id": "widgets-basic",
+          "title": "Basic widget credit",
+          "content": "A taxpayer may claim the basic widget credit for each qualifying widget placed in service."
+        },
+        {
+          "id": "widgets-limits",
+          "title": "Widget credit limits",
+          "content": "The widget credit is limited to a fixed amount per household each year."
+        }
+      ]
+    },
+    {
+      "id": "topic-gadgets",
+      "topic": "Gadget Deductions",
+      "subtopics": [
+        {
+          "id": "gadgets-basic",
+          "title": "Gadget deduction basics",
+          "content": "Gadget expenses are deductible when used primarily for a trade or business."
+        },
+        {
+          "id": "gadgets-empty",
+          "title": "Placeholder",
+          "content": "   "
+        }
+      ]
+    }
+  ]
+}

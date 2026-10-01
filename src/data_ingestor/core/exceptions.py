@@ -93,7 +93,17 @@ class StorageError(DataIngestorError):
     """Exception raised when storage operation fails."""
 
 
-
 class ChunkingError(DataIngestorError):
     """Exception raised when document chunking fails."""
 
+
+class ConversionError(DataIngestorError):
+    """Exception raised when a conversion service call fails."""
+
+
+class EmbeddingError(DataIngestorError):
+    """Exception raised when the embedding service call fails or returns bad data."""
+
+
+class ConfigurationError(DataIngestorError):
+    """Exception raised when configuration is unsafe or invalid and the component must not start."""

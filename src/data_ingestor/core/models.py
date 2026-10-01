@@ -171,6 +171,10 @@ class DocumentElement(BaseModel):
             self.confidence = self.metadata.detection_class_prob
 
 
+# Chunk metadata key holding the UTC ISO-8601 time the chunk was embedded.
+EMBEDDED_AT_KEY = "embedded_at"
+
+
 class Chunk(BaseModel):
     """A chunk of processed document content."""
 

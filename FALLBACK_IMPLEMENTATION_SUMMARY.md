@@ -3,6 +3,11 @@
 **Date:** 2025-11-03
 **Status:** ✅ Complete and Ready for Production
 
+> **Privacy update:** Marker LLM mode now only talks to a local endpoint. With `MARKER_USE_LLM=true`, the parser
+> refuses to start unless `MARKER_LLM_BASE_URL` points at a loopback address (localhost, 127.0.0.0/8 or ::1),
+> so document text cannot be sent to a hosted provider. The hosted-provider examples below describe the earlier
+> behavior and no longer apply.
+
 ---
 
 ## What Was Implemented

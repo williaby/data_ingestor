@@ -111,6 +111,8 @@ kombu = "^5.4.0"
 click = "^8.1.7"
 # Chunking and text processing
 langchain-text-splitters = "^1.0.0"
+# Structure-aware chunking of Docling documents (HybridChunker + Hugging Face tokenizer)
+docling-core = {extras = ["chunking"], version = "^2.48.0"}
 # Language detection
 langdetect = "^1.0.9"
 # PDF table extraction

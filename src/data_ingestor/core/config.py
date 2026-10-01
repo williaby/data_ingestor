@@ -3,8 +3,10 @@
 from pathlib import Path
 from typing import Any, cast
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from data_ingestor.core.exceptions import ConfigurationError
 
 
 class Settings(BaseSettings):
@@ -66,6 +68,34 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200  # tokens
     preserve_tables: bool = True
 
+    # Conversion service (docling-serve). The base URL always comes from configuration.
+    docling_serve_url: str = "http://localhost:5001"
+    docling_serve_api_key: SecretStr | None = None
+    docling_serve_timeout: float = 300.0  # seconds
+
+    # Chunking for retrieval (HybridChunker)
+    chunk_tokenizer: str = "Qwen/Qwen3-Embedding-0.6B"  # must match the embedding model
+    chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
+    embedding_model: str = "Qwen3-Embedding-0.6B-Q8_0"
+
+    # Embedding service (OpenAI-compatible POST /v1/embeddings). Host and key come from configuration only.
+    # No default host or port: a guessed address can point at a different service (for example a chat
+    # model) and return wrong vectors or leak text. Use require_embed_base_url() where it is needed.
+    embed_base_url: str | None = None
+    embed_api_key: SecretStr | None = None
+    embed_batch_size: int = Field(default=32, ge=1)
+    embed_timeout: float = 60.0  # seconds
+
+    # Vector store (Qdrant)
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: SecretStr | None = None
+    family_collection: str = "family-docs"
+    tax_law_collection: str = "tax-law"
+    tax_law_path: Path | None = None  # knowledge-base JSON to index; never stored in this repo
+
+    # Search service. Every /api/v1 route requires this key; with no key configured the app refuses to start.
+    service_api_key: SecretStr | None = None
+
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     enable_quality_checks: bool = True
@@ -97,6 +127,17 @@ class Settings(BaseSettings):
     # Monitoring
     enable_metrics: bool = True
     metrics_port: int = 9090
+
+    def require_embed_base_url(self) -> str:
+        """Return the embedding service base URL, or fail clearly when it is not configured.
+
+        Raises:
+            ConfigurationError: If DATA_INGESTOR_EMBED_BASE_URL is unset or blank
+        """
+        if not self.embed_base_url or not self.embed_base_url.strip():
+            msg = "DATA_INGESTOR_EMBED_BASE_URL must be set; there is no default embedding service address"
+            raise ConfigurationError(msg)
+        return self.embed_base_url
 
     @field_validator("storage_path", mode="before")
     @classmethod
