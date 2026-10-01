@@ -10,6 +10,7 @@ from qdrant_client import QdrantClient, models
 
 from data_ingestor.api.app import create_app
 from data_ingestor.core.config import Settings
+from data_ingestor.core.exceptions import ConfigurationError
 from data_ingestor.core.models import Chunk
 from data_ingestor.embedding import EmbeddingClient
 from data_ingestor.storage.qdrant_writer import DENSE_DIMENSIONS, QdrantChunkWriter
@@ -111,6 +112,12 @@ def test_key_is_checked_before_body_validation(stack: tuple[TestClient, QdrantCl
 def test_app_refuses_to_start_without_a_key() -> None:
     with pytest.raises(RuntimeError):
         create_app(Settings(service_api_key=None))
+
+
+def test_app_refuses_to_start_without_an_embedding_service_url() -> None:
+    settings = Settings(service_api_key=SecretStr(API_KEY), embed_base_url=None)
+    with pytest.raises(ConfigurationError, match="DATA_INGESTOR_EMBED_BASE_URL"):
+        create_app(settings, qdrant=QdrantClient(":memory:"))
 
 
 def test_confidential_chunks_never_returned_by_default(stack: tuple[TestClient, QdrantClient]) -> None:

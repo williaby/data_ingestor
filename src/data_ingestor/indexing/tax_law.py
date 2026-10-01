@@ -17,7 +17,7 @@ from pydantic import BaseModel, ValidationError
 from qdrant_client import QdrantClient, models
 
 from data_ingestor.core.config import Settings
-from data_ingestor.core.exceptions import StorageError
+from data_ingestor.core.exceptions import ConfigurationError, StorageError
 from data_ingestor.embedding import EmbeddingClient
 from data_ingestor.storage.qdrant_writer import DENSE_VECTOR, ensure_collection
 
@@ -118,9 +118,14 @@ def main() -> int:
     if settings.tax_law_path is None:
         sys.stderr.write("DATA_INGESTOR_TAX_LAW_PATH is not set\n")
         return 2
+    try:
+        embed_base_url = settings.require_embed_base_url()
+    except ConfigurationError as exc:
+        sys.stderr.write(f"{exc.message}\n")
+        return 2
     embed_key = settings.embed_api_key.get_secret_value() if settings.embed_api_key else ""
     embedder = EmbeddingClient(
-        base_url=settings.embed_base_url,
+        base_url=embed_base_url,
         api_key=embed_key,
         model=settings.embedding_model,
         batch_size=settings.embed_batch_size,

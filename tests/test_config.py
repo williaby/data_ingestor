@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from data_ingestor.core.config import Settings
+from data_ingestor.core.exceptions import ConfigurationError
 
 
 class TestSettingsInitialization:
@@ -468,3 +469,29 @@ class TestEdgeCases:
         """Test very large chunk size."""
         settings = Settings(chunk_size=1000000)
         assert settings.chunk_size == 1000000
+
+
+class TestEmbedBaseUrl:
+    """The embedding service address has no default host or port."""
+
+    def test_unset_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DATA_INGESTOR_EMBED_BASE_URL", raising=False)
+        assert Settings(_env_file=None).embed_base_url is None
+
+    def test_require_fails_clearly_when_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DATA_INGESTOR_EMBED_BASE_URL", raising=False)
+        with pytest.raises(ConfigurationError, match="DATA_INGESTOR_EMBED_BASE_URL"):
+            Settings(_env_file=None).require_embed_base_url()
+
+    @pytest.mark.parametrize("blank", ["", "   "])
+    def test_require_rejects_a_blank_value(self, blank: str) -> None:
+        with pytest.raises(ConfigurationError, match="DATA_INGESTOR_EMBED_BASE_URL"):
+            Settings(embed_base_url=blank).require_embed_base_url()
+
+    def test_require_returns_the_configured_value(self) -> None:
+        settings = Settings(embed_base_url="https://embed.example.test")
+        assert settings.require_embed_base_url() == "https://embed.example.test"
+
+    def test_read_from_the_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DATA_INGESTOR_EMBED_BASE_URL", "https://embed.example.test")
+        assert Settings(_env_file=None).require_embed_base_url() == "https://embed.example.test"

@@ -11,6 +11,7 @@ from qdrant_client import QdrantClient
 from data_ingestor.core.exceptions import StorageError
 from data_ingestor.embedding import EmbeddingClient
 from data_ingestor.indexing import index_tax_law, load_knowledge_base
+from data_ingestor.indexing.tax_law import main
 from tests.fake_embedding_server import TEST_KEY, running_fake_embedding_server
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "tax_law_sample.json"
@@ -103,3 +104,15 @@ def test_duplicate_subtopic_ids_are_rejected(tmp_path: Path) -> None:
     dup.write_text(json.dumps({"knowledgeBase": [{"id": "t", "topic": "X", "subtopics": [sub, sub]}]}))
     with pytest.raises(StorageError, match="duplicate"):
         load_knowledge_base(dup)
+
+
+def test_main_refuses_to_run_without_an_embedding_service_url(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)  # keep a developer's .env out of the test
+    monkeypatch.setenv("DATA_INGESTOR_TAX_LAW_PATH", str(FIXTURE))
+    monkeypatch.delenv("DATA_INGESTOR_EMBED_BASE_URL", raising=False)
+    assert main() == 2
+    assert "DATA_INGESTOR_EMBED_BASE_URL" in capsys.readouterr().err

@@ -29,6 +29,7 @@ def create_app(
 
     Raises:
         RuntimeError: If no service API key is configured
+        ConfigurationError: If no embedder is supplied and no embedding service URL is configured
     """
     settings = settings or Settings()
     if settings.service_api_key is None or not settings.service_api_key.get_secret_value():
@@ -39,7 +40,7 @@ def create_app(
     if embedder is None:
         embed_key = settings.embed_api_key.get_secret_value() if settings.embed_api_key else ""
         embedder = EmbeddingClient(
-            base_url=settings.embed_base_url,
+            base_url=settings.require_embed_base_url(),
             api_key=embed_key,
             model=settings.embedding_model,
             batch_size=settings.embed_batch_size,

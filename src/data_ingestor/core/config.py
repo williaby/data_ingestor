@@ -6,6 +6,8 @@ from typing import Any, cast
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from data_ingestor.core.exceptions import ConfigurationError
+
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
@@ -77,7 +79,9 @@ class Settings(BaseSettings):
     embedding_model: str = "Qwen3-Embedding-0.6B-Q8_0"
 
     # Embedding service (OpenAI-compatible POST /v1/embeddings). Host and key come from configuration only.
-    embed_base_url: str = "http://localhost:8080"
+    # No default host or port: a guessed address can point at a different service (for example a chat
+    # model) and return wrong vectors or leak text. Use require_embed_base_url() where it is needed.
+    embed_base_url: str | None = None
     embed_api_key: SecretStr | None = None
     embed_batch_size: int = Field(default=32, ge=1)
     embed_timeout: float = 60.0  # seconds
@@ -123,6 +127,17 @@ class Settings(BaseSettings):
     # Monitoring
     enable_metrics: bool = True
     metrics_port: int = 9090
+
+    def require_embed_base_url(self) -> str:
+        """Return the embedding service base URL, or fail clearly when it is not configured.
+
+        Raises:
+            ConfigurationError: If DATA_INGESTOR_EMBED_BASE_URL is unset or blank
+        """
+        if not self.embed_base_url or not self.embed_base_url.strip():
+            msg = "DATA_INGESTOR_EMBED_BASE_URL must be set; there is no default embedding service address"
+            raise ConfigurationError(msg)
+        return self.embed_base_url
 
     @field_validator("storage_path", mode="before")
     @classmethod
