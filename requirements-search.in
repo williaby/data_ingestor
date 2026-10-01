@@ -1,0 +1,16 @@
+# Direct runtime dependencies of the search API image (Dockerfile.search).
+# Versions come from poetry.lock; regenerate the pinned file with
+# docker/export-search-requirements.sh after changing either file.
+#
+# data_ingestor/__init__.py imports the document pipeline, so the PDF and file
+# type libraries below are needed even though the search routes do not use them.
+# Deliberately absent: torch, CUDA, marker-pdf, docling, gradio, playwright.
+fastapi
+uvicorn
+httpx
+pydantic
+pydantic-settings
+qdrant-client
+pymupdf
+pillow
+python-magic

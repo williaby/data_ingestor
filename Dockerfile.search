@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Byron Williams
+# SPDX-License-Identifier: MIT
+#
+# Search API image: POST /api/v1/search and GET /health behind X-API-Key
+# (data_ingestor.api.app:create_app). The older Dockerfile in this directory
+# runs a different application and is left untouched.
+#
+# Hardened Debian-based Python images (the -dev variant has a shell and apt;
+# the runtime variant is distroless) so the virtualenv's interpreter path is
+# identical in both stages. The image holds no secrets: every credential and
+# service address is read from DATA_INGESTOR_* environment variables at start.
+
+# =============================================================================
+# Stage 1: builder
+# =============================================================================
+# Source: dhi.io/python:3.12-debian13-dev -> ghcr.io/byronwilliamscpa/dhi-python:3.12-debian13-dev
+FROM ghcr.io/byronwilliamscpa/dhi-python@sha256:e473be33548ba1374f21d4bdda388f6a10b32291f5dca61f1752e1c32d2fd76f AS builder
+
+WORKDIR /app
+
+# libmagic is a runtime dependency of python-magic, which the package imports
+# at load time. The distroless runtime stage has no package manager, so the
+# shared library and its compiled database are copied out of this stage.
+# The builder stage is discarded, so apt version pinning is omitted (DL3008).
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libmagic1t64 libmagic-mgc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.8.17@sha256:e4644cb5bd56fdc2c5ea3ee0525d9d21eed1603bccd6a21f887a938be7e85be1 /uv /usr/local/bin/uv
+
+# Hash-pinned runtime closure, exported from poetry.lock (see
+# docker/export-search-requirements.sh). No torch, CUDA, or Marker.
+COPY requirements-search.txt ./
+RUN uv venv --python /usr/bin/python /app/.venv \
+    && uv pip install --python /app/.venv/bin/python --require-hashes --no-deps \
+        --compile-bytecode --no-cache -r requirements-search.txt
+
+COPY src ./src
+
+# Pre-create the storage directory the settings model creates on load, so a
+# read-only root filesystem works. Ownership matches the runtime UID below.
+RUN mkdir -p /app/data/processed
+
+# =============================================================================
+# Stage 2: runtime (distroless, no shell, no curl)
+# =============================================================================
+# Source: dhi.io/python:3.12-debian13 -> ghcr.io/byronwilliamscpa/dhi-python:3.12-debian13
+FROM ghcr.io/byronwilliamscpa/dhi-python@sha256:16d369bd4628a6a02210e93e7a6c1c646782e3d19492a799c3d437b29a5543ce
+
+LABEL org.opencontainers.image.title="Data Ingestor search API"
+LABEL org.opencontainers.image.description="Dense search over the family-docs and tax-law collections"
+LABEL org.opencontainers.image.source="https://github.com/williaby/data_ingestor"
+LABEL org.opencontainers.image.licenses="MIT"
+
+WORKDIR /app
+
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libmagic.so.1* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/file/magic.mgc /usr/lib/file/magic.mgc
+COPY --from=builder --chown=65532:65532 /app/.venv /app/.venv
+COPY --from=builder --chown=65532:65532 /app/src ./src
+COPY --from=builder --chown=65532:65532 /app/data ./data
+
+# MARKER_USE_LLM=false keeps Marker's LLM mode off; it is also off when unset,
+# and turning it on requires a loopback MARKER_LLM_BASE_URL. The search routes
+# do not parse documents, so this only pins the safe default.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
+    MAGIC=/usr/lib/file/magic.mgc \
+    MARKER_USE_LLM=false \
+    DATA_INGESTOR_STORAGE_PATH=/app/data/processed
+
+# Required at start, supplied by the deployment and never baked in:
+#   DATA_INGESTOR_SERVICE_API_KEY  key callers send as X-API-Key
+#   DATA_INGESTOR_EMBED_BASE_URL   embedding service (OpenAI-compatible)
+#   DATA_INGESTOR_QDRANT_URL       vector store
+# Optional: DATA_INGESTOR_EMBED_API_KEY, DATA_INGESTOR_QDRANT_API_KEY.
+USER 65532:65532
+
+EXPOSE 8000
+
+# Python stdlib only; the runtime stage has no curl or shell.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"]
+
+# One worker: the app is small and holds one Qdrant client and one embedding
+# client per process, so a second process adds nothing.
+CMD ["uvicorn", "--factory", "data_ingestor.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
