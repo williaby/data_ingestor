@@ -1,10 +1,12 @@
 """Tests for EmbeddingClient against a fake embeddings server."""
 
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 
 from data_ingestor.core.exceptions import EmbeddingError
+from data_ingestor.core.models import Chunk
 from data_ingestor.embedding import QUERY_PREFIX, EmbeddingClient
 from tests.fake_embedding_server import TEST_KEY, FakeEmbeddingServer, fake_vector, running_fake_embedding_server
 
@@ -85,3 +87,28 @@ def test_connection_failure_is_an_error(server: FakeEmbeddingServer) -> None:
     server.stop()
     with pytest.raises(EmbeddingError):
         client.embed_query("q")
+
+
+def test_embed_chunks_stamps_embedded_at_on_every_chunk(server: FakeEmbeddingServer) -> None:
+    chunks = [Chunk(content="alpha beta"), Chunk(content="gamma delta")]
+    before = datetime.now(UTC)
+    vectors = _client(server).embed_chunks(chunks)
+    after = datetime.now(UTC)
+
+    assert vectors == [fake_vector(chunk.content) for chunk in chunks]
+    stamps = {chunk.metadata["embedded_at"] for chunk in chunks}
+    assert len(stamps) == 1
+    stamped = datetime.fromisoformat(stamps.pop())
+    assert stamped.utcoffset() is not None
+    assert before <= stamped <= after
+
+
+def test_embed_chunks_does_not_stamp_when_the_request_fails(server: FakeEmbeddingServer) -> None:
+    chunk = Chunk(content="alpha beta")
+    with pytest.raises(EmbeddingError):
+        _client(server, key="wrong-key").embed_chunks([chunk])
+    assert "embedded_at" not in chunk.metadata
+
+
+def test_embed_chunks_of_nothing_is_empty(server: FakeEmbeddingServer) -> None:
+    assert _client(server).embed_chunks([]) == []

@@ -35,6 +35,7 @@ def _chunk(document_id: str, text: str, *, confidential: bool, entity: str, page
             "page_end": page,
             "section_title": "Section One",
             "is_confidential": confidential,
+            "embedded_at": "2024-03-02T08:00:00+00:00",
         },
     )
 

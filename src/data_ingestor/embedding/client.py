@@ -5,9 +5,12 @@ embedding model was trained to expect on the query side only. All embedding is
 done by the remote service; no local model is loaded here.
 """
 
+from datetime import UTC, datetime
+
 import httpx
 
 from data_ingestor.core.exceptions import EmbeddingError
+from data_ingestor.core.models import EMBEDDED_AT_KEY, Chunk
 
 EMBEDDINGS_PATH = "/v1/embeddings"
 EXPECTED_DIMENSIONS = 1024
@@ -59,6 +62,19 @@ class EmbeddingClient:
         vectors: list[list[float]] = []
         for start in range(0, len(texts), self._batch_size):
             vectors.extend(self._embed_batch(texts[start : start + self._batch_size]))
+        return vectors
+
+    def embed_chunks(self, chunks: list[Chunk]) -> list[list[float]]:
+        """Embed chunk contents and stamp each chunk with the time it was embedded.
+
+        ``embedded_at`` is a UTC ISO-8601 timestamp set once, after the embedding
+        service has answered, so the chunk carries the value the writer persists.
+        A failed request raises before any chunk is stamped.
+        """
+        vectors = self.embed_documents([chunk.content for chunk in chunks])
+        embedded_at = datetime.now(UTC).isoformat()
+        for chunk in chunks:
+            chunk.metadata[EMBEDDED_AT_KEY] = embedded_at
         return vectors
 
     def embed_query(self, query: str) -> list[float]:

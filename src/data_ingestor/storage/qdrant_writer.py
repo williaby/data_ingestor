@@ -7,13 +7,12 @@ creation even though nothing fills it yet.
 
 import logging
 import uuid
-from datetime import UTC, datetime
 from typing import Any
 
 from qdrant_client import QdrantClient, models
 
 from data_ingestor.core.exceptions import StorageError
-from data_ingestor.core.models import Chunk
+from data_ingestor.core.models import EMBEDDED_AT_KEY, Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ class QdrantChunkWriter:
             Number of points written
 
         Raises:
-            StorageError: On a length or dimension mismatch
+            StorageError: On a length or dimension mismatch, or a chunk without ``embedded_at``
         """
         if len(chunks) != len(vectors):
             msg = f"Got {len(vectors)} vectors for {len(chunks)} chunks"
@@ -111,16 +110,21 @@ class QdrantChunkWriter:
             msg = f"Every dense vector must have {DENSE_DIMENSIONS} dimensions"
             raise StorageError(msg)
 
+        # Checked before the delete so a bad batch never leaves the document unindexed.
+        missing = [chunk.chunk_id for chunk in chunks if not chunk.metadata.get(EMBEDDED_AT_KEY)]
+        if missing:
+            msg = f"{len(missing)} chunks have no {EMBEDDED_AT_KEY}; embed them before writing"
+            raise StorageError(msg)
+
         self.delete_document(document_id)
         if not chunks:
             return 0
 
-        embedded_at = datetime.now(UTC).isoformat()
         points = [
             models.PointStruct(
                 id=point_id(document_id, index),
                 vector={DENSE_VECTOR: vector},
-                payload=self._payload(chunk, document_id, embedded_at),
+                payload=self._payload(chunk, document_id),
             )
             for index, (chunk, vector) in enumerate(zip(chunks, vectors, strict=True))
         ]
@@ -128,9 +132,9 @@ class QdrantChunkWriter:
         return len(points)
 
     @staticmethod
-    def _payload(chunk: Chunk, document_id: str, embedded_at: str) -> dict[str, Any]:
+    def _payload(chunk: Chunk, document_id: str) -> dict[str, Any]:
+        """Build the point payload; ``embedded_at`` comes from the chunk, never from the writer."""
         payload = dict(chunk.metadata)
         payload["document_id"] = document_id
         payload["text"] = chunk.content
-        payload["embedded_at"] = embedded_at
         return payload
