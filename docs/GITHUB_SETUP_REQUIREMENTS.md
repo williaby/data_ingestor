@@ -1,5 +1,7 @@
 # .github Folder Setup Requirements for data_ingestor
 
+> **Note (2026-10-02)**: `docker-compose.yml` in this repository is inherited from PromptCraft (container names `promptcraft-*`, `PROMPTCRAFT_QDRANT_HOST`) and does not describe this repo's services.
+
 > Comprehensive analysis of .github configurations from reference projects and organization-level repository
 
 **Date:** 2025-11-03

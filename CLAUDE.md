@@ -68,9 +68,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Current Phase**: Phase 1 / 1b functionally complete (framework ready, baseline run and coverage gaps outstanding; see [docs/PHASE1_COMPLETION_STATUS.md](docs/PHASE1_COMPLETION_STATUS.md) and [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md))
 
 **Key Differentiators**:
-- Intelligent OCR routing (~5x average speedup vs blanket OCR - Phase 2)
+- Intelligent OCR routing (~5x average speedup vs blanket OCR; planned, Phase 2; not built)
 - Hybrid parser architecture (Marker GPL-3.0 + Docling MIT)
-- 97.9% table accuracy with Docling TableFormer (Phase 2)
+- 97.9% table accuracy with Docling TableFormer (planned, Phase 2; not built)
 - Comprehensive evaluation framework with DocLayNet (81,471 documents)
 
 ## Development Workflow
@@ -348,7 +348,8 @@ docs/                 # Documentation
 ├── INTELLIGENT_OCR_SYSTEM.md
 ├── DOCLING_INTEGRATION.md
 ├── MULTIMODAL_RAG_ROADMAP.md
-└── PERFORMANCE_BENCHMARKING_GUIDE.md
+├── PERFORMANCE_BENCHMARKING_GUIDE.md
+└── architecture/     # Pipeline Level 0 page and Level 1 diagrams
 
 tmp_cleanup/          # Temporary reference files (anti-compaction)
 └── .tmp-*.md         # Task context preservation files
@@ -553,6 +554,6 @@ Requires Python 3.11 or 3.12 (specified in pyproject.toml):
 
 ---
 
-**Last Updated**: 2025-11-05
-**Current Phase**: Phase 1b - Performance Benchmarking & Baseline Establishment
-**Next Milestone**: Intelligent OCR System (Phase 2)
+**Last Updated**: 2026-10-02
+**Current Phase**: Chunk stage of the Foundry pipeline; Phase 1 / 1b functionally complete (see docs/PHASE1_COMPLETION_STATUS.md)
+**Next Milestone**: Docling reader (`DoclingDOM.json`) and `RAGChunkSet.json` writer (Chunk-stage contract); Intelligent OCR System stays in the Phase 2 backlog
