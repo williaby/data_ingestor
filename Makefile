@@ -70,12 +70,9 @@ security: ## Run security checks
 	$(POETRY) run safety check
 	$(POETRY) run bandit -r src
 
-dev: ## Start development environment with all services
-	docker-compose -f docker-compose.zen-vm.yaml up -d
-	@echo "Development environment started!"
-	@echo "- Gradio UI: http://192.168.1.205:7860"
-	@echo "- Zen MCP Server: http://192.168.1.205:3000"
-	@echo "- External Qdrant Dashboard: http://192.168.1.16:6333/dashboard"
+dev: ## Build the CLI image and print its usage (see docker-compose.yml)
+	docker compose build
+	docker compose run --rm data-ingestor --help
 
 pre-commit: ## Run all pre-commit hooks manually
 	$(POETRY) run pre-commit run --all-files
