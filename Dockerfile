@@ -1,62 +1,59 @@
+# Data Ingestor is a CLI tool (the Chunk stage of the Foundry pipeline), not a
+# long-running service. The image runs the CLI; see docker-compose.yml.
+#
+# Dependencies come from poetry.lock (hash-verified). Regenerate the lock with
+# `poetry lock` after changing pyproject.toml, or the build fails at the export step.
+
 FROM python:3.11-slim AS builder
 
-# Install system dependencies needed for building
+# Build tools for any dependency that has no wheel for this platform
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
+# Poetry is only used to export the locked requirements; it is not copied to the final image
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir "poetry==2.1.1" "poetry-plugin-export>=1.9,<2"
+
+WORKDIR /build
+COPY pyproject.toml poetry.lock ./
+RUN poetry export --only main --format requirements.txt --output requirements.txt
+
+# Install into a virtual environment with hash verification
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
-# Copy and install requirements with hash verification
-COPY requirements-docker.txt .
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements-docker.txt
-
-# Multi-stage build for minimal final image
+# Minimal final image
 FROM python:3.11-slim
 
-# Install only runtime dependencies
+# libmagic is required by python-magic (format detection)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Create non-root user
-RUN groupadd -r promptcraft && \
-    useradd -r -g promptcraft -u 1000 -m -s /bin/bash promptcraft
-
-# Create necessary directories
-RUN mkdir -p /app/logs /app/data && \
-    chown -R promptcraft:promptcraft /app
+# Non-root user
+RUN groupadd -r ingestor && \
+    useradd -r -g ingestor -u 1000 -m -s /bin/bash ingestor
 
 WORKDIR /app
+RUN mkdir -p /app/data /app/output && chown -R ingestor:ingestor /app
 
-# Copy application code
-COPY --chown=promptcraft:promptcraft src/ ./src/
-COPY --chown=promptcraft:promptcraft config/ ./config/
+COPY --chown=ingestor:ingestor src/ ./src/
 
-# Security: Don't run as root
-USER promptcraft
+USER ingestor
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7860/health || exit 1
-
-# Set security headers
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV PYTHONPATH=/app/src \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Expose only necessary port
-EXPOSE 7860
-
-# Run with minimal privileges
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
+# No ports and no health check: this is a command-line tool
+ENTRYPOINT ["python", "-m", "data_ingestor.cli.main"]
+CMD ["--help"]

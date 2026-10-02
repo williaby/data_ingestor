@@ -33,10 +33,6 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Poetry
-poetry.lock
-pyproject.toml
-
 # IDE
 .vscode/
 .idea/
