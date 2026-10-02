@@ -25,9 +25,9 @@ requires-python = ">=3.11,<3.13"
 dynamic = ["dependencies"]
 
 [project.urls]
-homepage = "https://github.com/Byron/data_ingestor"
-repository = "https://github.com/Byron/data_ingestor"
-documentation = "https://github.com/Byron/data_ingestor/wiki"
+homepage = "https://github.com/williaby/data_ingestor"
+repository = "https://github.com/williaby/data_ingestor"
+documentation = "https://github.com/williaby/data_ingestor/wiki"
 
 # Poetry-specific configuration
 [tool.poetry]
