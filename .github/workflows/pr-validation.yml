@@ -36,6 +36,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: false
 
       - name: Install dependencies
         run: |
@@ -124,10 +126,10 @@ jobs:
 
           # Generate current requirements
           echo "Generating requirements.txt from uv.lock..."
-          uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output requirements.txt
+          uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output-file requirements.txt
 
           echo "Generating requirements-dev.txt from uv.lock..."
-          uv export --format requirements-txt --no-hashes --no-emit-project --output requirements-dev.txt
+          uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements-dev.txt
 
           # Check if generated files match committed files
           if ! git diff --exit-code requirements*.txt 2>/dev/null; then
@@ -138,8 +140,8 @@ jobs:
             git diff --name-only requirements*.txt 2>/dev/null || echo "  - requirements.txt files need to be created/updated"
             echo ""
             echo "🔧 To fix this:"
-            echo "1. Run: uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output requirements.txt"
-            echo "2. Run: uv export --format requirements-txt --no-hashes --no-emit-project --output requirements-dev.txt"
+            echo "1. Run: uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output-file requirements.txt"
+            echo "2. Run: uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements-dev.txt"
             echo "3. Commit the updated requirements files"
             echo "4. Push changes to this PR"
             exit 1

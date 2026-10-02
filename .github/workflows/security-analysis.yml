@@ -71,6 +71,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: false
 
       # Install only main dependencies for CodeQL analysis
       - name: Install Document Processing Dependencies
@@ -157,6 +159,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: false
 
       - name: Install Dependencies
         run: uv sync --frozen
@@ -178,7 +182,7 @@ jobs:
           echo "🛡️ Scanning for known vulnerabilities in document processing dependencies..."
 
           # Export requirements for safety scanning
-          uv export --format requirements-txt --no-hashes --no-emit-project --output requirements-scan.txt
+          uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements-scan.txt
 
           # Run safety scan
           uv run --frozen safety check \
@@ -222,6 +226,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: false
 
       - name: Install Dependencies
         run: uv sync --frozen

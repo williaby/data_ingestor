@@ -289,7 +289,7 @@ jobs:
       - name: Validate Requirements Sync
         if: dependencies changed
         run: |
-          uv export --format requirements-txt --no-hashes --output requirements.txt
+          uv export --format requirements-txt --no-hashes --output-file requirements.txt
           if ! git diff --exit-code requirements*.txt; then
             echo "::error::Requirements files out of sync"
             exit 1
