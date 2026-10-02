@@ -12,16 +12,15 @@ Metrics:
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from data_ingestor.core.models import Document
 from data_ingestor.evaluation.base import BaseEvaluator
-from data_ingestor.evaluation.models import EvaluationResult, MetricScore, MetricType
 from data_ingestor.evaluation.metrics import (
     calculate_kendall_tau,
     calculate_map,
     calculate_reading_order_f1,
 )
+from data_ingestor.evaluation.models import EvaluationResult, MetricScore, MetricType
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class DocLayNetEvaluator(BaseEvaluator):
     6. Page-header
     """
 
-    def __init__(self, ground_truth_dir: Path):
+    def __init__(self, ground_truth_dir: Path) -> None:
         """
         Initialize DocLayNet evaluator.
 
@@ -84,7 +83,7 @@ class DocLayNetEvaluator(BaseEvaluator):
     def evaluate_document(
         self,
         predicted: Document,
-        ground_truth: Dict,
+        ground_truth: dict,
     ) -> EvaluationResult:
         """
         Evaluate a document against DocLayNet ground truth.
@@ -130,18 +129,19 @@ class DocLayNetEvaluator(BaseEvaluator):
                             "pred_boxes": len(pred_boxes),
                             "gt_boxes": len(gt_boxes),
                         },
-                    )
+                    ),
                 )
             else:
                 logger.info(
-                    f"Skipping mAP calculation for {doc_id}: "
-                    f"Parser does not provide bounding boxes"
+                    f"Skipping mAP calculation for {doc_id}: Parser does not provide bounding boxes",
                 )
 
             # Calculate reading order metrics using bbox matching
             # Match predicted elements to ground truth annotations via IoU
             element_to_annotation_map = self._match_elements_to_annotations(
-                predicted, gt_layout, iou_threshold=0.3
+                predicted,
+                gt_layout,
+                iou_threshold=0.3,
             )
 
             # Extract reading orders (use matched IDs for predicted elements)
@@ -150,7 +150,8 @@ class DocLayNetEvaluator(BaseEvaluator):
 
             if pred_order and gt_order:
                 reading_order_f1 = calculate_reading_order_f1(
-                    pred_order, gt_order
+                    pred_order,
+                    gt_order,
                 )
                 kendall_tau = calculate_kendall_tau(pred_order, gt_order)
 
@@ -168,7 +169,7 @@ class DocLayNetEvaluator(BaseEvaluator):
                             name=MetricType.KENDALL_TAU,
                             value=kendall_tau,
                         ),
-                    ]
+                    ],
                 )
 
         except Exception as e:
@@ -177,7 +178,7 @@ class DocLayNetEvaluator(BaseEvaluator):
 
         return result
 
-    def _elements_to_boxes(self, document: Document) -> List[Dict]:
+    def _elements_to_boxes(self, document: Document) -> list[dict]:
         """
         Convert document elements to bounding boxes for mAP calculation.
 
@@ -207,12 +208,12 @@ class DocLayNetEvaluator(BaseEvaluator):
                         "class": coco_category,  # Use COCO category for matching
                         "bbox": bbox,
                         "confidence": 1.0,  # Default confidence
-                    }
+                    },
                 )
 
         return boxes
 
-    def _annotations_to_boxes(self, layout: Dict) -> List[Dict]:
+    def _annotations_to_boxes(self, layout: dict) -> list[dict]:
         """
         Convert COCO-format annotations to boxes.
 
@@ -237,14 +238,17 @@ class DocLayNetEvaluator(BaseEvaluator):
                         "id": str(ann.get("id", len(boxes))),
                         "class": category,
                         "bbox": [x, y, x + w, y + h],
-                    }
+                    },
                 )
 
         return boxes
 
     def _match_elements_to_annotations(
-        self, document: Document, gt_layout: Dict, iou_threshold: float = 0.3
-    ) -> Dict[int, str]:
+        self,
+        document: Document,
+        gt_layout: dict,
+        iou_threshold: float = 0.3,
+    ) -> dict[int, str]:
         """
         Match predicted elements to ground truth annotations using bbox IoU.
 
@@ -291,14 +295,16 @@ class DocLayNetEvaluator(BaseEvaluator):
 
         logger.debug(
             f"Matched {len(element_to_annotation)}/{len(document.elements)} "
-            f"elements to annotations (IoU >= {iou_threshold})"
+            f"elements to annotations (IoU >= {iou_threshold})",
         )
 
         return element_to_annotation
 
     def _extract_reading_order(
-        self, document: Document, element_to_annotation_map: Optional[Dict[int, str]] = None
-    ) -> List[str]:
+        self,
+        document: Document,
+        element_to_annotation_map: dict[int, str] | None = None,
+    ) -> list[str]:
         """
         Extract reading order from document elements.
 
@@ -312,16 +318,14 @@ class DocLayNetEvaluator(BaseEvaluator):
         # If we have a mapping from bbox matching, use annotation IDs
         if element_to_annotation_map:
             return [
-                element_to_annotation_map[i]
-                for i in range(len(document.elements))
-                if i in element_to_annotation_map
+                element_to_annotation_map[i] for i in range(len(document.elements)) if i in element_to_annotation_map
             ]
 
         # Fallback: use element type and index
         # #ASSUME: This will likely produce 0.0 metrics without bbox matching
         return [f"{elem.element_type.value}_{i}" for i, elem in enumerate(document.elements)]
 
-    def _extract_ground_truth_order(self, layout: Dict) -> List[str]:
+    def _extract_ground_truth_order(self, layout: dict) -> list[str]:
         """
         Extract ground truth reading order.
 
@@ -345,7 +349,7 @@ class DocLayNetEvaluator(BaseEvaluator):
 
         return [str(ann.get("id", i)) for i, ann in enumerate(annotations)]
 
-    def get_baseline_targets(self) -> Dict[str, float]:
+    def get_baseline_targets(self) -> dict[str, float]:
         """Get DocLayNet baseline targets from Phase 1.5 config."""
         return {
             MetricType.MAP: 0.70,
@@ -371,7 +375,7 @@ class DocLayNetEvaluator(BaseEvaluator):
                 logger.warning(f"COCO file not found: {coco_file}")
                 continue
 
-            with open(coco_file, "r") as f:
+            with open(coco_file) as f:
                 coco_data = json.load(f)
 
             # Build filename → image mapping
@@ -403,10 +407,10 @@ class DocLayNetEvaluator(BaseEvaluator):
             logger.info(
                 f"Loaded {split}.json: "
                 f"{self._coco_data[split]['images_count']} images, "
-                f"{self._coco_data[split]['annotations_count']} annotations"
+                f"{self._coco_data[split]['annotations_count']} annotations",
             )
 
-    def load_ground_truth(self, document_id: str) -> Optional[Dict]:
+    def load_ground_truth(self, document_id: str) -> dict | None:
         """
         Load ground truth for a DocLayNet document from COCO annotations.
 
@@ -449,7 +453,7 @@ class DocLayNetEvaluator(BaseEvaluator):
 
             if not annotations:
                 logger.warning(
-                    f"No annotations found for {document_id} (image_id={image_id})"
+                    f"No annotations found for {document_id} (image_id={image_id})",
                 )
                 return None
 
@@ -461,18 +465,18 @@ class DocLayNetEvaluator(BaseEvaluator):
                         "id": ann["id"],
                         "bbox": ann["bbox"],  # [x, y, width, height]
                         "category": category_map.get(
-                            ann["category_id"], "unknown"
+                            ann["category_id"],
+                            "unknown",
                         ),
                         "category_id": ann["category_id"],
                         "area": ann.get("area", 0),
                         # Note: DocLayNet doesn't have explicit reading_order
                         # Evaluator will fall back to y-coordinate sorting
-                    }
+                    },
                 )
 
             logger.debug(
-                f"Found {len(formatted_annotations)} annotations for "
-                f"{document_id} in {split}.json"
+                f"Found {len(formatted_annotations)} annotations for {document_id} in {split}.json",
             )
 
             return {"layout": {"annotations": formatted_annotations}}

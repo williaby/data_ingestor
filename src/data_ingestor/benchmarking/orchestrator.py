@@ -11,16 +11,14 @@ The orchestrator manages the complete benchmarking workflow:
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import yaml
 
 from data_ingestor.benchmarking.runner import BenchmarkRunner
 from data_ingestor.evaluation import (
-    AggregatedMetrics,
     DocLayNetEvaluator,
 )
 from data_ingestor.evaluation.base import BaseEvaluator
@@ -42,14 +40,14 @@ class BenchmarkConfig:
         timeout_per_doc: Maximum seconds per document
     """
 
-    datasets: List[str]
-    parsers: List[str]
+    datasets: list[str]
+    parsers: list[str]
     workers: int = 4
     batch_size: int = 32
     output_dir: Path = Path("results")
     timeout_per_doc: int = 120
     save_predictions: bool = True
-    config_path: Optional[Path] = None
+    config_path: Path | None = None
 
     def __post_init__(self):
         """Validate configuration."""
@@ -61,7 +59,7 @@ class BenchmarkConfig:
             raise ValueError(f"Batch size must be >= 1, got {self.batch_size}")
         if self.timeout_per_doc < 1:
             raise ValueError(
-                f"Timeout must be >= 1, got {self.timeout_per_doc}"
+                f"Timeout must be >= 1, got {self.timeout_per_doc}",
             )
 
         # Ensure output directory exists
@@ -88,13 +86,13 @@ class BenchmarkOrchestrator:
 
     def __init__(
         self,
-        datasets: Optional[List[str]] = None,
-        parsers: Optional[List[str]] = None,
+        datasets: list[str] | None = None,
+        parsers: list[str] | None = None,
         workers: int = 4,
         batch_size: int = 32,
         output_dir: str = "results",
-        config_path: Optional[Path] = None,
-    ):
+        config_path: Path | None = None,
+    ) -> None:
         """
         Initialize benchmark orchestrator.
 
@@ -142,7 +140,7 @@ class BenchmarkOrchestrator:
         logger.info(f"Parsers: {self.config.parsers}")
         logger.info(f"Workers: {self.config.workers}")
 
-    def _load_dataset_config(self, config_path: Path) -> Dict:
+    def _load_dataset_config(self, config_path: Path) -> dict:
         """
         Load dataset configuration from YAML.
 
@@ -154,7 +152,7 @@ class BenchmarkOrchestrator:
         """
         if not config_path.exists():
             logger.warning(
-                f"Config file not found: {config_path}. Using defaults."
+                f"Config file not found: {config_path}. Using defaults.",
             )
             return {"datasets": {}}
 
@@ -164,7 +162,7 @@ class BenchmarkOrchestrator:
         logger.info(f"Loaded configuration from {config_path}")
         return config
 
-    def _initialize_evaluators(self) -> Dict[str, BaseEvaluator]:
+    def _initialize_evaluators(self) -> dict[str, BaseEvaluator]:
         """
         Initialize evaluators for each dataset.
 
@@ -178,7 +176,7 @@ class BenchmarkOrchestrator:
         for dataset_name in self.config.datasets:
             if dataset_name not in dataset_configs:
                 logger.warning(
-                    f"Dataset {dataset_name} not in config, skipping"
+                    f"Dataset {dataset_name} not in config, skipping",
                 )
                 continue
 
@@ -192,7 +190,7 @@ class BenchmarkOrchestrator:
                     evaluators[dataset_name] = DocLayNetEvaluator(gt_dir)
                 else:
                     logger.warning(
-                        f"Unknown dataset type: {dataset_name}. Only 'doclaynet' is supported in Phase 1."
+                        f"Unknown dataset type: {dataset_name}. Only 'doclaynet' is supported in Phase 1.",
                     )
                     continue
 
@@ -200,12 +198,12 @@ class BenchmarkOrchestrator:
 
             except FileNotFoundError as e:
                 logger.error(
-                    f"Cannot initialize {dataset_name} evaluator: {e}"
+                    f"Cannot initialize {dataset_name} evaluator: {e}",
                 )
 
         return evaluators
 
-    def run(self) -> Dict[str, any]:
+    def run(self) -> dict[str, any]:
         """
         Run complete benchmark workflow.
 
@@ -233,7 +231,7 @@ class BenchmarkOrchestrator:
         """
         if not self.evaluators:
             raise RuntimeError(
-                "No evaluators initialized. Check dataset configuration."
+                "No evaluators initialized. Check dataset configuration.",
             )
 
         logger.info("=" * 80)
@@ -260,14 +258,17 @@ class BenchmarkOrchestrator:
             logger.info("-" * 80)
 
             dataset_results = self._run_dataset_benchmark(
-                dataset_name, evaluator
+                dataset_name,
+                evaluator,
             )
             results["datasets"][dataset_name] = dataset_results
 
         # Calculate overall statistics
         end_time = datetime.now()
         results["overall"] = self._calculate_overall_stats(
-            results["datasets"], start_time, end_time
+            results["datasets"],
+            start_time,
+            end_time,
         )
 
         logger.info("=" * 80)
@@ -281,7 +282,7 @@ class BenchmarkOrchestrator:
         self,
         dataset_name: str,
         evaluator: BaseEvaluator,
-    ) -> Dict[str, any]:
+    ) -> dict[str, any]:
         """
         Run benchmark for a single dataset across all parsers.
 
@@ -316,7 +317,7 @@ class BenchmarkOrchestrator:
             docs_dir,
             sample_size=sample_size,
             strategy=sample_strategy,
-            seed=sample_seed
+            seed=sample_seed,
         )
 
         if not document_files:
@@ -347,7 +348,7 @@ class BenchmarkOrchestrator:
             logger.info(f"    Processed: {aggregated.total_documents} docs")
             logger.info(f"    Success rate: {aggregated.success_rate:.2%}")
             logger.info(
-                f"    Avg time: {aggregated.avg_processing_time:.2f}s/doc"
+                f"    Avg time: {aggregated.avg_processing_time:.2f}s/doc",
             )
 
         return dataset_results
@@ -355,10 +356,10 @@ class BenchmarkOrchestrator:
     def _find_documents(
         self,
         docs_dir: Path,
-        sample_size: Optional[int] = None,
+        sample_size: int | None = None,
         strategy: str = "random",
-        seed: int = 42
-    ) -> List[Path]:
+        seed: int = 42,
+    ) -> list[Path]:
         """
         Find all document files in directory with optional sampling.
 
@@ -412,10 +413,10 @@ class BenchmarkOrchestrator:
 
     def _calculate_overall_stats(
         self,
-        dataset_results: Dict,
+        dataset_results: dict,
         start_time: datetime,
         end_time: datetime,
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate overall statistics across all datasets and parsers.
 
@@ -432,9 +433,10 @@ class BenchmarkOrchestrator:
         total_failed = 0
         total_time = (end_time - start_time).total_seconds()
 
-        for dataset_name, dataset_data in dataset_results.items():
-            for parser_name, parser_data in dataset_data.get(
-                "parsers", {}
+        for _dataset_name, dataset_data in dataset_results.items():
+            for _parser_name, parser_data in dataset_data.get(
+                "parsers",
+                {},
             ).items():
                 agg = parser_data.get("aggregated", {})
                 total_docs += agg.get("total_documents", 0)
@@ -445,24 +447,18 @@ class BenchmarkOrchestrator:
             "total_documents": total_docs,
             "total_successful": total_successful,
             "total_failed": total_failed,
-            "success_rate": (
-                total_successful / total_docs if total_docs > 0 else 0.0
-            ),
-            "failure_rate": (
-                total_failed / total_docs if total_docs > 0 else 0.0
-            ),
+            "success_rate": (total_successful / total_docs if total_docs > 0 else 0.0),
+            "failure_rate": (total_failed / total_docs if total_docs > 0 else 0.0),
             "total_time": total_time,
-            "throughput_docs_per_hour": (
-                (total_docs / total_time) * 3600 if total_time > 0 else 0.0
-            ),
+            "throughput_docs_per_hour": ((total_docs / total_time) * 3600 if total_time > 0 else 0.0),
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
         }
 
     def save_results(
         self,
-        results: Dict,
-        output_file: Optional[str] = None,
+        results: dict,
+        output_file: str | None = None,
     ) -> Path:
         """
         Save benchmark results to JSON file.
@@ -486,7 +482,7 @@ class BenchmarkOrchestrator:
         logger.info(f"Results saved to: {output_path}")
         return output_path
 
-    def load_results(self, results_file: Path) -> Dict:
+    def load_results(self, results_file: Path) -> dict:
         """
         Load benchmark results from JSON file.
 

@@ -8,16 +8,16 @@ This module tests the end-to-end workflow of:
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import fitz  # PyMuPDF
 import pytest
 from PIL import Image
 
+from data_ingestor.core.config import Settings
 from data_ingestor.pipeline.pdf_analyzer import PDFDocumentAnalyzer
 from data_ingestor.pipeline.router import DocumentRouter
-from data_ingestor.core.config import Settings
 from data_ingestor.utils.pdf_resolution import PDFResolutionAnalyzer
 
 
@@ -35,24 +35,25 @@ def low_res_pdf(temp_dir: Path) -> Path:
 
     # Create a simple image at 150 DPI
     # 8.5 x 11 inches at 150 DPI = 1275 x 1650 pixels
-    img = Image.new('RGB', (1275, 1650), color='white')
+    img = Image.new("RGB", (1275, 1650), color="white")
 
     # Draw some simple content
     from PIL import ImageDraw
+
     draw = ImageDraw.Draw(img)
 
     # Draw text (font size scaled for 150 DPI)
     try:
         # Try to use a default font
-        draw.text((50, 50), "Low Resolution Test PDF (150 DPI)", fill='black')
-        draw.text((50, 100), "This PDF should be upscaled to 300 DPI", fill='black')
+        draw.text((50, 50), "Low Resolution Test PDF (150 DPI)", fill="black")
+        draw.text((50, 100), "This PDF should be upscaled to 300 DPI", fill="black")
     except Exception:
         # Fallback if font not available
         pass
 
     # Save as JPEG with proper DPI metadata (more compatible than PNG)
     temp_img_path = temp_dir / "temp_img.jpg"
-    img.save(temp_img_path, format='JPEG', dpi=(150, 150), quality=95)
+    img.save(temp_img_path, format="JPEG", dpi=(150, 150), quality=95)
 
     # Create PDF and properly embed the image
     doc = fitz.open()
@@ -83,20 +84,21 @@ def high_res_pdf(temp_dir: Path) -> Path:
 
     # Create a simple image at 300 DPI
     # 8.5 x 11 inches at 300 DPI = 2550 x 3300 pixels
-    img = Image.new('RGB', (2550, 3300), color='white')
+    img = Image.new("RGB", (2550, 3300), color="white")
 
     from PIL import ImageDraw
+
     draw = ImageDraw.Draw(img)
 
     try:
-        draw.text((100, 100), "High Resolution Test PDF (300 DPI)", fill='black')
-        draw.text((100, 200), "This PDF should NOT be upscaled", fill='black')
+        draw.text((100, 100), "High Resolution Test PDF (300 DPI)", fill="black")
+        draw.text((100, 200), "This PDF should NOT be upscaled", fill="black")
     except Exception:
         pass
 
     # Save as JPEG with proper DPI metadata
     temp_img_path = temp_dir / "temp_img.jpg"
-    img.save(temp_img_path, format='JPEG', dpi=(300, 300), quality=95)
+    img.save(temp_img_path, format="JPEG", dpi=(300, 300), quality=95)
 
     # Create PDF and properly embed the image
     doc = fitz.open()
@@ -131,7 +133,7 @@ class TestPDFResolutionDetection:
         assert result["image_count"] > 0, "Should detect images in PDF"
         assert result["low_res_image_count"] > 0, "Should count low-res images"
 
-        print(f"\n✓ Low-res PDF detection:")
+        print("\n✓ Low-res PDF detection:")
         print(f"  Min DPI: {result['min_dpi']}")
         print(f"  Avg DPI: {result['avg_dpi']}")
         print(f"  Max DPI: {result['max_dpi']}")
@@ -148,7 +150,7 @@ class TestPDFResolutionDetection:
         assert result["min_dpi"] >= 300, f"Min DPI should be >= 300, got {result['min_dpi']}"
         assert result["low_res_image_count"] == 0, "Should have no low-res images"
 
-        print(f"\n✓ High-res PDF detection:")
+        print("\n✓ High-res PDF detection:")
         print(f"  Min DPI: {result['min_dpi']}")
         print(f"  Avg DPI: {result['avg_dpi']}")
         print(f"  Low-res images: {result['low_res_image_count']}/{result['image_count']}")
@@ -175,7 +177,7 @@ class TestPDFUpscaling:
         assert upscaling_result.get("success") is True, "Upscaling should succeed"
         assert upscaling_result.get("pages_processed", 0) > 0, "Should process pages"
 
-        print(f"\n✓ PDF upscaling:")
+        print("\n✓ PDF upscaling:")
         print(f"  Original size: {upscaling_result.get('before_size', 0):,} bytes")
         print(f"  Upscaled size: {upscaling_result.get('after_size', 0):,} bytes")
         print(f"  Processing time: {upscaling_result.get('processing_time', 0):.2f}s")
@@ -188,12 +190,12 @@ class TestPDFUpscaling:
         original_min_dpi = result.resolution_analysis.get("min_dpi", 0)
         upscaled_min_dpi = upscaled_analysis.get("min_dpi", 0)
 
-        assert upscaled_min_dpi > original_min_dpi, \
-            f"Upscaled DPI ({upscaled_min_dpi}) should be > original ({original_min_dpi})"
-        assert upscaled_min_dpi >= 300, \
-            f"Upscaled DPI should be >= 300, got {upscaled_min_dpi}"
+        assert (
+            upscaled_min_dpi > original_min_dpi
+        ), f"Upscaled DPI ({upscaled_min_dpi}) should be > original ({original_min_dpi})"
+        assert upscaled_min_dpi >= 300, f"Upscaled DPI should be >= 300, got {upscaled_min_dpi}"
 
-        print(f"\n✓ DPI improvement:")
+        print("\n✓ DPI improvement:")
         print(f"  Original min DPI: {original_min_dpi}")
         print(f"  Upscaled min DPI: {upscaled_min_dpi}")
         print(f"  Improvement: {upscaled_min_dpi - original_min_dpi:.1f} DPI")
@@ -213,7 +215,7 @@ class TestPDFUpscaling:
         assert result.should_use_upscaled is False, "Should NOT recommend upscaled version"
         assert result.upscaled_path is None, "Should NOT create upscaled PDF"
 
-        print(f"\n✓ High-res PDF correctly skipped upscaling")
+        print("\n✓ High-res PDF correctly skipped upscaling")
 
 
 class TestDocumentRouterIntegration:
@@ -238,7 +240,7 @@ class TestDocumentRouterIntegration:
         # Verify metadata will be added (we can't fully test without parsers)
         assert document.format.value == "pdf", "Should detect PDF format"
 
-        print(f"\n✓ DocumentRouter integration:")
+        print("\n✓ DocumentRouter integration:")
         print(f"  Document format: {document.format.value}")
         print(f"  Source path: {document.source_path}")
 
@@ -257,7 +259,7 @@ class TestDocumentRouterIntegration:
         # But should not create upscaled version
         assert result.upscaled_path is None, "Should NOT upscale when disabled"
 
-        print(f"\n✓ Router respects upscaling config (disabled)")
+        print("\n✓ Router respects upscaling config (disabled)")
 
 
 class TestValidationMetrics:
@@ -292,7 +294,7 @@ class TestValidationMetrics:
                 # This is expected - we're increasing resolution significantly
                 assert size_ratio < 1000.0, "Size increase should be reasonable (< 1000x)"
 
-                print(f"\n✓ Metadata validation:")
+                print("\n✓ Metadata validation:")
                 print(f"  Size increase: {size_ratio:.2f}x")
 
         # Cleanup

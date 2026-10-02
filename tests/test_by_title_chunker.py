@@ -1,6 +1,5 @@
 """Tests for section-aware (by_title) chunking strategy."""
 
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -301,9 +300,9 @@ class TestByTitleChunkerEdgeCases:
             Exception("Encoding not found"),
             MagicMock(encode=lambda x: [1] * len(x.split())),
         ]
-        
+
         chunker = ByTitleChunker(chunk_size=100)
-        
+
         # Should fall back to cl100k_base
         assert chunker.encoding is not None
 
@@ -317,10 +316,10 @@ class TestByTitleChunkerEdgeCases:
             DocumentElement(element_type=ElementType.PARAGRAPH, content="Content"),
         ]
         sample_document.elements = elements
-        
+
         chunker = ByTitleChunker(chunk_size=100)
         chunks = chunker.chunk_document(sample_document)
-        
+
         # Should handle empty sections
         assert len(chunks) >= 0
 
@@ -330,10 +329,10 @@ class TestByTitleChunkerEdgeCases:
             DocumentElement(element_type=ElementType.TITLE, content="Short"),
         ]
         sample_document.elements = elements
-        
+
         chunker = ByTitleChunker(chunk_size=1000, combine_text_under_n_chars=500)
         chunks = chunker.chunk_document(sample_document)
-        
+
         # Should handle single section
         assert len(chunks) >= 0
 
@@ -346,7 +345,7 @@ class TestByTitleChunkerEdgeCases:
             DocumentElement(element_type=ElementType.PARAGRAPH, content=large_content),
         ]
         sample_document.elements = elements
-        
+
         chunker = ByTitleChunker(chunk_size=100, chunk_overlap=20)
         chunks = chunker.chunk_document(sample_document)
 

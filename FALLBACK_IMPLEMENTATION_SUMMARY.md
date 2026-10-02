@@ -116,7 +116,7 @@ MARKER_LLM_FALLBACK_MODEL=google/gemini-2.5-flash-lite
 
 ```bash
 # Use exactly as before
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/result.json
 
@@ -191,14 +191,14 @@ Fallback: google/gemini-2.5-flash
 
 ### ✅ Code Validation
 ```bash
-poetry run python -m py_compile src/data_ingestor/parsers/pdf_parser.py
+uv run python -m py_compile src/data_ingestor/parsers/pdf_parser.py
 # Result: ✓ Syntax check passed
 ```
 
 ### Manual Testing
 ```bash
 # Test with your wind document
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/fallback_test.json
 
@@ -274,7 +274,7 @@ if self.use_llm and self.openrouter_api_key:
 
 1. **Test with your documents:**
    ```bash
-   poetry run python -m data_ingestor.cli process \
+   uv run python -m data_ingestor.cli process \
      --input data/wind_docs/Where-does-wind-matter.pdf \
      --output test_output/test.json
    ```

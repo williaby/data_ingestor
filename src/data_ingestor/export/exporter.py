@@ -32,7 +32,7 @@ class DocumentExporter:
     def export(
         self,
         document: Document,
-        format: OutputFormat,  # noqa: A002
+        format: OutputFormat,
         output_path: str | Path | None = None,
     ) -> dict[str, Any] | str | tuple[dict[str, Any], str]:
         """Export document in specified format.

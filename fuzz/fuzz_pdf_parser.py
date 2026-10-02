@@ -21,7 +21,6 @@ import atheris
 
 # Instrument imports before importing target code
 with atheris.instrument_imports():
-    import fitz  # PyMuPDF
     from data_ingestor.core.models import Document, DocumentFormat
     from data_ingestor.parsers.pdf_parser import PyMuPDFParser
 

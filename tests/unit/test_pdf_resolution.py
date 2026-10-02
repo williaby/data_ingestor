@@ -1,8 +1,8 @@
 """Unit tests for PDF resolution detection."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 from data_ingestor.utils.pdf_resolution import PDFResolutionAnalyzer, quick_resolution_check
 

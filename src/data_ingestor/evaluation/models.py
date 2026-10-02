@@ -8,7 +8,7 @@ per-document results, and aggregated statistics across datasets.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MetricType(str, Enum):
@@ -52,15 +52,15 @@ class MetricScore:
 
     name: str
     value: float
-    confidence: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    confidence: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate metric score."""
         if self.value < 0:
             raise ValueError(f"Metric value cannot be negative: {self.value}")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "name": self.name,
@@ -89,13 +89,13 @@ class EvaluationResult:
 
     document_id: str
     dataset: str
-    metrics: List[MetricScore] = field(default_factory=list)
+    metrics: list[MetricScore] = field(default_factory=list)
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
     processing_time: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def get_metric(self, metric_name: str) -> Optional[MetricScore]:
+    def get_metric(self, metric_name: str) -> MetricScore | None:
         """
         Get specific metric by name.
 
@@ -110,7 +110,7 @@ class EvaluationResult:
                 return metric
         return None
 
-    def get_metric_value(self, metric_name: str) -> Optional[float]:
+    def get_metric_value(self, metric_name: str) -> float | None:
         """
         Get metric value by name.
 
@@ -123,7 +123,7 @@ class EvaluationResult:
         metric = self.get_metric(metric_name)
         return metric.value if metric else None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "document_id": self.document_id,
@@ -160,10 +160,10 @@ class AggregatedMetrics:
     total_documents: int
     successful_documents: int
     failed_documents: int
-    mean_metrics: Dict[str, float] = field(default_factory=dict)
-    std_metrics: Dict[str, float] = field(default_factory=dict)
-    min_metrics: Dict[str, float] = field(default_factory=dict)
-    max_metrics: Dict[str, float] = field(default_factory=dict)
+    mean_metrics: dict[str, float] = field(default_factory=dict)
+    std_metrics: dict[str, float] = field(default_factory=dict)
+    min_metrics: dict[str, float] = field(default_factory=dict)
+    max_metrics: dict[str, float] = field(default_factory=dict)
     processing_time_total: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -186,15 +186,15 @@ class AggregatedMetrics:
             return 0.0
         return self.processing_time_total / self.total_documents
 
-    def get_mean_metric(self, metric_name: str) -> Optional[float]:
+    def get_mean_metric(self, metric_name: str) -> float | None:
         """Get mean value for specific metric."""
         return self.mean_metrics.get(metric_name)
 
-    def get_std_metric(self, metric_name: str) -> Optional[float]:
+    def get_std_metric(self, metric_name: str) -> float | None:
         """Get standard deviation for specific metric."""
         return self.std_metrics.get(metric_name)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "dataset": self.dataset,

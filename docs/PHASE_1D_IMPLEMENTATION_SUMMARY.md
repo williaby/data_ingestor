@@ -193,13 +193,13 @@ Added 4 new CLI commands to integrate Phase 1D functionality:
 
 ```bash
 # Run comprehensive test suite
-poetry run data-ingestor benchmark-configs \
+uv run data-ingestor benchmark-configs \
     --suite data/benchmarks/config_suites/comprehensive_suite.yaml \
     --documents data/benchmarks/DocLayNet/sample_100 \
     --output results/config_test.json
 
 # Test specific configurations
-poetry run data-ingestor benchmark-configs \
+uv run data-ingestor benchmark-configs \
     -s marker_variants.yaml \
     -d scanned_docs/ \
     -o marker_test.json
@@ -210,13 +210,13 @@ poetry run data-ingestor benchmark-configs \
 
 ```bash
 # Create baseline with auto-fingerprinting
-poetry run data-ingestor baseline-create \
+uv run data-ingestor baseline-create \
     --name phase1d_baseline \
     --results results/config_test.json \
     --auto-fingerprint
 
 # Create baseline with description
-poetry run data-ingestor baseline-create \
+uv run data-ingestor baseline-create \
     -n phase1d_baseline \
     -r results/config_test.json \
     --description "Initial Phase 1D baseline"
@@ -227,13 +227,13 @@ poetry run data-ingestor baseline-create \
 
 ```bash
 # Compare two baselines
-poetry run data-ingestor baseline-compare \
+uv run data-ingestor baseline-compare \
     --baseline1 phase1d_baseline:v1 \
     --baseline2 phase1d_baseline:v2 \
     --output comparison.html
 
 # Compare results against baseline
-poetry run data-ingestor baseline-compare \
+uv run data-ingestor baseline-compare \
     --baseline1 phase1d_baseline:latest \
     --results new_results.json \
     --statistical-tests
@@ -244,10 +244,10 @@ poetry run data-ingestor baseline-compare \
 
 ```bash
 # Generate HTML comparison report
-poetry run data-ingestor compare-configs results/config_test.json
+uv run data-ingestor compare-configs results/config_test.json
 
 # Get recommendations for scanned documents
-poetry run data-ingestor compare-configs results/config_test.json \
+uv run data-ingestor compare-configs results/config_test.json \
     --recommend \
     --optimization-target accuracy \
     --document-type scanned
@@ -334,13 +334,13 @@ Phase 1D integrates seamlessly with Phase 1b benchmarking:
 
 ```bash
 # Run configuration suite
-poetry run data-ingestor benchmark-configs \
+uv run data-ingestor benchmark-configs \
     --suite marker_variants.yaml \
     --documents scanned_docs/ \
     --output marker_comparison.json
 
 # Analyze results
-poetry run data-ingestor compare-configs marker_comparison.json \
+uv run data-ingestor compare-configs marker_comparison.json \
     --optimization-target accuracy \
     --document-type scanned
 ```
@@ -352,13 +352,13 @@ poetry run data-ingestor compare-configs marker_comparison.json \
 
 ```bash
 # Test GPU vs CPU (Phase 2)
-poetry run data-ingestor benchmark-configs \
+uv run data-ingestor benchmark-configs \
     --suite docling_gpu_cpu.yaml \
     --documents table_heavy_pdfs/ \
     --output docling_gpu_test.json
 
 # Compare results
-poetry run data-ingestor compare-configs docling_gpu_test.json \
+uv run data-ingestor compare-configs docling_gpu_test.json \
     --recommend \
     --optimization-target speed
 ```
@@ -370,13 +370,13 @@ poetry run data-ingestor compare-configs docling_gpu_test.json \
 
 ```bash
 # Create initial baseline
-poetry run data-ingestor baseline-create \
+uv run data-ingestor baseline-create \
     --name "v1.0_baseline" \
     --results v1_results.json \
     --auto-fingerprint
 
 # After code changes, compare
-poetry run data-ingestor baseline-compare \
+uv run data-ingestor baseline-compare \
     --baseline1 v1.0_baseline:latest \
     --results v1.1_results.json \
     --statistical-tests

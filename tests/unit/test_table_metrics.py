@@ -5,8 +5,6 @@ Tests TEDS, cell exact match, and header F1 metrics with comprehensive
 coverage of all functions, branches, and edge cases.
 """
 
-import pytest
-
 from data_ingestor.evaluation.metrics.table_metrics import (
     calculate_cell_exact_match,
     calculate_header_f1,
@@ -289,12 +287,8 @@ class TestCalculateHeaderF1:
 
     def test_multiple_dimensions(self):
         """Test headers across multiple rows and columns."""
-        pred = [
-            {"row": 0, "col": i} for i in range(5)
-        ]  # First row headers
-        gt = [
-            {"row": 0, "col": i} for i in range(3)
-        ]  # Only first 3 are headers
+        pred = [{"row": 0, "col": i} for i in range(5)]  # First row headers
+        gt = [{"row": 0, "col": i} for i in range(3)]  # Only first 3 are headers
         score = calculate_header_f1(pred, gt)
         # 3 TP, 2 FP, 0 FN
         # Precision = 3/5 = 0.6, Recall = 3/3 = 1.0

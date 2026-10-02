@@ -20,7 +20,6 @@ import atheris
 
 # Instrument imports before importing target code
 with atheris.instrument_imports():
-    from data_ingestor.core.models import Document
     from data_ingestor.parsers.pdf_parser import PyMuPDFParser
     from data_ingestor.pipeline.router import DocumentRouter, ParserRegistry
 

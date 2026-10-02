@@ -417,7 +417,7 @@ MARKER_USE_LLM=true
 MARKER_LLM_MODEL=meta-llama/llama-4-maverick:free
 
 # Process your wind document
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/llama_test.json
 ```
@@ -434,7 +434,7 @@ poetry run python -m data_ingestor.cli process \
 MARKER_LLM_MODEL=google/gemini-2.5-flash-lite
 
 # Process same document
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/gemini_lite_test.json
 ```
