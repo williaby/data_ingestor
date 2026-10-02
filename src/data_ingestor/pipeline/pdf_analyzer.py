@@ -2,6 +2,7 @@
 
 import logging
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -185,7 +186,10 @@ class PDFDocumentAnalyzer:
                 temp_dir = Path(tempfile.gettempdir()) / "data_ingestor_upscaled"
                 temp_dir.mkdir(parents=True, exist_ok=True)
 
-                upscaled_path = temp_dir / f"{pdf_path.stem}_upscaled_{int(time.time())}.pdf"
+                # Use uuid4 instead of time.time() — second-granularity timestamps
+                # collide under concurrent runs (TOCTOU race) and are guessable
+                # by a local attacker on a shared system.
+                upscaled_path = temp_dir / f"{pdf_path.stem}_upscaled_{uuid.uuid4().hex}.pdf"
 
                 # Perform upscaling
                 upscaling_result = self.upscaler.upscale_pdf(
