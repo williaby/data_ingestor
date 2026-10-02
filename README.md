@@ -7,6 +7,14 @@
 
 A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation) systems that transforms diverse document formats into high-quality, structured data with intelligent chunking and metadata preservation.
 
+## Where this fits in the Foundry pipeline
+
+**Chunk** is the last pipeline stage. It turns Unify's `DoclingDOM.json` into `RAGChunkSet.json`: chunks with page and section citations and trust scores. Applications read that file and do their own embedding and search; see [chunk-embed-contract.md](https://github.com/williaby/image-preprocessing-detector/blob/main/docs/development/RAG%20Pipeline/chunk-embed-contract.md).
+
+The pipeline runs Ingest, then Prepare-Doc or Prepare-Audio, then Unify, then Chunk, and ends at chunks. Embedding,
+vector storage, and search belong to the application that consumes the chunks, not to the pipeline. See
+[Pipeline Level 0 architecture](docs/architecture/pipeline-level-0.md) for the full picture.
+
 ## Features
 
 - **Multi-format Support**: PDF, DOCX, HTML, Video, Audio
