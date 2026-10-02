@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     chunk_tokenizer: str = "Qwen/Qwen3-Embedding-0.6B"
     chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
 
+    # Chunk-set output: one RAGChunkSet.json per document, read by the consuming application (D-32).
+    chunks_dir: str = "/data/chunks"
+
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     enable_quality_checks: bool = True
