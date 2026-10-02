@@ -8,6 +8,11 @@ owner: "docs-team"
 purpose: "Define the complete four-project RAG pipeline architecture with clear responsibility boundaries."
 ---
 
+> **Status note (2026-10-02)**: The Projects A-D naming in this document is retired. The pipeline is now the five
+> Foundry repositories (Ingest, Prepare-Doc / Prepare-Audio, Unify, Chunk), and this repository is the Chunk stage. The
+> pipeline ends at chunks (`RAGChunkSet.json`); vector storage and search are out of scope here. See
+> [pipeline-level-0.md](../../architecture/pipeline-level-0.md). The body below is historical and not rewritten.
+
 ## Updated Project Structure & Division of Responsibilities
 
 **Version:** 2.0
