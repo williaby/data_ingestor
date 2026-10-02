@@ -1,15 +1,23 @@
-# Data Ingestor - RAG Data Ingestion Pipeline
+# Data Ingestor - Chunk Stage of the Foundry RAG Pipeline
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://github.com/williaby/.github/blob/main/CODE_OF_CONDUCT.md)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Byron/data_ingestor/badge)](https://scorecard.dev/viewer/?uri=github.com/Byron/data_ingestor)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/williaby/data_ingestor/badge)](https://scorecard.dev/viewer/?uri=github.com/williaby/data_ingestor)
 
 A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation) systems that transforms diverse document formats into high-quality, structured data with intelligent chunking and metadata preservation.
 
+## Where this fits in the Foundry pipeline
+
+**Chunk** is the last pipeline stage. It turns Unify's `DoclingDOM.json` into `RAGChunkSet.json`: chunks with page and section citations and trust scores. Applications read that file and do their own embedding and search; see [chunk-embed-contract.md](https://github.com/williaby/image-preprocessing-detector/blob/main/docs/development/RAG%20Pipeline/chunk-embed-contract.md).
+
+The pipeline runs Ingest, then Prepare-Doc or Prepare-Audio, then Unify, then Chunk, and ends at chunks. Embedding,
+vector storage, and search belong to the application that consumes the chunks, not to the pipeline. See
+[Pipeline Level 0 architecture](docs/architecture/pipeline-level-0.md) for the full picture.
+
 ## Features
 
-- **Multi-format Support**: PDF, DOCX, HTML, Video, Audio
+- **PDF Support**: PyMuPDF, PyMuPDF4LLM, and Marker parsers (DOCX, HTML, video, and audio parsers are not built)
 - **Dual Output Formats**: Export as JSON, Markdown, or both with metadata preservation
 - **Advanced Chunking Strategies**:
   - Token-based chunking with overlap
@@ -20,7 +28,7 @@ A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation)
 - **Format Detection**: Automatic document format detection using multiple strategies
 - **Deduplication**: Hash-based duplicate detection
 - **CLI Interface**: Easy-to-use command-line interface with extensive options
-- **REST API**: FastAPI-based API endpoints (coming soon)
+- **REST API**: not built (the `api/` package is an empty stub)
 
 ## Quick Start
 
@@ -28,7 +36,7 @@ A comprehensive data ingestion pipeline for RAG (Retrieval-Augmented Generation)
 
 ```bash
 # Clone and install
-git clone https://github.com/Byron/data_ingestor.git
+git clone https://github.com/williaby/data_ingestor.git
 cd data_ingestor
 
 # Basic installation (PyMuPDF parsers)
@@ -122,7 +130,7 @@ json_data, markdown = exporter.export(document, OutputFormat.BOTH)
   - **By-Title Chunker**: Section-aware chunking that preserves document structure
 - **Document Exporter**: Export to JSON, Markdown, or both with metadata preservation
 - **Enhanced Element Types**: 15+ element types with rich metadata
-- **Quality Assessor**: Validates extraction quality (coming soon)
+- **Quality Assessor**: not built (the `quality/` package is an empty stub)
 
 ### Element Types
 
@@ -160,7 +168,7 @@ The system uses a **fallback chain** strategy with three PDF parsers:
 
 ## Development Status
 
-**Phase 1 (Current)**: Core foundation with PDF support
+**Phase 1 / 1b (functionally complete, see [Phase 1 status](docs/PHASE1_COMPLETION_STATUS.md))**: Core foundation with PDF support and the DocLayNet benchmarking framework. Reading `DoclingDOM.json` and writing `RAGChunkSet.json` for the Chunk stage are not yet built; see [Level 1 architecture](docs/architecture/diagrams/level-1/index.md).
 
 - [x] Core architecture and base classes
 - [x] PDF parsing with PyMuPDF
@@ -175,7 +183,7 @@ The system uses a **fallback chain** strategy with three PDF parsers:
 - [x] CLI interface with extensive options
 - [x] Format detection
 
-**Phase 2 (Next)**: Multi-format expansion
+**Phase 2 (Planned, not built)**: Multi-format expansion (embedding, vector storage, and search are out of scope for this repository)
 
 - [ ] DOCX parsing
 - [ ] Web scraping
@@ -183,7 +191,7 @@ The system uses a **fallback chain** strategy with three PDF parsers:
 - [ ] Advanced PDF parser (Docling)
 - [ ] REST API
 
-See full [Project Plan](docs/project-plan.md) for details.
+See full [Project Plan](docs/PROJECT_PLAN.md) for details.
 
 ## License
 

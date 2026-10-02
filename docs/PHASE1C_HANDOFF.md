@@ -1,5 +1,9 @@
 # Phase 1C Integration Handoff Document
 
+> **Status note (2026-10-02)**: The `scripts/` directory this document mentions (for example
+> `scripts/validate_pdf_resolution.py`) does not exist in the repository. The implemented modules live in
+> `src/data_ingestor/utils/` (`pdf_resolution.py`, `pdf_upscaler.py`) and `src/data_ingestor/pipeline/pdf_analyzer.py`.
+
 **To**: Other Project Team
 **From**: Data Ingestor Team
 **Date**: 2025-11-08
