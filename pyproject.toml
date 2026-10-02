@@ -50,7 +50,6 @@ pydantic-settings = "^2.2.1"
 # Tighten back to ^0.57.0 when implementing LLM features
 anthropic = ">=0.46.0,<1.0.0"
 openai = "^1.12.0"
-qdrant-client = "^1.14.3"
 cryptography = "^45.0.0"
 pyjwt = {version = "^2.10.1", extras = ["crypto"]}
 python-gnupg = "^0.5.2"
@@ -75,10 +74,6 @@ slowapi = "^0.1.9"
 cachetools = "^6.1.0"
 defusedxml = "^0.7.1"
 starlette = ">=0.47.2"
-# Database dependencies for AUTH-1 enhanced authentication and AUTH-2 service token management
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
-asyncpg = "^0.30.0"
-alembic = "^1.14.0"
 aiohttp = "^3.12.15"
 plotly = "^6.3.0"
 pandas = "^2.3.1"
@@ -155,7 +150,6 @@ azure-keyvault-secrets = "^4.11.0"
 azure-storage-blob = "^12.19.0"
 
 [tool.poetry.group.ml.dependencies]
-sentence-transformers = ">=3.0.0,<6.0.0"
 tiktoken = ">=0.8.0,<1.0.0"
 numpy = ">=1.26.1,<2.0.0"
 pandas = "^2.2.0"
@@ -315,7 +309,7 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 known_first_party = ["src"]
-known_third_party = ["pytest", "httpx", "fastapi", "gradio", "pydantic", "anthropic", "openai", "qdrant_client"]
+known_third_party = ["pytest", "httpx", "fastapi", "gradio", "pydantic", "anthropic", "openai"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 skip_glob = ["**/migrations/*", "**/venv/*", "**/.venv/*"]
 
@@ -347,8 +341,6 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = [
     "gradio.*",
-    "sentence_transformers.*",
-    "qdrant_client.*",
     "redis.*",
     "yaml.*",
     "gnupg.*",
