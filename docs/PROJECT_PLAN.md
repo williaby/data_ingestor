@@ -1,5 +1,10 @@
 # RAG Data Ingestion Pipeline - Project Plan
 
+> **Status note (2026-10-02)**: This is a historical planning document. The Foundry pipeline ends at chunks
+> (`RAGChunkSet.json`); embedding, vector storage, and search are out of scope for this repository, per
+> [pipeline-level-0.md](architecture/pipeline-level-0.md). Treat sections on those topics as superseded. For what is
+> built, see [Level 1](architecture/diagrams/level-1/index.md).
+
 **Project Name**: Data Ingestor
 **Version**: 2.0
 **Status**: Phase 1 - Foundation Complete, Phase 2 - Enhanced Intelligence (In Progress)
