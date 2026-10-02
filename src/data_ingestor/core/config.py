@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     # ChunkingError if one cannot be brought under it). Keep it below the embedder's input limit.
     chunk_max_tokens: int = Field(default=512, ge=32)
 
+    # Chunk-set output: one RAGChunkSet.json per document, read by the consuming application (D-32).
+    chunks_dir: str = "/data/chunks"
+
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     enable_quality_checks: bool = True

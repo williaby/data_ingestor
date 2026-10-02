@@ -208,6 +208,86 @@ def process(
 
 
 @cli.command()
+@click.argument("file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--document-id", required=True, help="Document UUID from the document store")
+@click.option("--trace-id", help="Pipeline trace UUID (derived from the document ID when omitted)")
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory for the chunk set (default: CHUNKS_DIR, /data/chunks)",
+)
+@click.option("--entity-id", help="Owning entity UUID, carried onto every chunk")
+@click.option("--document-type", help="Document type, carried onto every chunk")
+@click.option("--category", help="Document category, carried onto every chunk")
+@click.option("--confidential/--not-confidential", default=False, help="Access flag carried onto every chunk")
+@click.option("--title", help="Document title, carried onto every chunk")
+@click.option("--document-date", help="Document date (YYYY-MM-DD), carried onto every chunk")
+@click.pass_context
+def chunk(
+    ctx: click.Context,
+    file_path: Path,
+    document_id: str,
+    trace_id: str | None,
+    output_dir: Path | None,
+    entity_id: str | None,
+    document_type: str | None,
+    category: str | None,
+    confidential: bool,
+    title: str | None,
+    document_date: str | None,
+) -> None:
+    """Convert one file with docling-serve, chunk it, and write its chunk set.
+
+    This is the Chunk stage only: it writes ``{document-id}.json`` and stops. It
+    does not embed, store vectors, or search. Use made-up documents with this
+    command: it does not read the document store manifest, so it does no
+    consent check and must never be pointed at a real Tax Return.
+
+    Example:
+        data-ingestor chunk sample.pdf --document-id 0b1c2d3e-... --output-dir ./chunks
+    """
+    import hashlib
+
+    from data_ingestor.chunking import HybridDocumentChunker, load_tokenizer
+    from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
+    from data_ingestor.core.exceptions import ChunkingError, ConversionError
+    from data_ingestor.export import build_chunk_set, write_chunk_set
+
+    settings: Settings = ctx.obj["settings"]
+    console: Console = ctx.obj["console"]
+    api_key = settings.docling_serve_api_key.get_secret_value() if settings.docling_serve_api_key else None
+    client = DoclingServeClient(settings.docling_serve_url, api_key, settings.docling_serve_timeout)
+    try:
+        console.print(f"[bold blue]Converting:[/bold blue] {file_path.name}")
+        result = client.convert(file_path)
+        document = docling_json_to_document(
+            result.docling_json,
+            document_id=document_id,
+            filename=file_path.name,
+            extra_metadata={
+                "sha256": hashlib.sha256(file_path.read_bytes()).hexdigest(),
+                "entity_id": entity_id,
+                "document_type": document_type,
+                "category": category,
+                "is_confidential": confidential,
+                "title": title,
+                "document_date": document_date,
+            },
+        )
+        tokenizer = load_tokenizer(settings.chunk_tokenizer, settings.chunk_max_tokens)
+        chunks = HybridDocumentChunker(tokenizer).chunk_document(document)
+        chunk_set = build_chunk_set(document_id, chunks, chunk_strategy="hybrid", trace_id=trace_id)
+        target = write_chunk_set(chunk_set, output_dir or Path(settings.chunks_dir))
+    except (ConversionError, ChunkingError, OSError) as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        sys.exit(1)
+    finally:
+        client.close()
+
+    console.print(f"[bold green]Wrote {chunk_set['total_chunks']} chunks:[/bold green] {target}")
+
+
+@cli.command()
 @click.pass_context
 def health(ctx: click.Context) -> None:
     """Check health of all parsers."""
