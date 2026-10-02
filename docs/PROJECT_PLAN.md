@@ -1,10 +1,50 @@
 # RAG Data Ingestion Pipeline - Project Plan
 
 **Project Name**: Data Ingestor
-**Version**: 2.0
-**Status**: Phase 1 - Foundation Complete, Phase 2 - Enhanced Intelligence (In Progress)
-**Last Updated**: 2025-11-03
+**Version**: 2.2
+**Status**: Phases 1, 1c, 1d functionally complete on `main`; Phase 1b baseline run NOT yet executed;
+Phase 2 not started on `main`; an unplanned RAG indexing/search track is in open PR #67
+**Last Updated**: 2026-10-01
 **Owner**: Byron Williams
+
+---
+
+## Current Status Snapshot (2026-10-01)
+
+> This snapshot supersedes the phase-level status text below wherever they disagree. Phase sections are kept
+> for scope and exit criteria; checkbox state in Phases 1b/1c/1d was reconciled on 2026-10-01 against
+> [PHASE1_COMPLETION_STATUS.md](PHASE1_COMPLETION_STATUS.md), [PHASE1C_HANDOFF.md](PHASE1C_HANDOFF.md) and
+> [PHASE_1D_IMPLEMENTATION_SUMMARY.md](PHASE_1D_IMPLEMENTATION_SUMMARY.md).
+
+**What is actually on `main`** (last functional commit 2025-11-16; since then only CI/compliance/dependency commits):
+
+| Area | State |
+|------|-------|
+| PDF parsers (PyMuPDF, PyMuPDF4LLM, Marker w/ LLM fallback) | Implemented |
+| Router, fallback chains, dedup, token + by-title chunking, JSON/Markdown export, CLI | Implemented |
+| Evaluation framework (DocLayNet evaluator, text/structure/layout/table metrics) | Implemented, ~94% coverage |
+| Benchmark orchestrator/runner/reporter, config tester, hardware/dataset fingerprinting, baselines | Implemented; orchestrator/runner coverage low (~32-35% at last measurement) |
+| PDF resolution pre-flight + OpenCV upscaling (Phase 1c) | Implemented |
+| Docling, DocumentAnalyzer routing, OutputValidator, TrOCR, Email/HTML/DOCX/XLSX/PPTX parsers (Phase 2) | **Not implemented.** Only `PDFDocumentAnalyzer` (resolution) exists; `api/`, `quality/`, `storage/` are empty stubs |
+| Phase 1b baseline benchmark on DocLayNet | **Never completed** (no committed results; mAP/text/layout baselines unmeasured) |
+| Overall test coverage | ~47% on core modules at last measurement (target 80%); not re-measured |
+
+**Work in flight (open PRs, not on `main`)**:
+
+| PR | Topic | Plan impact |
+|----|-------|-------------|
+| #67 | RAG indexing + search pipeline: docling-serve client/mapper, HybridChunker, embeddings, Qdrant writer, search API, tax-law indexer; Marker LLM restricted to loopback endpoint (breaking) | Delivers part of Phase 2 Docling (via docling-serve, not in-process `DoclingParser`), part of Multimodal RAG Phase 3 (Qdrant) and FR-6.3 (API), out of plan order. 14 review threads, most unresolved |
+| #69 | Build/publish search API image to GHCR | Stacked on #67; depends on `poetry.lock` |
+| #53 | Poetry to uv migration (closes #37, #38, #52) | Org policy (TOOL-013); conflicts with most other PRs |
+| #30 | OpenAPI spec, Postman, Newman CI | Overlaps #67 (`api/app.py`) |
+| #28 / #29 / #65 | Security hardening / stage-contract docs+tests / `BenchmarkRunner.router` fix | Independent hygiene |
+| #54 / #60 / Renovate | Dependency and action-SHA bumps | Rebase after #53 |
+
+**Blocking issue**: CI on `main` has reportedly been red since ~2026-05-08 (68 mypy errors, missing
+`data/test_pdfs/` fixtures, workflow issues), so no open PR can pass required gates until it is repaired.
+Local note: `poetry.lock` is stale relative to `pyproject.toml` (`poetry install` fails).
+
+**Recommended next sprint**: see [Next Sprint](#next-sprint-2026-10-recommended) below.
 
 ---
 
@@ -632,7 +672,16 @@ After Phase 2 implementation (Intelligent OCR, Docling), re-run benchmarks to va
 **Reference Documentation**:
 - [PERFORMANCE_BENCHMARKING_GUIDE.md](PERFORMANCE_BENCHMARKING_GUIDE.md) - Complete benchmarking guide
 
+> **Status (2026-10-01)**: Framework complete; baseline execution, reports, integration tests and the coverage
+> goal remain open. Checkboxes below are unchanged except where the completion status doc confirms them.
+> Note `analyze_results.py` expects `results/phase1-baseline.json`, which is not in the repo.
+
 ### Phase 1c: PDF Resolution Pre-processing (Week 4.5-5)
+
+> **Status (2026-10-01)**: Implemented (`utils/pdf_resolution.py`, `utils/pdf_upscaler.py`,
+> `pipeline/pdf_analyzer.py`, router integration, 5 settings, ~34 tests). The unchecked boxes below are stale;
+> the exit criteria "OCR accuracy gain >10%" and "100+ PDF validation" have no recorded evidence and should be
+> verified in the baseline sprint.
 
 **Objective**: Improve OCR quality by upscaling low-resolution PDFs before Marker processing
 
@@ -687,6 +736,10 @@ Low-resolution PDFs (< 300dpi) often produce poor OCR results. By analyzing PDF 
 Resolution pre-processing will be part of the pre-flight analysis pipeline and feed into the Intelligent OCR routing decisions.
 
 ### Phase 1d: Scanning Options Testing & Baseline Framework (Week 5-5.5)
+
+> **Status (2026-10-01)**: Core implemented (`benchmarking/config_tester.py`, `fingerprint.py`, `baseline.py`,
+> suites in `data/benchmarks/config_suites/`). Exit criteria requiring recorded baselines on 100+ documents
+> are **not met**: no baseline data has been committed or reproduced.
 
 **Objective**: Create comprehensive framework to test and compare different scanning configurations with hardware-specific baselines
 
@@ -767,7 +820,34 @@ Testing results will inform the `IntelligentOCRRouter` decision logic and help o
 5. Identify fastest configuration for simple digital PDFs
 6. Establish cost-per-document baselines for API-based parsers
 
+### Next Sprint (2026-10, recommended)
+
+**Theme**: Make `main` green and trustworthy, land the in-flight work, then finally produce the Phase 1b baseline.
+Phase 2 feature work should not start until the baseline exists, since every Phase 2 exit criterion ("no
+regression vs baseline", ">4x speedup") is measured against it.
+
+1. **Repair `main` CI** (merge #65; fix the 68 mypy errors; commit or generate small `data/test_pdfs/` fixtures
+   or mark those tests so CI can skip them; confirm workflow YAML fixes #63/#64).
+2. **Decide the package manager and land #53** (uv) first, then rebase #54, #60, #28, #69; regenerate #67's lock.
+   Close duplicate issues #37/#38/#52 through #53.
+3. **Triage #67**: resolve the open review threads (upsert-before-delete in Qdrant and the tax-law indexer,
+   HTTPS and index validation for embeddings, response-shape validation, `trust_env=False` for the Marker LLM
+   client, pytest markers, CodeQL alerts), then reconcile `api/app.py` with #30.
+4. **Merge hygiene PRs** #28 and #29 once rebased.
+5. **Run the Phase 1b baseline** on 1,000 DocLayNet documents with PyMuPDF and PyMuPDF4LLM; commit the summary
+   report (not the raw dataset) and update PERFORMANCE_BENCHMARKING_GUIDE.md.
+6. **Raise coverage** on router, chunkers, parsers and benchmark orchestrator/runner toward the 80% goal.
+7. **Update this plan** to record the #67 architectural decision (docling-serve + Qdrant) as an ADR entry and
+   re-sequence Phase 2/Multimodal phases accordingly.
+
+**Sprint exit criteria**: required CI checks green on `main`; #53 and #67 merged (or explicitly deferred with a
+reason); baseline report committed with mAP, text accuracy and failure rate; coverage re-measured and recorded
+here.
+
 ### Phase 2: Enhanced Intelligence & Format Expansion (Week 5.5-10.5)
+
+> **Status (2026-10-01)**: Not started on `main`. Calendar weeks in this and later phases are stale (the plan
+> dates from Nov 2025) and should be replaced by sprint-based sequencing after the baseline is in.
 
 **Objective**: Intelligent OCR routing, Docling integration, comprehensive format support
 
@@ -1275,6 +1355,9 @@ Testing results will inform the `IntelligentOCRRouter` decision logic and help o
 | 2025-11-03 | Multi-vector store architecture | Optimal search and retrieval separation | Scalable retrieval system |
 | 2025-11-03 | Claude 3.5 Sonnet for vision tasks | Superior multimodal capabilities, better quality | High-quality image understanding |
 | 2025-11-03 | Qdrant for vector storage | Open-source, excellent performance, self-hostable | Cost-effective, production-ready |
+| 2026-05 to 2026-10 | Renovate replaces Dependabot; org CI/compliance workflows adopted | Fleet policy | Many workflow/dep PRs; main CI red since ~2026-05-08 |
+| 2026-05 (PR #53, pending) | Migrate Poetry to uv | Org policy TOOL-013 (reusable workflows uv-only) | Rewrites pyproject/lock; blocks other PRs |
+| 2026-09 (PR #67, pending) | Use docling-serve (HTTP) for conversion and a search API on Qdrant; Marker LLM loopback-only | Isolate heavy deps, security | Supersedes in-process `DoclingParser` plan; pulls RAG phases forward |
 
 ### B. Technology Stack
 
@@ -1339,12 +1422,14 @@ Testing results will inform the `IntelligentOCRRouter` decision logic and help o
 ---
 
 **Document Control**:
-- **Version**: 2.1
-- **Last Updated**: 2025-11-03
-- **Next Review**: End of Phase 2 (Week 9)
+- **Version**: 2.2
+- **Last Updated**: 2026-10-01
+- **Next Review**: End of next sprint (after baseline run)
 - **Approval Status**: Updated with Intelligent OCR System and Docling Integration
 
 **Change Log**:
+- **2026-10-01 (v2.2)**: Status reconciliation: added Current Status Snapshot and Next Sprint; marked Phase 1b/1c/1d
+  and Phase 2 status against code and open PRs; added decisions for uv migration and docling-serve/Qdrant (PR #67)
 - 2025-11-02: Initial version created
 - 2025-11-03: Added Multimodal RAG phases (FR-10) based on Alejandro AO's architecture
 - 2025-11-03: Updated priorities for image extraction and summarization (FR-8.5, FR-8.7, FR-8.8)
