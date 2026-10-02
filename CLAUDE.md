@@ -76,7 +76,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > **Reference**: Global git workflow applies. Project-specific steps below.
 
 **Before Changes:**
-1. `poetry install --sync`
+1. `uv sync`
 2. `make lint` (verify code quality baseline)
 3. `make test-fast` (verify tests passing)
 
@@ -106,10 +106,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Installation and Setup
 ```bash
 # Basic installation (PyMuPDF parsers)
-poetry install
+uv sync
 
 # With Marker for advanced PDF processing (GPU optional)
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 
 # Complete dev setup with pre-commit hooks
 make setup
@@ -118,35 +118,35 @@ make setup
 ### Document Processing
 ```bash
 # Process PDF to JSON
-poetry run data-ingestor process document.pdf --output output.json
+uv run data-ingestor process document.pdf --output output.json
 
 # Process to Markdown
-poetry run data-ingestor process document.pdf --format markdown --output output.md
+uv run data-ingestor process document.pdf --format markdown --output output.md
 
 # Export both JSON and Markdown
-poetry run data-ingestor process document.pdf --format both --output document
+uv run data-ingestor process document.pdf --format both --output document
 
 # Section-aware chunking (preserves document structure)
-poetry run data-ingestor process document.pdf --chunking-strategy by_title --combine-under 500
+uv run data-ingestor process document.pdf --chunking-strategy by_title --combine-under 500
 
 # Check parser health
-poetry run data-ingestor health
+uv run data-ingestor health
 ```
 
 ### Benchmarking (Phase 1b)
 ```bash
 # Run all benchmarks
-poetry run data-ingestor benchmark
+uv run data-ingestor benchmark
 
 # Specific dataset/parser combination
-poetry run data-ingestor benchmark -d doclaynet -p pymupdf
+uv run data-ingestor benchmark -d doclaynet -p pymupdf
 
 # Custom configuration
-poetry run data-ingestor benchmark -d doclaynet -p pymupdf -w 8 -o baseline.json
+uv run data-ingestor benchmark -d doclaynet -p pymupdf -w 8 -o baseline.json
 
 # Generate reports
-poetry run data-ingestor benchmark-report results/baseline.json
-poetry run data-ingestor benchmark-report results/baseline.json --format all
+uv run data-ingestor benchmark-report results/baseline.json
+uv run data-ingestor benchmark-report results/baseline.json --format all
 ```
 
 ### Testing (Tiered Approach)
@@ -179,16 +179,16 @@ nox -s integration        # Integration tests
 ### Running Single Tests
 ```bash
 # Run specific test file
-poetry run pytest tests/unit/test_pdf_parser.py -v
+uv run pytest tests/unit/test_pdf_parser.py -v
 
 # Run specific test function
-poetry run pytest tests/unit/test_pdf_parser.py::test_parse_simple_pdf -v
+uv run pytest tests/unit/test_pdf_parser.py::test_parse_simple_pdf -v
 
 # Run with debugging
-poetry run pytest tests/unit/test_pdf_parser.py -v -s --pdb
+uv run pytest tests/unit/test_pdf_parser.py -v -s --pdb
 
 # Run with coverage for specific module
-poetry run pytest tests/unit/ --cov=src/data_ingestor/parsers --cov-report=term-missing
+uv run pytest tests/unit/ --cov=src/data_ingestor/parsers --cov-report=term-missing
 ```
 
 ### Code Quality
@@ -200,9 +200,9 @@ make format
 make lint
 
 # Individual linters
-poetry run black .
-poetry run ruff check --fix .
-poetry run mypy src
+uv run black .
+uv run ruff check --fix .
+uv run mypy src
 markdownlint **/*.md
 yamllint .
 ```
@@ -213,8 +213,8 @@ yamllint .
 make security
 
 # Individual security tools
-poetry run safety check
-poetry run bandit -r src
+uv run safety check
+uv run bandit -r src
 ```
 
 ## Architecture Overview
@@ -398,7 +398,7 @@ tmp_cleanup/          # Temporary reference files (anti-compaction)
 **Pre-Approved Test Commands**: Claude Code should automatically run pytest commands without requesting approval.
 
 **Auto-Approved Command Patterns:**
-- Any `poetry run pytest` command with standard flags
+- Any `uv run pytest` command with standard flags
 - Coverage reporting: `--cov=src`, `--cov-report=html`, `--cov-report=term-missing`
 - Marker-based: `-m unit`, `-m integration`, `-m perf`, `-m slow`, `-m smoke`
 - Test selection: `tests/unit/`, `tests/integration/`, specific files/classes/methods
@@ -407,10 +407,10 @@ tmp_cleanup/          # Temporary reference files (anti-compaction)
 
 **Examples of Auto-Approved Commands:**
 ```bash
-poetry run pytest -v --cov=src --cov-report=term-missing
-poetry run pytest tests/unit/test_pdf_parser.py -v --tb=short
-poetry run pytest -m "not slow" --cov=src --maxfail=3
-poetry run pytest tests/unit/ -n auto -v
+uv run pytest -v --cov=src --cov-report=term-missing
+uv run pytest tests/unit/test_pdf_parser.py -v --tb=short
+uv run pytest -m "not slow" --cov=src --maxfail=3
+uv run pytest tests/unit/ -n auto -v
 ```
 
 ## Important Assumptions Tagged in Code

@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     flag_for_review_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
 
     # API settings
-    api_host: str = "0.0.0.0"  # noqa: S104
+    api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_workers: int = 1
 

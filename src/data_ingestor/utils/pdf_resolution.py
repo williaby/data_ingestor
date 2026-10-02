@@ -117,13 +117,15 @@ class PDFResolutionAnalyzer:
                     page_avg_dpi = sum(sum(dpi) for dpi in page_dpi_values) / (len(page_dpi_values) * 2)
                     page_max_dpi = max(max(dpi) for dpi in page_dpi_values)
 
-                    page_details.append({
-                        "page_number": page_num + 1,
-                        "image_count": len(page_dpi_values),
-                        "min_dpi": round(page_min_dpi, 2),
-                        "avg_dpi": round(page_avg_dpi, 2),
-                        "max_dpi": round(page_max_dpi, 2),
-                    })
+                    page_details.append(
+                        {
+                            "page_number": page_num + 1,
+                            "image_count": len(page_dpi_values),
+                            "min_dpi": round(page_min_dpi, 2),
+                            "avg_dpi": round(page_avg_dpi, 2),
+                            "max_dpi": round(page_max_dpi, 2),
+                        },
+                    )
 
             doc.close()
 
@@ -165,7 +167,7 @@ class PDFResolutionAnalyzer:
             logger.info(
                 f"PDF resolution analysis complete: {pdf_path.name} - "
                 f"Min DPI: {result['min_dpi']}, Avg DPI: {result['avg_dpi']}, "
-                f"Needs upscaling: {needs_upscaling}"
+                f"Needs upscaling: {needs_upscaling}",
             )
 
             return result

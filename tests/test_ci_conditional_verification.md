@@ -35,16 +35,16 @@
 **Test Conditions**:
 
 - Action: Create PR targeting main branch
-- Changes: No poetry.lock changes
+- Changes: No uv.lock changes
 - Expected Result: PR validation skips requirements check with success message
 
-### Scenario 5: PR to Main with Poetry Changes (Should Validate Requirements)
+### Scenario 5: PR to Main with uv.lock Changes (Should Validate Requirements)
 
-**Expected Behavior**: PR validation detects poetry.lock changes and validates requirements
+**Expected Behavior**: PR validation detects uv.lock changes and validates requirements
 **Test Conditions**:
 
 - Action: Create PR targeting main branch
-- Changes: poetry.lock modified
+- Changes: uv.lock modified
 - Expected Result: PR validation runs requirements sync check
 
 ### Scenario 6: PR to Develop with Out-of-Sync Requirements (Should Fail)
@@ -53,7 +53,7 @@
 **Test Conditions**:
 
 - Action: Create PR targeting develop branch
-- Changes: poetry.lock modified but requirements.txt not updated
+- Changes: uv.lock modified but requirements.txt not updated
 - Expected Result: PR validation fails with instructions to fix
 
 ## Edge Cases
@@ -63,10 +63,10 @@
 **Test**: What happens if requirements.txt is empty or missing?
 **Expected**: Graceful failure with clear error message
 
-### Edge Case 2: Invalid Poetry.lock
+### Edge Case 2: Invalid uv.lock
 
-**Test**: What happens with corrupted poetry.lock?
-**Expected**: Poetry commands fail early with diagnostic info
+**Test**: What happens with corrupted uv.lock?
+**Expected**: uv commands fail early with diagnostic info
 
 ### Edge Case 3: Branch Name Variations
 
@@ -92,8 +92,8 @@ git diff --exit-code requirements*.txt
 echo "Exit code: $?"
 
 # Test PR validation logic
-git diff --name-only HEAD~1..HEAD | grep -q "poetry.lock"
-echo "Poetry changed: $?"
+git diff --name-only HEAD~1..HEAD | grep -q "uv.lock"
+echo "uv.lock changed: $?"
 ```
 
 ## Validation Checklist
@@ -102,7 +102,7 @@ echo "Poetry changed: $?"
 - [ ] Main branch CI runs verification step
 - [ ] Develop branch CI runs verification step
 - [ ] PR validation workflow triggers correctly
-- [ ] PR validation detects poetry.lock changes
+- [ ] PR validation detects uv.lock changes
 - [ ] PR validation provides clear error messages
 - [ ] Branch name matching is exact (no partial matches)
 - [ ] No regression in existing CI functionality

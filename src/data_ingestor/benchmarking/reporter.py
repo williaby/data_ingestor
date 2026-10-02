@@ -12,7 +12,6 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class BenchmarkReporter:
         >>> reporter.generate_csv("metrics.csv")
     """
 
-    def __init__(self, results: Dict):
+    def __init__(self, results: dict) -> None:
         """
         Initialize reporter with benchmark results.
 
@@ -70,7 +69,7 @@ class BenchmarkReporter:
         # Simple HTML report (Phase 1.5)
         # Phase 2 will add interactive charts with plotly/chart.js
 
-        html = f"""
+        return f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -188,7 +187,6 @@ class BenchmarkReporter:
 </body>
 </html>
 """
-        return html
 
     def _build_overall_section(self) -> str:
         """Build overall statistics section."""
@@ -298,7 +296,8 @@ class BenchmarkReporter:
 
         for dataset_name, dataset_data in self.datasets.items():
             for parser_name, parser_data in dataset_data.get(
-                "parsers", {}
+                "parsers",
+                {},
             ).items():
                 agg = parser_data.get("aggregated", {})
                 comparison_data.append(
@@ -308,7 +307,7 @@ class BenchmarkReporter:
                         "success_rate": agg.get("success_rate", 0),
                         "avg_time": agg.get("avg_processing_time", 0),
                         "total_docs": agg.get("total_documents", 0),
-                    }
+                    },
                 )
 
         if not comparison_data:
@@ -384,7 +383,8 @@ class BenchmarkReporter:
         rows = []
         for dataset_name, dataset_data in self.datasets.items():
             for parser_name, parser_data in dataset_data.get(
-                "parsers", {}
+                "parsers",
+                {},
             ).items():
                 agg = parser_data.get("aggregated", {})
 

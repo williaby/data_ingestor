@@ -10,10 +10,10 @@
 cd /home/byron/dev/data_ingestor
 
 # Test all three models on your wind document
-poetry run python scripts/compare_vision_models.py
+uv run python scripts/compare_vision_models.py
 
 # Or test on a different PDF
-poetry run python scripts/compare_vision_models.py path/to/your/document.pdf
+uv run python scripts/compare_vision_models.py path/to/your/document.pdf
 ```
 
 This will automatically:
@@ -187,8 +187,8 @@ diff llama-4-maverick-free_output.md gemini-2.5-flash-lite_output.md
 
 ```bash
 # Test with your most challenging PDFs
-poetry run python scripts/compare_vision_models.py data/wind_docs/complex_table_doc.pdf
-poetry run python scripts/compare_vision_models.py data/wind_docs/scanned_document.pdf
+uv run python scripts/compare_vision_models.py data/wind_docs/complex_table_doc.pdf
+uv run python scripts/compare_vision_models.py data/wind_docs/scanned_document.pdf
 ```
 
 ### 3. Configure Your Choice
@@ -214,7 +214,7 @@ MARKER_LLM_MODEL=google/gemini-2.5-flash
 ```bash
 # Process all wind documents with chosen model
 for pdf in data/wind_docs/*.pdf; do
-  poetry run python -m data_ingestor.cli process \
+  uv run python -m data_ingestor.cli process \
     --input "$pdf" \
     --output "test_output/processed/$(basename $pdf .pdf).json"
 done

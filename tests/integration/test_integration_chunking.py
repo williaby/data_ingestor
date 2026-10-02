@@ -1,7 +1,5 @@
 """Integration tests for chunking with real data (no mocks)."""
 
-import pytest
-
 from data_ingestor.chunking.by_title_chunker import ByTitleChunker
 from data_ingestor.chunking.token_chunker import TokenChunker
 from data_ingestor.core.models import Document, DocumentElement, DocumentFormat, ElementMetadata, ElementType
@@ -124,9 +122,9 @@ class TestChunkingIntegration:
                 DocumentElement(
                     element_type=ElementType.PARAGRAPH,
                     content=f"This is paragraph number {i}. It contains some information about topic {i}. "
-                           f"This paragraph has enough content to be meaningful but not too large.",
+                    f"This paragraph has enough content to be meaningful but not too large.",
                     metadata=ElementMetadata(page_number=(i // 10) + 1),
-                )
+                ),
             )
 
         # Test with token-based chunking
@@ -260,18 +258,36 @@ class TestChunkingEdgeCases:
         )
 
         doc.elements = [
-            DocumentElement(element_type=ElementType.TITLE, content="Analysis",
-                          metadata=ElementMetadata(page_number=1)),
-            DocumentElement(element_type=ElementType.PARAGRAPH, content="Introduction text.",
-                          metadata=ElementMetadata(page_number=1)),
-            DocumentElement(element_type=ElementType.FORMULA, content="E=mc^2",
-                          metadata=ElementMetadata(page_number=1)),
-            DocumentElement(element_type=ElementType.PARAGRAPH, content="Discussion of formula.",
-                          metadata=ElementMetadata(page_number=1)),
-            DocumentElement(element_type=ElementType.LIST, content="- Point 1\n- Point 2",
-                          metadata=ElementMetadata(page_number=1)),
-            DocumentElement(element_type=ElementType.TABLE, content="Data | Value\nA | 1",
-                          metadata=ElementMetadata(page_number=2)),
+            DocumentElement(
+                element_type=ElementType.TITLE,
+                content="Analysis",
+                metadata=ElementMetadata(page_number=1),
+            ),
+            DocumentElement(
+                element_type=ElementType.PARAGRAPH,
+                content="Introduction text.",
+                metadata=ElementMetadata(page_number=1),
+            ),
+            DocumentElement(
+                element_type=ElementType.FORMULA,
+                content="E=mc^2",
+                metadata=ElementMetadata(page_number=1),
+            ),
+            DocumentElement(
+                element_type=ElementType.PARAGRAPH,
+                content="Discussion of formula.",
+                metadata=ElementMetadata(page_number=1),
+            ),
+            DocumentElement(
+                element_type=ElementType.LIST,
+                content="- Point 1\n- Point 2",
+                metadata=ElementMetadata(page_number=1),
+            ),
+            DocumentElement(
+                element_type=ElementType.TABLE,
+                content="Data | Value\nA | 1",
+                metadata=ElementMetadata(page_number=2),
+            ),
         ]
 
         chunker = ByTitleChunker(chunk_size=500, preserve_tables=True)

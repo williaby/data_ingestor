@@ -9,7 +9,6 @@ Implements standard metrics for comparing extracted text against ground truth:
 
 import re
 from collections import Counter
-from typing import List, Optional
 
 
 def calculate_cer(prediction: str, reference: str) -> float:
@@ -59,9 +58,7 @@ def calculate_cer(prediction: str, reference: str) -> float:
                 )
 
     edit_distance = dp[m][n]
-    cer = edit_distance / len(reference)
-
-    return cer
+    return edit_distance / len(reference)
 
 
 def calculate_bleu(
@@ -116,8 +113,7 @@ def calculate_bleu(
 
     geo_mean = math.exp(sum(math.log(p) for p in precisions) / len(precisions))
 
-    bleu = bp * geo_mean
-    return bleu
+    return bp * geo_mean
 
 
 def _brevity_penalty(pred_len: int, ref_len: int) -> float:
@@ -130,8 +126,8 @@ def _brevity_penalty(pred_len: int, ref_len: int) -> float:
 
 
 def _ngram_precision(
-    pred_tokens: List[str],
-    ref_tokens: List[str],
+    pred_tokens: list[str],
+    ref_tokens: list[str],
     n: int,
 ) -> float:
     """Calculate n-gram precision."""
@@ -139,12 +135,8 @@ def _ngram_precision(
         return 0.0
 
     # Extract n-grams
-    pred_ngrams = [
-        tuple(pred_tokens[i : i + n]) for i in range(len(pred_tokens) - n + 1)
-    ]
-    ref_ngrams = [
-        tuple(ref_tokens[i : i + n]) for i in range(len(ref_tokens) - n + 1)
-    ]
+    pred_ngrams = [tuple(pred_tokens[i : i + n]) for i in range(len(pred_tokens) - n + 1)]
+    ref_ngrams = [tuple(ref_tokens[i : i + n]) for i in range(len(ref_tokens) - n + 1)]
 
     if not pred_ngrams:
         return 0.0
@@ -153,12 +145,9 @@ def _ngram_precision(
     pred_counts = Counter(pred_ngrams)
     ref_counts = Counter(ref_ngrams)
 
-    matches = sum(
-        min(pred_counts[ngram], ref_counts[ngram]) for ngram in pred_counts
-    )
+    matches = sum(min(pred_counts[ngram], ref_counts[ngram]) for ngram in pred_counts)
 
-    precision = matches / len(pred_ngrams)
-    return precision
+    return matches / len(pred_ngrams)
 
 
 def calculate_chrf(
@@ -206,8 +195,7 @@ def calculate_chrf(
         return 0.0
 
     # Average F-scores across all n-gram sizes
-    chrf = sum(f_scores) / len(f_scores)
-    return chrf
+    return sum(f_scores) / len(f_scores)
 
 
 def _char_ngram_fscore(
@@ -215,7 +203,7 @@ def _char_ngram_fscore(
     ref: str,
     n: int,
     beta: float,
-) -> Optional[float]:
+) -> float | None:
     """Calculate character n-gram F-score."""
     if len(pred) < n or len(ref) < n:
         return None
@@ -228,9 +216,7 @@ def _char_ngram_fscore(
     pred_counts = Counter(pred_ngrams)
     ref_counts = Counter(ref_ngrams)
 
-    matches = sum(
-        min(pred_counts[ngram], ref_counts[ngram]) for ngram in pred_counts
-    )
+    matches = sum(min(pred_counts[ngram], ref_counts[ngram]) for ngram in pred_counts)
 
     if not matches:
         return 0.0
@@ -244,14 +230,7 @@ def _char_ngram_fscore(
 
     # Calculate F-beta score
     beta_squared = beta * beta
-    fscore = (
-        (1 + beta_squared)
-        * precision
-        * recall
-        / (beta_squared * precision + recall)
-    )
-
-    return fscore
+    return (1 + beta_squared) * precision * recall / (beta_squared * precision + recall)
 
 
 def normalize_text(text: str) -> str:
@@ -274,6 +253,4 @@ def normalize_text(text: str) -> str:
 
     # Normalize whitespace
     text = re.sub(r"\s+", " ", text)
-    text = text.strip()
-
-    return text
+    return text.strip()

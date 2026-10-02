@@ -9,10 +9,7 @@ from data_ingestor.core.config import Settings
 from data_ingestor.core.exceptions import ParserError, UnsupportedFormatError
 from data_ingestor.core.models import (
     Document,
-    DocumentElement,
     DocumentFormat,
-    ElementMetadata,
-    ElementType,
     ParserResult,
     ProcessingStatus,
 )
@@ -274,7 +271,9 @@ class TestDocumentRouting:
             router.route_document(doc)
 
     def test_route_document_fallback_to_secondary(
-        self, mock_parser_class, temp_test_file: Path
+        self,
+        mock_parser_class,
+        temp_test_file: Path,
     ) -> None:
         """Test fallback to secondary parser when primary fails."""
         router = DocumentRouter()
@@ -295,7 +294,9 @@ class TestDocumentRouting:
         assert doc.parser_used == "SecondaryParser"
 
     def test_route_document_all_parsers_fail(
-        self, mock_parser_class, temp_test_file: Path
+        self,
+        mock_parser_class,
+        temp_test_file: Path,
     ) -> None:
         """Test that error is raised when all parsers fail."""
         router = DocumentRouter()
@@ -318,7 +319,9 @@ class TestDocumentRouting:
         assert "all" in str(exc_info.value.message).lower()
 
     def test_route_document_validation_failure(
-        self, mock_parser_class, temp_test_file: Path
+        self,
+        mock_parser_class,
+        temp_test_file: Path,
     ) -> None:
         """Test routing when document validation fails."""
         router = DocumentRouter()
@@ -351,7 +354,9 @@ class TestEndToEndProcessing:
         assert result.success is True  # Mock parser always succeeds
 
     def test_process_document_duplicate_detection(
-        self, configured_router: DocumentRouter, temp_test_file: Path
+        self,
+        configured_router: DocumentRouter,
+        temp_test_file: Path,
     ) -> None:
         """Test that duplicate documents are detected."""
         # Process first time
@@ -364,7 +369,9 @@ class TestEndToEndProcessing:
         assert result2.metadata.get("cached") is True
 
     def test_process_document_skip_duplicate_check(
-        self, configured_router: DocumentRouter, temp_test_file: Path
+        self,
+        configured_router: DocumentRouter,
+        temp_test_file: Path,
     ) -> None:
         """Test processing with duplicate check disabled."""
         # Process first time
@@ -379,7 +386,9 @@ class TestEndToEndProcessing:
         assert result2.metadata.get("duplicate") is not True
 
     def test_process_document_with_metadata(
-        self, configured_router: DocumentRouter, temp_test_file: Path
+        self,
+        configured_router: DocumentRouter,
+        temp_test_file: Path,
     ) -> None:
         """Test processing document with custom metadata."""
         metadata = {"custom_field": "custom_value"}
@@ -412,11 +421,13 @@ class TestParserIntegration:
         assert result.parser_name == "TestParser"
 
     def test_document_updated_with_parser_result(
-        self, configured_router: DocumentRouter, temp_test_file: Path
+        self,
+        configured_router: DocumentRouter,
+        temp_test_file: Path,
     ) -> None:
         """Test that document is updated with parser results."""
         doc = configured_router.create_document(source_path=temp_test_file)
-        result = configured_router.route_document(doc)
+        configured_router.route_document(doc)
 
         assert len(doc.elements) > 0
         assert doc.parser_used is not None
@@ -457,7 +468,9 @@ class TestEdgeCases:
             router.route_document(doc)
 
     def test_concurrent_processing_different_docs(
-        self, configured_router: DocumentRouter, temp_test_file: Path
+        self,
+        configured_router: DocumentRouter,
+        temp_test_file: Path,
     ) -> None:
         """Test processing multiple different documents."""
         doc1, result1 = configured_router.process_document(source_path=temp_test_file)

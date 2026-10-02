@@ -20,11 +20,11 @@ Usage:
 """
 
 from data_ingestor.benchmarking.orchestrator import BenchmarkOrchestrator
-from data_ingestor.benchmarking.runner import BenchmarkRunner
 from data_ingestor.benchmarking.reporter import BenchmarkReporter
+from data_ingestor.benchmarking.runner import BenchmarkRunner
 
 __all__ = [
     "BenchmarkOrchestrator",
-    "BenchmarkRunner",
     "BenchmarkReporter",
+    "BenchmarkRunner",
 ]

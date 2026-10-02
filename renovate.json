@@ -9,6 +9,14 @@
     "group:recommended",
     "workarounds:all"
   ],
+  "enabledManagers": [
+    "pep621",
+    "github-actions",
+    "pre-commit",
+    "dockerfile",
+    "docker-compose",
+    "custom.regex"
+  ],
   "timezone": "America/New_York",
   "schedule": [
     "before 3am on Monday"
@@ -67,7 +75,7 @@
       "automerge": false
     },
     {
-      "description": "Python dependencies - Poetry managed",
+      "description": "Python dependencies - PEP 621 (uv) managed",
       "matchDatasources": [
         "pypi"
       ],

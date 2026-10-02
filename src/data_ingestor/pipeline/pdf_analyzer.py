@@ -92,7 +92,7 @@ class PDFDocumentAnalyzer:
 
         # Initialize components
         self.resolution_analyzer = PDFResolutionAnalyzer(
-            min_dpi_threshold=self.settings.pdf_min_dpi
+            min_dpi_threshold=self.settings.pdf_min_dpi,
         )
 
         # Map algorithm string to enum
@@ -175,7 +175,7 @@ class PDFDocumentAnalyzer:
         if should_upscale:
             logger.info(
                 f"PDF resolution below {self.settings.pdf_min_dpi} DPI "
-                f"(min: {resolution_analysis.get('min_dpi')}, avg: {resolution_analysis.get('avg_dpi')})"
+                f"(min: {resolution_analysis.get('min_dpi')}, avg: {resolution_analysis.get('avg_dpi')})",
             )
 
             try:
@@ -195,8 +195,7 @@ class PDFDocumentAnalyzer:
 
                 if not upscaling_result.get("success", False):
                     logger.warning(
-                        f"Upscaling failed: {upscaling_result.get('error_message')}, "
-                        "will use original PDF"
+                        f"Upscaling failed: {upscaling_result.get('error_message')}, " "will use original PDF",
                     )
                     upscaled_path = None
 
@@ -219,7 +218,7 @@ class PDFDocumentAnalyzer:
             f"PDF pre-flight analysis complete: {pdf_path.name} "
             f"(analysis_time: {processing_time:.2f}s, "
             f"upscaling_performed: {should_upscale}, "
-            f"recommended: {'upscaled' if result.should_use_upscaled else 'original'})"
+            f"recommended: {'upscaled' if result.should_use_upscaled else 'original'})",
         )
 
         return result

@@ -50,20 +50,20 @@ OPENROUTER_API_KEY=your_key_from_zen_server
 
 ```bash
 # Ensure advanced-pdf group is installed
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 
 # Quick check
-poetry run python -c "import marker; print('Marker installed')"
+uv run python -c "import marker; print('Marker installed')"
 ```
 
 ### Step 3: Test!
 
 ```bash
 # Quick test with sample PDF
-poetry run python scripts/test_marker_llm.py
+uv run python scripts/test_marker_llm.py
 
 # Or run full test suite
-poetry run python scripts/run_pdf_tests.py
+uv run python scripts/run_pdf_tests.py
 ```
 
 ## What LLM Enhancement Provides
@@ -122,7 +122,7 @@ cat /home/byron/dev/zen-mcp-server/.env | grep OPENROUTER_API_KEY
 ### "marker-pdf not installed"
 
 ```bash
-poetry install --with advanced-pdf
+uv sync --extra advanced-pdf
 ```
 
 ### LLM seems slow
@@ -156,21 +156,21 @@ Test with your actual PDFs:
 
 ```bash
 # Test a specific PDF
-poetry run python scripts/test_marker_llm.py path/to/your.pdf
+uv run python scripts/test_marker_llm.py path/to/your.pdf
 
 # Compare with and without LLM
-MARKER_USE_LLM=false poetry run python scripts/test_marker_llm.py your.pdf
-MARKER_USE_LLM=true poetry run python scripts/test_marker_llm.py your.pdf
+MARKER_USE_LLM=false uv run python scripts/test_marker_llm.py your.pdf
+MARKER_USE_LLM=true uv run python scripts/test_marker_llm.py your.pdf
 ```
 
 ### 2. Try Different Models
 
 ```bash
 # Technical documents
-MARKER_LLM_MODEL=qwen/qwen-2.5-coder-32b-instruct:free poetry run python scripts/test_marker_llm.py
+MARKER_LLM_MODEL=qwen/qwen-2.5-coder-32b-instruct:free uv run python scripts/test_marker_llm.py
 
 # Image-heavy PDFs
-MARKER_LLM_MODEL=qwen/qwen2.5-vl-72b-instruct:free poetry run python scripts/test_marker_llm.py
+MARKER_LLM_MODEL=qwen/qwen2.5-vl-72b-instruct:free uv run python scripts/test_marker_llm.py
 ```
 
 ### 3. Consider Upgrades

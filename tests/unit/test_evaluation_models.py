@@ -5,13 +5,11 @@ Tests MetricScore, EvaluationResult, and AggregatedMetrics.
 """
 
 import pytest
-from datetime import datetime
 
 from data_ingestor.evaluation.models import (
     AggregatedMetrics,
     EvaluationResult,
     MetricScore,
-    MetricType,
 )
 
 
@@ -47,7 +45,7 @@ class TestMetricScore:
             name="chrf",
             value=0.85,
             confidence=0.03,
-            metadata={"beta": 2.0}
+            metadata={"beta": 2.0},
         )
         d = metric.to_dict()
         assert d["name"] == "chrf"
@@ -63,7 +61,7 @@ class TestEvaluationResult:
         """Test basic result creation."""
         result = EvaluationResult(
             document_id="doc123",
-            dataset="test_dataset"
+            dataset="test_dataset",
         )
         assert result.document_id == "doc123"
         assert result.dataset == "test_dataset"
@@ -74,12 +72,12 @@ class TestEvaluationResult:
         """Test result with metrics."""
         metrics = [
             MetricScore(name="cer", value=0.05),
-            MetricScore(name="f1", value=0.95)
+            MetricScore(name="f1", value=0.95),
         ]
         result = EvaluationResult(
             document_id="doc123",
             dataset="readoc",
-            metrics=metrics
+            metrics=metrics,
         )
         assert len(result.metrics) == 2
 
@@ -89,7 +87,7 @@ class TestEvaluationResult:
             document_id="doc123",
             dataset="readoc",
             success=False,
-            error="Parse error"
+            error="Parse error",
         )
         assert result.success is False
         assert result.error == "Parse error"
@@ -98,12 +96,12 @@ class TestEvaluationResult:
         """Test getting specific metric by name."""
         metrics = [
             MetricScore(name="cer", value=0.05),
-            MetricScore(name="f1", value=0.95)
+            MetricScore(name="f1", value=0.95),
         ]
         result = EvaluationResult(
             document_id="doc123",
             dataset="readoc",
-            metrics=metrics
+            metrics=metrics,
         )
 
         cer = result.get_metric("cer")
@@ -119,7 +117,7 @@ class TestEvaluationResult:
         result = EvaluationResult(
             document_id="doc123",
             dataset="readoc",
-            metrics=metrics
+            metrics=metrics,
         )
 
         assert result.get_metric_value("f1") == 0.95
@@ -132,7 +130,7 @@ class TestEvaluationResult:
             document_id="doc123",
             dataset="readoc",
             metrics=metrics,
-            processing_time=1.5
+            processing_time=1.5,
         )
 
         d = result.to_dict()
@@ -153,7 +151,7 @@ class TestAggregatedMetrics:
             dataset="readoc",
             total_documents=100,
             successful_documents=95,
-            failed_documents=5
+            failed_documents=5,
         )
         assert agg.dataset == "readoc"
         assert agg.total_documents == 100
@@ -166,7 +164,7 @@ class TestAggregatedMetrics:
             dataset="test",
             total_documents=100,
             successful_documents=95,
-            failed_documents=5
+            failed_documents=5,
         )
         assert agg.success_rate == 0.95
 
@@ -176,7 +174,7 @@ class TestAggregatedMetrics:
             dataset="test",
             total_documents=0,
             successful_documents=0,
-            failed_documents=0
+            failed_documents=0,
         )
         assert agg.success_rate == 0.0
 
@@ -186,7 +184,7 @@ class TestAggregatedMetrics:
             dataset="test",
             total_documents=100,
             successful_documents=95,
-            failed_documents=5
+            failed_documents=5,
         )
         assert abs(agg.failure_rate - 0.05) < 0.001
 
@@ -197,7 +195,7 @@ class TestAggregatedMetrics:
             total_documents=10,
             successful_documents=10,
             failed_documents=0,
-            processing_time_total=50.0
+            processing_time_total=50.0,
         )
         assert agg.avg_processing_time == 5.0
 
@@ -207,7 +205,7 @@ class TestAggregatedMetrics:
             dataset="test",
             total_documents=0,
             successful_documents=0,
-            failed_documents=0
+            failed_documents=0,
         )
         assert agg.avg_processing_time == 0.0
 
@@ -218,7 +216,7 @@ class TestAggregatedMetrics:
             total_documents=10,
             successful_documents=10,
             failed_documents=0,
-            mean_metrics={"cer": 0.05, "f1": 0.95}
+            mean_metrics={"cer": 0.05, "f1": 0.95},
         )
         assert agg.get_mean_metric("cer") == 0.05
         assert agg.get_mean_metric("f1") == 0.95
@@ -231,7 +229,7 @@ class TestAggregatedMetrics:
             total_documents=10,
             successful_documents=10,
             failed_documents=0,
-            std_metrics={"cer": 0.01, "f1": 0.02}
+            std_metrics={"cer": 0.01, "f1": 0.02},
         )
         assert agg.get_std_metric("cer") == 0.01
         assert agg.get_std_metric("missing") is None
@@ -244,7 +242,7 @@ class TestAggregatedMetrics:
             successful_documents=95,
             failed_documents=5,
             mean_metrics={"cer": 0.05},
-            processing_time_total=150.0
+            processing_time_total=150.0,
         )
 
         d = agg.to_dict()

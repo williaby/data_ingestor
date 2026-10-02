@@ -158,7 +158,7 @@ The fallback is completely transparent. Just use Marker as normal:
 
 ```bash
 # CLI usage
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/result.json
 ```
@@ -307,7 +307,7 @@ The parser result includes detailed metadata about LLM usage:
 
 ```bash
 # Test with your wind document
-poetry run python -m data_ingestor.cli process \
+uv run python -m data_ingestor.cli process \
   --input data/wind_docs/Where-does-wind-matter.pdf \
   --output test_output/fallback_test.json
 
@@ -320,7 +320,7 @@ cat test_output/fallback_test.json | jq '.metadata | {llm_model, llm_fallback_us
 
 ```bash
 # View current configuration
-poetry run python -c "
+uv run python -c "
 import os
 from src.data_ingestor.parsers.pdf_parser import MarkerParser
 

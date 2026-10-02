@@ -67,7 +67,7 @@ services:
         condition: service_healthy
     networks:
       - promptcraft-dev
-    command: ["poetry", "run", "pytest", "-v", "--cov=src", "--cov-report=term-missing", "--cov-fail-under=80"]
+    command: ["uv", "run", "pytest", "-v", "--cov=src", "--cov-report=term-missing", "--cov-fail-under=80"]
     profiles:
       - testing
 

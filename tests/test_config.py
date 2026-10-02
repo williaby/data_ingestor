@@ -1,6 +1,5 @@
 """Comprehensive tests for configuration settings."""
 
-import os
 from pathlib import Path
 
 import pytest
@@ -73,7 +72,7 @@ class TestStorageSettings:
         new_path = tmp_path / "new_storage_dir"
         assert not new_path.exists()
 
-        settings = Settings(storage_path=str(new_path))
+        Settings(storage_path=str(new_path))
         assert new_path.exists()
         assert new_path.is_dir()
 

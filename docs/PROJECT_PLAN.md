@@ -1280,7 +1280,7 @@ Testing results will inform the `IntelligentOCRRouter` decision logic and help o
 
 **Core**:
 - Python 3.11+
-- Poetry for dependency management
+- uv for dependency management
 - Pydantic for data validation
 
 **Document Processing - Core**:
