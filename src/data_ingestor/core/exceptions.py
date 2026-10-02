@@ -95,3 +95,7 @@ class StorageError(DataIngestorError):
 
 class ChunkingError(DataIngestorError):
     """Exception raised when document chunking fails."""
+
+
+class ConversionError(DataIngestorError):
+    """Exception raised when a conversion service call fails."""
