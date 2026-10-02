@@ -1,62 +1,57 @@
+# Data Ingestor is a CLI tool (the Chunk stage of the Foundry pipeline), not a
+# long-running service. The image runs the CLI; see docker-compose.yml.
+#
+# Dependencies come from uv.lock (hash-verified). Run `uv lock` after changing
+# pyproject.toml, or `uv sync --frozen` fails the build.
+
 FROM python:3.11-slim AS builder
 
-# Install system dependencies needed for building
+# Build tools for any dependency that has no wheel for this platform
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# uv is only used to build the environment; it is not copied to the final image
+COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 
-# Copy and install requirements with hash verification
-COPY requirements-docker.txt .
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements-docker.txt
+WORKDIR /build
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=0 \
+    UV_LINK_MODE=copy
 
-# Multi-stage build for minimal final image
+# Runtime dependencies only: no dev, test, docs, ml or azure groups, no optional extras
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-default-groups --no-install-project
+
+# Install the project itself
+COPY src/ ./src/
+RUN uv sync --frozen --no-default-groups --no-editable
+
+# Minimal final image
 FROM python:3.11-slim
 
-# Install only runtime dependencies
+# libmagic is required by python-magic (format detection)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Create non-root user
-RUN groupadd -r promptcraft && \
-    useradd -r -g promptcraft -u 1000 -m -s /bin/bash promptcraft
-
-# Create necessary directories
-RUN mkdir -p /app/logs /app/data && \
-    chown -R promptcraft:promptcraft /app
+# Non-root user
+RUN groupadd -r ingestor && \
+    useradd -r -g ingestor -u 1000 -m -s /bin/bash ingestor
 
 WORKDIR /app
+RUN mkdir -p /app/data /app/output && chown -R ingestor:ingestor /app
 
-# Copy application code
-COPY --chown=promptcraft:promptcraft src/ ./src/
-COPY --chown=promptcraft:promptcraft config/ ./config/
+USER ingestor
 
-# Security: Don't run as root
-USER promptcraft
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7860/health || exit 1
-
-# Set security headers
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONHASHSEED=random \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PYTHONHASHSEED=random
 
-# Expose only necessary port
-EXPOSE 7860
-
-# Run with minimal privileges
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
+# No ports and no health check: this is a command-line tool
+ENTRYPOINT ["data-ingestor"]
+CMD ["--help"]

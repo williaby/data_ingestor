@@ -1308,8 +1308,8 @@ Testing results will inform the `IntelligentOCRRouter` decision logic and help o
 - Docker (Containerization - Phase 4)
 
 **Multimodal RAG**:
-- Qdrant (Vector store)
-- sentence-transformers (Embeddings)
+- Vector store and embeddings (Qdrant, sentence-transformers): out of scope for this repository per D-31;
+  owned by downstream applications, so no longer project dependencies
 - Anthropic Claude 3.5 (Vision + Summarization)
 - Gradio (Demo interface)
 

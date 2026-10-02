@@ -33,10 +33,6 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# uv
-uv.lock
-pyproject.toml
-
 # IDE
 .vscode/
 .idea/
