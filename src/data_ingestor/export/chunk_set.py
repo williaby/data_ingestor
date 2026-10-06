@@ -87,13 +87,16 @@ class ConsentAction(StrEnum):
 
 
 def _require_uuid(value: object, name: str) -> str:
+    parsed: uuid.UUID | None = None
     if isinstance(value, str):
         try:
-            return str(uuid.UUID(value))
+            parsed = uuid.UUID(value)
         except ValueError:
-            pass
-    msg = f"{name} must be a UUID"
-    raise ChunkingError(msg)
+            parsed = None
+    if parsed is None:
+        msg = f"{name} must be a UUID"
+        raise ChunkingError(msg)
+    return str(parsed)
 
 
 def _normalise_label(value: object) -> str:

@@ -226,13 +226,14 @@ def _date_option(_ctx: click.Context, param: click.Parameter, value: str | None)
     if value is None:
         return None
     try:
-        # Python 3.11 also accepts week dates and basic forms, so require the canonical spelling.
-        if date.fromisoformat(value).isoformat() == value:
-            return value
+        parsed: date | None = date.fromisoformat(value)
     except ValueError:
-        pass
-    msg = f"{param.human_readable_name} must be a date as YYYY-MM-DD"
-    raise click.BadParameter(msg)
+        parsed = None
+    # Python 3.11 also accepts week dates and basic forms, so require the canonical spelling.
+    if parsed is None or parsed.isoformat() != value:
+        msg = f"{param.human_readable_name} must be a date as YYYY-MM-DD"
+        raise click.BadParameter(msg)
+    return value
 
 
 def _require_complete_conversion(document: Document, status: str, filename: str) -> None:
