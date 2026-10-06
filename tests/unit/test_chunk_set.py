@@ -180,7 +180,18 @@ def test_cli_chunk_writes_chunk_set(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     out = tmp_path / "out"
     result = CliRunner().invoke(
         cli,
-        ["chunk", str(source), "--document-id", DOC_ID, "--output-dir", str(out), "--category", "Synthetic"],
+        [
+            "chunk",
+            str(source),
+            "--document-id",
+            DOC_ID,
+            "--entity-id",
+            DOC_META["entity_id"],
+            "--output-dir",
+            str(out),
+            "--category",
+            "Synthetic",
+        ],
     )
     assert result.exit_code == 0, result.output
     data = json.loads((out / f"{DOC_ID}.json").read_text(encoding="utf-8"))
@@ -210,7 +221,16 @@ def test_cli_chunk_rejects_bad_document_id(tmp_path: Path, monkeypatch: pytest.M
     monkeypatch.setattr("data_ingestor.chunking.load_tokenizer", lambda _name, max_tokens: WordTokenizer(max_tokens=64))
     result = CliRunner().invoke(
         cli,
-        ["chunk", str(source), "--document-id", "doc-1", "--output-dir", str(tmp_path / "o")],
+        [
+            "chunk",
+            str(source),
+            "--document-id",
+            "doc-1",
+            "--entity-id",
+            DOC_META["entity_id"],
+            "--output-dir",
+            str(tmp_path / "o"),
+        ],
     )
     assert result.exit_code == 1
     assert not (tmp_path / "o").exists()
@@ -424,7 +444,20 @@ def test_cli_chunk_refuses_tax_return(tmp_path: Path, monkeypatch: pytest.Monkey
 
     monkeypatch.setattr("data_ingestor.conversion.DoclingServeClient", FailingClient)
     out = tmp_path / "out"
-    result = CliRunner().invoke(cli, ["chunk", str(source), "--document-id", DOC_ID, "--output-dir", str(out), *flags])
+    result = CliRunner().invoke(
+        cli,
+        [
+            "chunk",
+            str(source),
+            "--document-id",
+            DOC_ID,
+            "--entity-id",
+            DOC_META["entity_id"],
+            "--output-dir",
+            str(out),
+            *flags,
+        ],
+    )
     assert result.exit_code == 1
     assert "consent" in result.output
     assert not out.exists()

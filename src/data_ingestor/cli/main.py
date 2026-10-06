@@ -216,7 +216,7 @@ def process(
     type=click.Path(file_okay=False, path_type=Path),
     help="Directory for the chunk set (default: CHUNKS_DIR, /data/chunks)",
 )
-@click.option("--entity-id", help="Owning entity UUID, carried onto every chunk")
+@click.option("--entity-id", required=True, help="Owning entity UUID, carried onto every chunk")
 @click.option("--document-type", help="Document type, carried onto every chunk")
 @click.option("--category", help="Document category, carried onto every chunk")
 @click.option("--confidential/--not-confidential", default=False, help="Access flag carried onto every chunk")
@@ -229,7 +229,7 @@ def chunk(
     document_id: str,
     trace_id: str | None,
     output_dir: Path | None,
-    entity_id: str | None,
+    entity_id: str,
     document_type: str | None,
     category: str | None,
     confidential: bool,
