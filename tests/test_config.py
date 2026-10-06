@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from data_ingestor.core.config import Settings
 
@@ -467,3 +468,33 @@ class TestEdgeCases:
         """Test very large chunk size."""
         settings = Settings(chunk_size=1000000)
         assert settings.chunk_size == 1000000
+
+
+class TestDoclingAndChunkingSettings:
+    """Tests for the conversion service and hybrid chunking settings."""
+
+    def test_defaults(self) -> None:
+        """Defaults point at a local service and an unpinned tokenizer."""
+        settings = Settings()
+        assert settings.docling_serve_url == "http://localhost:5001"
+        assert settings.docling_serve_api_key is None
+        assert settings.chunk_tokenizer_revision is None
+        assert settings.chunk_max_tokens == 512
+
+    def test_api_key_is_secret_and_not_in_repr(self) -> None:
+        """The API key is a SecretStr and never appears in repr output."""
+        settings = Settings(docling_serve_api_key="s3cret-value")
+        assert settings.docling_serve_api_key is not None
+        assert settings.docling_serve_api_key.get_secret_value() == "s3cret-value"
+        assert "s3cret-value" not in repr(settings)
+
+    @pytest.mark.parametrize("timeout", [0, -1.0])
+    def test_timeout_must_be_positive(self, timeout: float) -> None:
+        """A zero or negative request timeout is rejected."""
+        with pytest.raises(ValidationError):
+            Settings(docling_serve_timeout=timeout)
+
+    def test_chunk_max_tokens_has_a_floor(self) -> None:
+        """A token cap below 32 is rejected."""
+        with pytest.raises(ValidationError):
+            Settings(chunk_max_tokens=8)

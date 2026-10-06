@@ -67,14 +67,21 @@ class Settings(BaseSettings):
     preserve_tables: bool = True
 
     # Conversion service (docling-serve). The base URL always comes from configuration.
+    # Build a client with DoclingServeClient.from_settings, which unwraps the secret key.
     docling_serve_url: str = "http://localhost:5001"
     docling_serve_api_key: SecretStr | None = None
-    docling_serve_timeout: float = 300.0  # seconds
+    docling_serve_timeout: float = Field(default=300.0, gt=0)  # seconds
 
     # Chunking (HybridChunker). Chunks are sized with a Hugging Face tokenizer; set it to the
-    # tokenizer of the embedding model the consuming application will use. This stage does not embed.
+    # tokenizer of the embedding model the consuming application will use. This stage does not
+    # embed. Build a chunker with HybridDocumentChunker.from_settings.
     chunk_tokenizer: str = "Qwen/Qwen3-Embedding-0.6B"
-    chunk_max_tokens: int = Field(default=512, ge=32)  # hard cap per chunk, below the embedder input limit
+    # Tokenizer revision (commit hash or tag). Unset follows the hub's default branch, which can
+    # change; pin a revision wherever chunk boundaries must be reproducible.
+    chunk_tokenizer_revision: str | None = None
+    # Maximum tokens per chunk, enforced by HybridDocumentChunker (over-cap chunks are re-split;
+    # ChunkingError if one cannot be brought under it). Keep it below the embedder's input limit.
+    chunk_max_tokens: int = Field(default=512, ge=32)
 
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
