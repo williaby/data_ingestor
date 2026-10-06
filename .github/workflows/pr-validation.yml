@@ -39,16 +39,20 @@ jobs:
         with:
           enable-cache: false
 
+      # Install wheels only, so no package setup script runs on pull request
+      # code. The project itself is not installed (nothing here imports it),
+      # and langdetect is skipped because it publishes no wheel; neither is
+      # needed by the checks below.
       - name: Install dependencies
         run: |
-          uv sync --frozen
+          uv sync --frozen --no-build --no-install-project --no-install-package langdetect
 
       # Validate document processing dependencies
       - name: Validate Document Processing Dependencies
         run: |
           echo "📄 Validating document processing dependencies..."
 
-          uv run --frozen python -c "
+          uv run --frozen --no-build --no-sync python -c "
           import sys
 
           # Critical dependencies for document processing (import names)
@@ -242,12 +246,13 @@ jobs:
         run: |
           echo "🧹 Running quick code quality checks..."
 
-          # Check basic Python syntax. compileall exits non-zero when any
-          # file fails to compile. The earlier inline script started at
-          # column 0 inside this block scalar, which made the whole workflow
-          # file invalid YAML, so no job in it ever ran.
+          # Check basic Python syntax with the standard library only.
+          # compileall exits non-zero when any file fails to compile. The
+          # earlier inline script started at column 0 inside this block
+          # scalar, which made the whole workflow file invalid YAML, so no
+          # job in it ever ran.
           echo "Checking Python syntax..."
-          uv run --frozen python -m compileall -q src
+          python -m compileall -q src
 
           echo "✅ Basic code quality validation completed"
 
