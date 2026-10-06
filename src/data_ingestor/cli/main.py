@@ -225,13 +225,12 @@ def _date_option(_ctx: click.Context, param: click.Parameter, value: str | None)
     """Click callback: accept a YYYY-MM-DD date."""
     if value is None:
         return None
-    if len(value) == len("YYYY-MM-DD"):
-        try:
-            date.fromisoformat(value)
-        except ValueError:
-            pass
-        else:
+    try:
+        # Python 3.11 also accepts week dates and basic forms, so require the canonical spelling.
+        if date.fromisoformat(value).isoformat() == value:
             return value
+    except ValueError:
+        pass
     msg = f"{param.human_readable_name} must be a date as YYYY-MM-DD"
     raise click.BadParameter(msg)
 
@@ -240,7 +239,7 @@ def _require_complete_conversion(document: Document, status: str, filename: str)
     """Refuse a document docling-serve converted only partially.
 
     # #CRITICAL: Data Integrity: a partial conversion may be missing content, so it is not written
-    # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_partial_conversion
+    # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_a_partial_conversion
 
     Raises:
         ConversionError: If the conversion needs review

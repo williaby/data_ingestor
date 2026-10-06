@@ -465,6 +465,8 @@ def test_cli_chunk_requires_entity_id(tmp_path: Path, monkeypatch: pytest.Monkey
         ["--document-date", "31/01/2024"],
         ["--document-date", "2024-1-5"],
         ["--document-date", "2024-02-30"],
+        ["--document-date", "2024-W05-3"],
+        ["--document-date", "20240131"],
     ],
 )
 def test_cli_chunk_rejects_bad_options_before_converting(
