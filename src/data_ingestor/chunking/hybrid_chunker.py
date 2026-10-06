@@ -231,6 +231,7 @@ class HybridDocumentChunker:
             "page_start": pages[0],
             "page_end": pages[-1],
             "section_title": headings[-1] if headings else None,
+            "section_hierarchy": list(headings),
         }
         metadata.update({key: document.metadata.get(key) for key in DOCUMENT_METADATA_FIELDS})
         return Chunk(

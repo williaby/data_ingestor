@@ -131,6 +131,9 @@ uv run data-ingestor process document.pdf --chunking-strategy by_title --combine
 
 # Check parser health
 uv run data-ingestor health
+
+# Chunk one file for the consuming application (needs a running docling-serve; made-up documents only)
+uv run data-ingestor chunk sample.pdf --document-id <uuid> --entity-id <uuid> --output-dir ./chunks
 ```
 
 ### Benchmarking (Phase 1b)
@@ -246,10 +249,10 @@ Chunking (chunking/)
     ├── ByTitleChunker - Section-aware, preserves structure
     └── HybridDocumentChunker - Docling tree-aware, token-capped, citation-ready (lazy import)
 
-Export (export/exporter.py)
-    ├── JSON with full metadata
-    ├── Markdown with YAML front matter
-    └── Dual export (both formats)
+Export (export/)
+    ├── exporter.py - JSON with full metadata, Markdown with YAML front matter, dual export
+    └── chunk_set.py - chunk-set JSON per document ({document_id}.json) for the consuming application,
+        written atomically; tax returns are gated on consent
 
 Evaluation (evaluation/)
     ├── DocLayNetEvaluator - Layout and reading order metrics
@@ -300,7 +303,15 @@ Benchmarking (benchmarking/)
 - **Hybrid Chunker** (`HybridDocumentChunker`): Needs a Document from `docling_json_to_document`. Follows the
   Docling tree, enforces a token cap with a Hugging Face tokenizer, and raises `ChunkingError` for a chunk
   without a page or a document without valid `sha256`, `entity_id`, `is_confidential`, `consent_on_file`.
-  Not selectable from the CLI yet; build it with `HybridDocumentChunker.from_settings`.
+  Build it with `HybridDocumentChunker.from_settings`. The `chunk` command is the CLI entry point: it
+  converts one file with docling-serve, chunks it with this chunker, and writes the chunk set with
+  `export.chunk_set` (`build_chunk_set`, `write_chunk_set`). It does not embed, store vectors, or search.
+  `--document-id` and `--entity-id` are required UUIDs; `--confidential` is the default. The output
+  directory is `--output-dir`, else the `DATA_INGESTOR_CHUNKS_DIR` setting (`/data/chunks`); the file mode
+  is `DATA_INGESTOR_CHUNKS_FILE_MODE` (`644`). The command reads no consent record: it always writes
+  `consent_on_file` false and refuses a tax-return category or document type, so use it on made-up
+  documents. A partial docling-serve conversion is refused, not written.
+  `reconcile_consent` rewrites a consent-withdrawn tax return's set with no chunks.
 
 **Export Formats**:
 - **JSON**: Full metadata preservation, machine-readable
@@ -327,8 +338,9 @@ src/data_ingestor/
 │   ├── token_chunker.py
 │   ├── by_title_chunker.py
 │   └── hybrid_chunker.py  # HybridDocumentChunker (loads transformers; re-exported lazily)
-├── export/           # Export to JSON, Markdown
-│   └── exporter.py
+├── export/           # Export to JSON, Markdown, and chunk sets
+│   ├── exporter.py
+│   └── chunk_set.py  # build_chunk_set, write_chunk_set, reconcile_consent (consent gate for tax returns)
 ├── evaluation/       # Evaluation framework
 │   ├── base.py       # BaseEvaluator
 │   ├── doclaynet_evaluator.py

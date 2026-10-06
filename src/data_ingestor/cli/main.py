@@ -1,9 +1,11 @@
 """Command-line interface for document processing."""
 
+import hashlib
 import logging
 import os
 import sys
-from datetime import datetime
+import uuid
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +20,8 @@ from data_ingestor.benchmarking.config_tester import ConfigSuite, ParserConfigur
 from data_ingestor.benchmarking.fingerprint import HardwareFingerprint
 from data_ingestor.chunking import ByTitleChunker, TokenChunker
 from data_ingestor.core.config import Settings
-from data_ingestor.core.models import DocumentFormat
+from data_ingestor.core.exceptions import ConversionError
+from data_ingestor.core.models import Document, DocumentFormat, ProcessingStatus
 from data_ingestor.export.exporter import DocumentExporter, OutputFormat
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
@@ -205,6 +208,164 @@ def process(
         if ctx.obj["debug"]:
             console.print_exception()
         sys.exit(1)
+
+
+def _uuid_option(_ctx: click.Context, param: click.Parameter, value: str | None) -> str | None:
+    """Click callback: accept a UUID and return it in canonical lowercase form."""
+    if value is None:
+        return None
+    try:
+        return str(uuid.UUID(value))
+    except ValueError as exc:
+        msg = f"{param.human_readable_name} must be a UUID"
+        raise click.BadParameter(msg) from exc
+
+
+def _date_option(_ctx: click.Context, param: click.Parameter, value: str | None) -> str | None:
+    """Click callback: accept a YYYY-MM-DD date."""
+    if value is None:
+        return None
+    try:
+        parsed: date | None = date.fromisoformat(value)
+    except ValueError:
+        parsed = None
+    # Python 3.11 also accepts week dates and basic forms, so require the canonical spelling.
+    if parsed is None or parsed.isoformat() != value:
+        msg = f"{param.human_readable_name} must be a date as YYYY-MM-DD"
+        raise click.BadParameter(msg)
+    return value
+
+
+def _require_complete_conversion(document: Document, status: str, filename: str) -> None:
+    """Refuse a document docling-serve converted only partially.
+
+    # #CRITICAL: Data Integrity: a partial conversion may be missing content, so it is not written
+    # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_a_partial_conversion
+
+    Raises:
+        ConversionError: If the conversion needs review
+    """
+    if document.status is ProcessingStatus.REQUIRES_REVIEW:
+        msg = f"docling-serve reported status {status} for {filename}; review required, nothing written"
+        raise ConversionError(msg)
+
+
+@cli.command()
+@click.argument("file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--document-id", required=True, callback=_uuid_option, help="Document UUID from the document store")
+@click.option(
+    "--trace-id",
+    callback=_uuid_option,
+    help="Pipeline trace UUID (derived from the document ID when omitted)",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory for the chunk set (default: DATA_INGESTOR_CHUNKS_DIR, else /data/chunks)",
+)
+@click.option(
+    "--entity-id",
+    required=True,
+    callback=_uuid_option,
+    help="Owning entity UUID, carried onto every chunk",
+)
+@click.option("--document-type", help="Document type, carried onto every chunk")
+@click.option("--category", help="Document category, carried onto every chunk")
+@click.option(
+    "--confidential/--not-confidential",
+    default=True,
+    help="Access flag carried onto every chunk (default: confidential)",
+)
+@click.option("--title", help="Document title, carried onto every chunk")
+@click.option(
+    "--document-date",
+    callback=_date_option,
+    help="Document date (YYYY-MM-DD), carried onto every chunk",
+)
+@click.pass_context
+def chunk(
+    ctx: click.Context,
+    file_path: Path,
+    document_id: str,
+    trace_id: str | None,
+    output_dir: Path | None,
+    entity_id: str,
+    document_type: str | None,
+    category: str | None,
+    confidential: bool,
+    title: str | None,
+    document_date: str | None,
+) -> None:
+    """Convert one file with docling-serve, chunk it, and write its chunk set.
+
+    This is the Chunk stage only: it writes ``{document-id}.json`` and stops. It
+    does not embed, store vectors, or search. Use made-up documents with this
+    command: it does not read the document store manifest, so it always writes
+    ``consent_on_file`` false and refuses a tax-return category or document
+    type (as the labels are spelled in ``is_tax_return``) before converting
+    anything. A conversion docling-serve reports as partial is not written.
+
+    Example:
+        data-ingestor chunk sample.pdf --document-id 0b1c2d3e-4f50-4a61-8b72-93a4b5c6d7e8
+        --entity-id 11111111-1111-4111-8111-111111111111 --output-dir ./chunks
+    """
+    from data_ingestor.chunking import HybridDocumentChunker
+    from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
+    from data_ingestor.core.exceptions import ChunkingError
+    from data_ingestor.export import build_chunk_set, is_tax_return, write_chunk_set
+    from data_ingestor.export.chunk_set import DEFAULT_CHUNK_STRATEGY
+
+    settings: Settings = ctx.obj["settings"]
+    console: Console = ctx.obj["console"]
+    if is_tax_return({"category": category, "document_type": document_type}):
+        # #CRITICAL: Security: a file labelled as a tax return is never converted here, since this
+        # command has no consent record; an unlabelled or differently labelled file is not detected
+        # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_tax_return
+        console.print("[bold red]Error:[/bold red] tax returns are chunked only with consent on file")
+        sys.exit(1)
+    try:
+        with file_path.open("rb") as handle:
+            sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
+        document_fields = {
+            "sha256": sha256,
+            "entity_id": entity_id,
+            "document_type": document_type,
+            "category": category,
+            "is_confidential": confidential,
+            # No document store record is read here, so consent is never on file.
+            "consent_on_file": False,
+            "title": title,
+            "document_date": document_date,
+        }
+        with DoclingServeClient.from_settings(settings) as client:
+            console.print(f"[bold blue]Converting:[/bold blue] {file_path.name}")
+            result = client.convert(file_path)
+        document = docling_json_to_document(
+            result.docling_json,
+            document_id=document_id,
+            filename=file_path.name,
+            extra_metadata=document_fields,
+            conversion_status=result.status,
+        )
+        _require_complete_conversion(document, result.status, file_path.name)
+        chunks = HybridDocumentChunker.from_settings(settings).chunk_document(document)
+        chunk_set = build_chunk_set(
+            document_id,
+            chunks,
+            chunk_strategy=DEFAULT_CHUNK_STRATEGY,
+            document_fields=document_fields,
+            trace_id=trace_id,
+        )
+        target = write_chunk_set(
+            chunk_set,
+            output_dir or Path(settings.chunks_dir),
+            file_mode=int(settings.chunks_file_mode, 8),
+        )
+    except (ConversionError, ChunkingError, OSError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        sys.exit(1)
+
+    console.print(f"[bold green]Wrote {chunk_set['total_chunks']} chunks:[/bold green] {target}")
 
 
 @cli.command()
