@@ -1107,6 +1107,7 @@ dependencies = [
     { name = "structlog" },
     { name = "tenacity" },
     { name = "toml" },
+    { name = "transformers" },
     { name = "typing-extensions" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1187,7 +1188,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.7,<9.0.0" },
     { name = "cryptography", specifier = ">=50.0.0,<51.0.0" },
     { name = "defusedxml", specifier = ">=0.7.1,<0.8.0" },
-    { name = "docling-core", extras = ["chunking"], specifier = ">=2.48.0,<3" },
+    { name = "docling-core", extras = ["chunking"], specifier = ">=2.99.0,<3" },
     { name = "docx2python", specifier = ">=3.1.2,<4.0.0" },
     { name = "fastapi", specifier = ">=0.116.0,<1.0.0" },
     { name = "faster-whisper", specifier = ">=1.0.0,<2.0.0" },
@@ -1232,6 +1233,7 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.0.0,<26.0.0" },
     { name = "tenacity", specifier = ">=9.0.0,<10.0.0" },
     { name = "toml", specifier = ">=0.10.2,<0.11.0" },
+    { name = "transformers", specifier = ">=4.34.0,<5.0.0" },
     { name = "typing-extensions", specifier = ">=4.10.0,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0,<0.36.0" },
 ]
