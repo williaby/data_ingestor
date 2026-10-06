@@ -100,9 +100,11 @@ dependencies = [
     "pdfplumber>=0.11.0,<0.12.0",
     # Structure-aware chunking (HybridChunker). 2.99.0 is the version the tests ran against; it
     # handles headings longer than the token budget, which earlier releases do not.
+    # Its [chunking] extra supplies transformers (AutoTokenizer in chunking/hybrid_chunker.py).
+    # transformers is deliberately not declared here: every release below 5 carries open HIGH
+    # advisories with no patched 4.x release, and 5.x conflicts with the marker-pdf cap
+    # (transformers<5). The resolved version is set by uv.lock, not by a range declared here.
     "docling-core[chunking]>=2.99.0,<3",
-    # Imported directly (AutoTokenizer in chunking/hybrid_chunker.py); docling-core pulls it in too.
-    "transformers>=4.34.0,<5.0.0",
 ]
 
 [project.urls]
