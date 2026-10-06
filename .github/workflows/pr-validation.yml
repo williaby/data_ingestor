@@ -242,22 +242,12 @@ jobs:
         run: |
           echo "🧹 Running quick code quality checks..."
 
-          # Check basic Python syntax
+          # Check basic Python syntax. compileall exits non-zero when any
+          # file fails to compile. The earlier inline script started at
+          # column 0 inside this block scalar, which made the whole workflow
+          # file invalid YAML, so no job in it ever ran.
           echo "Checking Python syntax..."
-          find src -name "*.py" -print0 | while IFS= read -r -d '' file; do
-            uv run --frozen python -c "
-import ast
-import sys
-
-try:
-    with open('$file', 'r') as f:
-        ast.parse(f.read())
-    print('✅ $file: Valid syntax')
-except SyntaxError as e:
-    print('❌ $file: Syntax error - ' + str(e))
-    sys.exit(1)
-            " || exit 1
-          done
+          uv run --frozen python -m compileall -q src
 
           echo "✅ Basic code quality validation completed"
 
