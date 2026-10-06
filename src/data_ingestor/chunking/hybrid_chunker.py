@@ -29,6 +29,7 @@ DOCUMENT_METADATA_FIELDS = (
     "document_type",
     "category",
     "is_confidential",
+    "consent_on_file",
     "title",
     "document_date",
 )

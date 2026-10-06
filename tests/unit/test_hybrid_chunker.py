@@ -14,6 +14,7 @@ REQUIRED_METADATA = {
     "document_type",
     "category",
     "is_confidential",
+    "consent_on_file",
     "title",
     "document_date",
     "page_start",
@@ -26,6 +27,7 @@ DOC_META = {
     "document_type": "report",
     "category": "Synthetic",
     "is_confidential": False,
+    "consent_on_file": True,
     "title": "Synthetic Sample Report",
     "document_date": "2024-01-31",
 }
@@ -74,6 +76,7 @@ def test_chunks_carry_required_metadata() -> None:
         assert "embedded_at" not in chunk.metadata
         assert chunk.metadata["entity_id"] == DOC_META["entity_id"]
         assert chunk.metadata["is_confidential"] is False
+        assert chunk.metadata["consent_on_file"] is True
     assert {c.metadata["section_title"] for c in chunks} >= {"Introduction", "Findings"}
 
 
@@ -102,6 +105,7 @@ def test_real_qwen_tokenizer_loads_and_counts() -> None:
         tokenizer = load_tokenizer("Qwen/Qwen3-Embedding-0.6B", max_tokens=512)
     except OSError:
         pytest.skip("Hugging Face hub not reachable")
-    assert type(tokenizer.get_tokenizer()).__name__.startswith("Qwen")
-    assert tokenizer.count_tokens("hello world") >= 2
-    assert tokenizer.get_max_tokens() == 512
+    else:
+        assert type(tokenizer.get_tokenizer()).__name__.startswith("Qwen")
+        assert tokenizer.count_tokens("hello world") >= 2
+        assert tokenizer.get_max_tokens() == 512

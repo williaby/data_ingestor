@@ -14,4 +14,3 @@ class DocumentChunker(Protocol):
 
     def chunk_document(self, document: Document) -> list[Chunk]:
         """Return the chunks for ``document``."""
-        ...

@@ -33,7 +33,6 @@ class DocumentConverter(Protocol):
 
     def convert(self, path: Path) -> ConversionResult:
         """Convert the file at ``path``."""
-        ...
 
 
 class DoclingServeClient:
