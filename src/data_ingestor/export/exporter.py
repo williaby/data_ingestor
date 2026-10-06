@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from data_ingestor.core.metadata_keys import INTERNAL_METADATA_KEYS
 from data_ingestor.core.models import Chunk, Document, DocumentElement, ElementType
 
 
@@ -80,6 +81,11 @@ class DocumentExporter:
         msg = f"Unsupported format: {format}"
         raise ValueError(msg)
 
+    @staticmethod
+    def _exportable_metadata(document: Document) -> dict[str, Any]:
+        """Return document metadata without internal carrier keys (such as the Docling tree)."""
+        return {k: v for k, v in document.metadata.items() if k not in INTERNAL_METADATA_KEYS}
+
     def to_json(self, document: Document) -> dict[str, Any]:
         """Export document as JSON with full metadata.
 
@@ -97,7 +103,7 @@ class DocumentExporter:
             "status": document.status.value,
             "created_at": document.created_at.isoformat(),
             "updated_at": document.updated_at.isoformat(),
-            "metadata": document.metadata,
+            "metadata": self._exportable_metadata(document),
             "parser_used": document.parser_used,
             "processing_time": document.processing_time,
             "elements": [self._element_to_dict(e) for e in document.elements],
@@ -147,8 +153,9 @@ class DocumentExporter:
         }
 
         # Add document metadata to front matter
-        if document.metadata:
-            front_matter["metadata"] = document.metadata
+        exportable_metadata = self._exportable_metadata(document)
+        if exportable_metadata:
+            front_matter["metadata"] = exportable_metadata
 
         # Add quality metrics if available
         if document.quality_metrics:

@@ -6,6 +6,15 @@
 **Status**: Design Complete - Ready for Implementation
 **Related**: [PROJECT_PLAN.md](PROJECT_PLAN.md), [INTELLIGENT_OCR_SYSTEM.md](INTELLIGENT_OCR_SYSTEM.md)
 
+> **Implementation note (supersedes the in-process design below where they differ)**: the integration that
+> was built does not embed Docling as a `BaseParser` in this process. `conversion/DoclingServeClient` calls a
+> separate docling-serve service (`POST /v1/convert/file`, configured with `docling_serve_url`), and
+> `conversion/docling_mapper.py` maps the returned Docling JSON into `Document` and `DocumentElement`.
+> Chunking then uses docling-core's `HybridChunker` through `chunking/HybridDocumentChunker`. The Docling
+> tree travels in `Document.metadata["docling_json"]` for that chunker and is never exported. The parser
+> routing, Office and HTML strategies, and `parsers/` module layout below remain the original design and
+> are not yet built. Not yet run against a live docling-serve instance.
+
 ---
 
 ## Executive Summary
