@@ -11,7 +11,10 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   validate-dependencies:
@@ -28,6 +31,9 @@ jobs:
         with:
           # Fetch full history for accurate diff analysis
           fetch-depth: 0
+          # No later step needs authenticated git, and the job imports
+          # wheels chosen by the PR's lock file.
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
@@ -39,16 +45,22 @@ jobs:
         with:
           enable-cache: false
 
+      # Install wheels only: no sdist build backend or setup.py runs. Imported
+      # wheels still execute their own code, so this job keeps a read-only
+      # token. The project itself is not installed (nothing here imports it).
+      # langdetect is skipped because uv.lock records only its source
+      # distribution (its one published wheel is py2-only) and --no-build
+      # forbids building it. Neither is needed by the checks below.
       - name: Install dependencies
         run: |
-          uv sync --frozen
+          uv sync --frozen --no-build --no-install-project --no-install-package langdetect
 
       # Validate document processing dependencies
       - name: Validate Document Processing Dependencies
         run: |
           echo "📄 Validating document processing dependencies..."
 
-          uv run --frozen python -c "
+          uv run --frozen --no-build --no-sync python -c "
           import sys
 
           # Critical dependencies for document processing (import names)
@@ -98,56 +110,43 @@ jobs:
               print('\\n🎉 All critical document processing dependencies are available')
           "
 
-      # Check for dependency changes and validate requirements sync
+      # Check for dependency changes
       - name: Check dependency changes
         id: deps-changed
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
 
           # Check if uv.lock or pyproject.toml changed
-          if git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -E "(uv\.lock|pyproject\.toml)"; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+          if git diff --name-only "origin/$BASE_REF...HEAD" | grep -E "(uv\.lock|pyproject\.toml)"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "📦 Dependency files have changed in this PR"
 
             # Show what changed
             echo "🔍 Changes detected:"
-            git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -E "(uv\.lock|pyproject\.toml)" | while read file; do
-              echo "  - $file"
-            done
+            git diff --name-only "origin/$BASE_REF...HEAD" |
+              grep -E "(uv\.lock|pyproject\.toml)" |
+              while read -r file; do
+                echo "  - $file"
+              done
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "✅ No dependency changes detected"
           fi
 
-      # Generate and validate requirements.txt if dependencies changed
-      - name: Validate Requirements Sync
+      # The repository commits no requirements*.txt files, so the lock file
+      # is the single source of truth. Fail if uv.lock no longer matches
+      # pyproject.toml. --no-build keeps the check from building any sdist;
+      # an up-to-date lock is accepted without re-resolving.
+      - name: Validate uv.lock is current
         if: steps.deps-changed.outputs.changed == 'true'
         run: |
-          echo "🔄 Validating requirements.txt synchronization..."
-
-          # Generate current requirements
-          echo "Generating requirements.txt from uv.lock..."
-          uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output-file requirements.txt
-
-          echo "Generating requirements-dev.txt from uv.lock..."
-          uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements-dev.txt
-
-          # Check if generated files match committed files
-          if ! git diff --exit-code requirements*.txt 2>/dev/null; then
-            echo "::error::Requirements files are out of sync with uv.lock"
-            echo "::error::This PR modifies dependencies but requirements.txt files don't match."
-            echo ""
-            echo "📋 Files needing update:"
-            git diff --name-only requirements*.txt 2>/dev/null || echo "  - requirements.txt files need to be created/updated"
-            echo ""
-            echo "🔧 To fix this:"
-            echo "1. Run: uv export --format requirements-txt --no-hashes --no-emit-project --no-default-groups --output-file requirements.txt"
-            echo "2. Run: uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements-dev.txt"
-            echo "3. Commit the updated requirements files"
-            echo "4. Push changes to this PR"
+          echo "🔄 Checking that uv.lock matches pyproject.toml..."
+          if ! uv lock --locked --no-build; then
+            echo "::error::uv.lock is out of date with pyproject.toml. Run 'uv lock' and commit the result."
             exit 1
-          else
-            echo "✅ Requirements files are synchronized with uv.lock"
           fi
+          echo "✅ uv.lock is up to date"
 
       # Validate project structure for document processing
       - name: Validate Project Structure
@@ -212,14 +211,18 @@ jobs:
           echo "🔍 Checking for potential security issues:"
 
           # Look for hardcoded secrets
-          if find src -name "*.py" -exec grep -l "password.*=" {} + 2>/dev/null | head -5; then
+          password_hits=$(find src -name "*.py" -exec grep -l "password.*=" {} + 2>/dev/null || true)
+          if [ -n "$password_hits" ]; then
+            echo "$password_hits" | head -5 || true
             echo "⚠️  Potential hardcoded passwords found - please review"
           else
             echo "✅ No obvious hardcoded passwords detected"
           fi
 
           # Check for unsafe file operations
-          if find src -name "*.py" -exec grep -l "open.*'w'" {} + 2>/dev/null | head -5; then
+          write_hits=$(find src -name "*.py" -exec grep -l "open.*'w'" {} + 2>/dev/null || true)
+          if [ -n "$write_hits" ]; then
+            echo "$write_hits" | head -5 || true
             echo "⚠️  File write operations found - ensure proper path validation"
           else
             echo "✅ No obvious unsafe file operations detected"
@@ -242,22 +245,9 @@ jobs:
         run: |
           echo "🧹 Running quick code quality checks..."
 
-          # Check basic Python syntax
+          # Check basic Python syntax with the standard library only.
           echo "Checking Python syntax..."
-          find src -name "*.py" -print0 | while IFS= read -r -d '' file; do
-            uv run --frozen python -c "
-import ast
-import sys
-
-try:
-    with open('$file', 'r') as f:
-        ast.parse(f.read())
-    print('✅ $file: Valid syntax')
-except SyntaxError as e:
-    print('❌ $file: Syntax error - ' + str(e))
-    sys.exit(1)
-            " || exit 1
-          done
+          python -m compileall -q src
 
           echo "✅ Basic code quality validation completed"
 
