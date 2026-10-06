@@ -83,8 +83,14 @@ class Settings(BaseSettings):
     # ChunkingError if one cannot be brought under it). Keep it below the embedder's input limit.
     chunk_max_tokens: int = Field(default=512, ge=32)
 
-    # Chunk-set output: one RAGChunkSet.json per document, read by the consuming application.
+    # Chunk-set output: one chunk-set JSON file per document ({document_id}.json), read by the
+    # consuming application. Set it with DATA_INGESTOR_CHUNKS_DIR. The files hold document text,
+    # so restrict the directory to the reader and this stage.
     chunks_dir: str = "/data/chunks"
+    # Permission bits of each chunk-set file, as octal digits. The default lets a reader running
+    # as another user (for example in another container) read it; use 640 with a shared group
+    # when the reader's group is known. Set it with DATA_INGESTOR_CHUNKS_FILE_MODE.
+    chunks_file_mode: str = Field(default="644", pattern=r"^[0-7]{3,4}$")
 
     # Quality settings
     quality_threshold: float = Field(default=0.70, ge=0.0, le=1.0)

@@ -48,9 +48,20 @@ CARRIED_FIELDS = (
     "sha256",
 )
 
-# A document is a tax return when its category or document type says so.
-TAX_RETURN_CATEGORY = "Tax Returns"
-TAX_RETURN_DOCUMENT_TYPES = frozenset({"tax_return", "tax_election"})
+# Mode of a written chunk-set file. #ASSUME: the consuming application reads the directory as a
+# different user (for example from another container), so the file is world-readable and access is
+# controlled by the permissions on the directory. #VERIFY: confirm the reader's uid and, where the
+# directory is shared, restrict it (for example mode 0750 with a shared group) or lower the file mode
+# with ``chunks_file_mode``.
+DEFAULT_FILE_MODE = 0o644
+
+# A document is a tax return when its category or document type says so. Labels are compared
+# case-insensitively with "-" and "_" read as spaces. #ASSUME: these are the labels the document
+# store uses. #VERIFY: confirm the label vocabulary with the document store owner; a label outside
+# this list is not detected, so the gate is a guard for correctly labelled documents and not a
+# classifier.
+TAX_RETURN_CATEGORIES = frozenset({"tax return", "tax returns"})
+TAX_RETURN_DOCUMENT_TYPES = frozenset({"tax return", "tax election"})
 
 
 class ConsentAction(StrEnum):
@@ -75,12 +86,21 @@ class ConsentAction(StrEnum):
     WITHDRAWN = "withdrawn"
 
 
-def _require_uuid(value: str, name: str) -> str:
-    try:
-        return str(uuid.UUID(value))
-    except ValueError as exc:
-        msg = f"{name} must be a UUID"
-        raise ChunkingError(msg) from exc
+def _require_uuid(value: object, name: str) -> str:
+    if isinstance(value, str):
+        try:
+            return str(uuid.UUID(value))
+        except ValueError:
+            pass
+    msg = f"{name} must be a UUID"
+    raise ChunkingError(msg)
+
+
+def _normalise_label(value: object) -> str:
+    """Lower-case a label, read ``-`` and ``_`` as spaces and collapse whitespace."""
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.replace("_", " ").replace("-", " ").casefold().split())
 
 
 def is_tax_return(document_fields: Mapping[str, Any]) -> bool:
@@ -91,22 +111,71 @@ def is_tax_return(document_fields: Mapping[str, Any]) -> bool:
 
     Returns:
         True when the category is ``Tax Returns`` or the document type is a
-        tax-return type, ignoring case and surrounding spaces.
+        tax-return type, ignoring case, surrounding spaces and ``-`` versus
+        ``_`` versus space. A label outside the known vocabulary is not detected.
     """
-    category = document_fields.get("category")
-    if isinstance(category, str) and category.strip().casefold() == TAX_RETURN_CATEGORY.casefold():
+    if _normalise_label(document_fields.get("category")) in TAX_RETURN_CATEGORIES:
         return True
-    document_type = document_fields.get("document_type")
-    return isinstance(document_type, str) and document_type.strip().casefold() in TAX_RETURN_DOCUMENT_TYPES
+    return _normalise_label(document_fields.get("document_type")) in TAX_RETURN_DOCUMENT_TYPES
 
 
-def _document_values(document_fields: Mapping[str, Any]) -> dict[str, Any]:
-    """Pick the carried fields; consent is ``True`` only when given as exactly ``True``."""
+def _require_text_field(document_fields: Mapping[str, Any], key: str) -> None:
+    value = document_fields.get(key)
+    if not isinstance(value, str) or not value.strip():
+        msg = f"Document field {key} must be a non-empty string"
+        raise ChunkingError(msg)
+
+
+def _document_values(document_fields: Mapping[str, Any], *, strict: bool = True) -> dict[str, Any]:
+    """Pick the carried fields; consent is ``True`` only when given as exactly ``True``.
+
+    In strict mode (a set that carries chunk text) ``entity_id`` and ``sha256``
+    must be non-empty strings and ``is_confidential`` a boolean, so a missing
+    value is an error and never a silent null. The withdrawn set carries no text
+    and must still be written when the record is incomplete, so it is lenient:
+    ``is_confidential`` is then true unless it is exactly ``False``.
+
+    Raises:
+        ChunkingError: In strict mode, if a required field is missing or mistyped
+    """
     values = {key: document_fields.get(key) for key in CARRIED_FIELDS}
+    if strict:
+        # #CRITICAL: Security: a chunk never goes out without its entity, hash and confidentiality flag
+        # #VERIFY: tests/unit/test_chunk_set.py::test_missing_document_fields_are_an_error
+        _require_text_field(document_fields, "entity_id")
+        _require_text_field(document_fields, "sha256")
+        if not isinstance(values["is_confidential"], bool):
+            msg = "Document field is_confidential must be a boolean"
+            raise ChunkingError(msg)
+    else:
+        values["is_confidential"] = values["is_confidential"] is not False
     # #CRITICAL: Security: consent fails closed; a missing, null or non-boolean value is false
     # #VERIFY: tests/unit/test_chunk_set.py::test_consent_is_true_only_when_exactly_true
     values["consent_on_file"] = document_fields.get("consent_on_file") is True
     return values
+
+
+def _load_encoding() -> tiktoken.Encoding:
+    """Load the contract's tiktoken encoding, turning a failed load into ``ChunkingError``."""
+    # #ASSUME: tiktoken can fetch cl100k_base on first use (it downloads the vocabulary), so an
+    # offline host needs the file in TIKTOKEN_CACHE_DIR beforehand
+    # #VERIFY: tests/unit/test_chunk_set.py::test_unavailable_encoding_is_a_chunking_error
+    try:
+        return tiktoken.get_encoding(TIKTOKEN_ENCODING)
+    except (OSError, ValueError, RuntimeError) as exc:
+        msg = f"tiktoken encoding {TIKTOKEN_ENCODING} is unavailable; set TIKTOKEN_CACHE_DIR on an offline host"
+        raise ChunkingError(msg) from exc
+
+
+def _require_page_range(chunk: Chunk, index: int, document_id: str) -> tuple[int, int]:
+    start, end = chunk.start_page, chunk.end_page
+    if start is None or end is None:
+        msg = f"Chunk {index} of document {document_id} has no page range"
+        raise ChunkingError(msg)
+    if start < 1 or end < start:
+        msg = f"Chunk {index} of document {document_id} has an invalid page range"
+        raise ChunkingError(msg)
+    return start, end
 
 
 def _resolve_trace_id(document_id: str, trace_id: str | None) -> str:
@@ -154,8 +223,9 @@ def build_chunk_set(
 
     # #CRITICAL: Citation Integrity: every chunk needs a page range; a chunk without one fails
     # #VERIFY: tests/unit/test_chunk_set.py::test_chunk_without_page_fails
-    # #CRITICAL: Security: a tax return without consent on file is never chunked
-    # #VERIFY: tests/unit/test_chunk_set.py::test_tax_return_without_consent_is_refused
+    # #CRITICAL: Security: a document labelled as a tax return without consent on file is never chunked
+    # #VERIFY: tests/unit/test_chunk_set.py::test_tax_return_without_consent_is_refused (a label outside
+    # the known vocabulary is not detected; see TAX_RETURN_CATEGORIES)
 
     Args:
         document_id: Stable document UUID (from the document store)
@@ -170,8 +240,10 @@ def build_chunk_set(
         The chunk set, ready for ``write_chunk_set``
 
     Raises:
-        ChunkingError: If an ID is not a UUID, a chunk has no page range, or
-            the document is a tax return without consent on file
+        ChunkingError: If an ID is not a UUID, ``entity_id`` or ``sha256`` is
+            missing or empty, ``is_confidential`` is not a boolean, a chunk has
+            no valid page range, the document is a tax return without consent
+            on file, or the tiktoken encoding cannot be loaded
     """
     document_id = _require_uuid(document_id, "document_id")
     trace_id = _resolve_trace_id(document_id, trace_id)
@@ -179,19 +251,17 @@ def build_chunk_set(
     if is_tax_return(values) and not values["consent_on_file"]:
         msg = f"Document {document_id} is a tax return without consent on file and must not be chunked"
         raise ChunkingError(msg)
-    encoding = tiktoken.get_encoding(TIKTOKEN_ENCODING)
+    encoding = _load_encoding()
 
     entries: list[dict[str, Any]] = []
     for index, chunk in enumerate(chunks):
-        if chunk.start_page is None or chunk.end_page is None:
-            msg = f"Chunk {index} of document {document_id} has no page range"
-            raise ChunkingError(msg)
+        start_page, end_page = _require_page_range(chunk, index, document_id)
         entry: dict[str, Any] = {
             "chunk_id": str(uuid.uuid5(_ID_NAMESPACE, f"chunk:{document_id}:{index}:{chunk.content}")),
             "document_id": document_id,
             "trace_id": trace_id,
             "text": chunk.content,
-            "page_range": [chunk.start_page, chunk.end_page],
+            "page_range": [start_page, end_page],
             "section_hierarchy": list(chunk.metadata.get("section_hierarchy") or []),
             "trust_score": None,
             "ocr_engine_provenance": None,
@@ -216,7 +286,10 @@ def build_withdrawn_chunk_set(
     """Build the chunk set that replaces a document whose consent was withdrawn.
 
     It keeps the document-level fields, sets ``consent_on_file`` to false, and
-    has no chunks, so no chunk text remains on disk.
+    has no chunks, so no chunk text remains on disk. It does not require the
+    record to be complete: a missing field stays null and ``is_confidential``
+    becomes true unless it is exactly false, because failing to write the
+    withdrawal would leave consented text on disk.
 
     Args:
         document_id: Stable document UUID (from the document store)
@@ -232,7 +305,8 @@ def build_withdrawn_chunk_set(
     """
     document_id = _require_uuid(document_id, "document_id")
     trace_id = _resolve_trace_id(document_id, trace_id)
-    values = _document_values(document_fields)
+    # Lenient on purpose: a withdrawal must be written even when the record is incomplete.
+    values = _document_values(document_fields, strict=False)
     values["consent_on_file"] = False
     return _set_header(document_id, trace_id, chunk_strategy, values, [])
 
@@ -248,9 +322,10 @@ def _read_json(path: Path) -> object:
 def stored_consent(output_dir: Path, document_id: str) -> bool | None:
     """Read the consent recorded in a document's existing chunk set.
 
-    Consent counts as given only when every ``consent_on_file`` value in the
-    file (on the set and on each chunk) is exactly ``True``; a missing value
-    is false. A file that cannot be read or parsed counts as not consented.
+    Consent counts as given only when the set's ``consent_on_file`` and the
+    value on each chunk are all exactly ``True``; a missing value, a missing
+    set-level key or a ``chunks`` value that is not a list is false. A file
+    that cannot be read or parsed counts as not consented.
 
     Args:
         output_dir: Chunk-set directory
@@ -268,17 +343,14 @@ def stored_consent(output_dir: Path, document_id: str) -> bool | None:
         return None
     try:
         raw = _read_json(path)
-    except (OSError, UnicodeDecodeError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return False
     if not isinstance(raw, dict):
         return False
-    seen: list[object] = []
-    if "consent_on_file" in raw:
-        seen.append(raw["consent_on_file"])
     chunks = raw.get("chunks")
-    if isinstance(chunks, list):
-        seen.extend(item.get("consent_on_file", False) if isinstance(item, dict) else False for item in chunks)
-    return bool(seen) and all(value is True for value in seen)
+    if raw.get("consent_on_file") is not True or not isinstance(chunks, list):
+        return False
+    return all(isinstance(item, dict) and item.get("consent_on_file") is True for item in chunks)
 
 
 def reconcile_consent(
@@ -302,6 +374,9 @@ def reconcile_consent(
 
     # #EDGE: Consent is withdrawn after the document was chunked and indexed
     # #VERIFY: tests/unit/test_chunk_set.py::test_withdrawn_consent_rewrites_the_chunk_set
+    # #ASSUME: one process at a time reconciles and writes a given document; the read of the
+    # stored set and the write that follows are not atomic together
+    # #VERIFY: run the consent sweep from a single scheduled job per chunk directory
 
     Args:
         document_id: Document UUID
@@ -313,6 +388,9 @@ def reconcile_consent(
 
     Raises:
         ChunkingError: If the document ID is not a UUID
+        OSError: If the withdrawal write fails. The stored set, which may still
+            hold consented chunk text, is then unchanged, so the caller must
+            treat this as a failed withdrawal and retry it.
     """
     document_id = _require_uuid(document_id, "document_id")
     if not is_tax_return(document_fields):
@@ -327,7 +405,7 @@ def reconcile_consent(
     withdrawn = build_withdrawn_chunk_set(document_id, document_fields)
     try:
         current: object = _read_json(_chunk_set_path(output_dir, document_id))
-    except (OSError, UnicodeDecodeError, ValueError):
+    except (OSError, ValueError, RecursionError):
         current = None
     if current != withdrawn:
         write_chunk_set(withdrawn, output_dir)
@@ -335,43 +413,86 @@ def reconcile_consent(
     return ConsentAction.WITHDRAWN
 
 
-def write_chunk_set(chunk_set: dict[str, Any], output_dir: Path) -> Path:
+def _fsync_directory(directory: Path) -> None:
+    """Flush a directory entry to disk where the platform allows it."""
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return  # some platforms cannot open a directory
+    try:
+        os.fsync(fd)
+    except OSError:
+        logger.debug("Directory fsync is not supported here")
+    finally:
+        os.close(fd)
+
+
+def _remove_stale_temp_files(output_dir: Path, document_id: str) -> None:
+    """Delete temp files an earlier killed write left behind for this document."""
+    for stale in output_dir.glob(f".{document_id}.*.tmp"):
+        try:
+            stale.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not remove stale temporary chunk-set file for %s", document_id)
+
+
+def write_chunk_set(chunk_set: dict[str, Any], output_dir: Path, *, file_mode: int = DEFAULT_FILE_MODE) -> Path:
     """Write ``{document_id}.json`` into ``output_dir`` atomically.
 
-    The file is written under a temporary name in the same directory, then
-    renamed, so a reader never sees a partial file. Writing the same document
-    again replaces its file.
+    The file is written under a temporary name in the same directory, flushed to
+    disk, then renamed, so a reader never sees a partial file and a crash leaves
+    either the old file or the new one. Writing the same document again replaces
+    its file. Temporary files that a killed earlier write left for this document
+    are removed first, so no chunk text lingers in them.
 
     # #CRITICAL: Concurrency: the consuming application polls this directory while we write
-    # #VERIFY: Path.replace is atomic on one filesystem; the temp file lives in the target directory
+    # #VERIFY: tests/unit/test_chunk_set.py::test_failed_write_leaves_no_partial_file and
+    # test_write_creates_named_file_without_temp_leftovers (Path.replace is atomic on one filesystem;
+    # the temp file lives in the target directory)
+    # #ASSUME: one process at a time writes a given document, since stale temp files are swept
+    # #VERIFY: run the Chunk stage as a single job per chunk directory
 
     Args:
         chunk_set: A set from ``build_chunk_set`` or ``build_withdrawn_chunk_set``
         output_dir: Chunk-set directory, created when missing
+        file_mode: Permission bits of the written file; see ``DEFAULT_FILE_MODE``
 
     Returns:
         Path of the written file
 
     Raises:
-        ChunkingError: If the set has no document ID
+        ChunkingError: If the set has no document ID, the ID is not a lowercase
+            hyphenated UUID (it names the file, so it must not be a path), or
+            ``file_mode`` is not a plain read-write mode
     """
-    document_id = chunk_set.get("document_id")
-    if not document_id:
+    raw_id = chunk_set.get("document_id")
+    if not raw_id:
         msg = "Chunk set has no document_id"
+        raise ChunkingError(msg)
+    document_id = _require_uuid(raw_id, "document_id")
+    if document_id != raw_id:
+        msg = "document_id must be a lowercase hyphenated UUID"
+        raise ChunkingError(msg)
+    if file_mode & ~0o666 or file_mode & 0o600 != 0o600:
+        msg = "file_mode must include owner read and write and no execute or special bits"
         raise ChunkingError(msg)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     target = _chunk_set_path(output_dir, document_id)
     payload = json.dumps(chunk_set, indent=2, ensure_ascii=False) + "\n"
+    _remove_stale_temp_files(output_dir, document_id)
 
     fd, tmp_name = tempfile.mkstemp(dir=output_dir, prefix=f".{document_id}.", suffix=".tmp")
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(payload)
-        tmp_path.chmod(0o644)
+            handle.flush()
+            os.fsync(handle.fileno())
+        tmp_path.chmod(file_mode)
         tmp_path.replace(target)  # atomic on one filesystem
     except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
+    _fsync_directory(output_dir)
     return target
