@@ -237,9 +237,14 @@ PDF Parsers (parsers/pdf_parser.py)
     ├── PyMuPDF4LLMParser (priority: 100) - LLM-optimized markdown
     └── PyMuPDFParser (priority: 100) - Fast, reliable fallback
 
+Conversion (conversion/)
+    ├── DoclingServeClient - HTTP client for a docling-serve service (DocumentConverter protocol)
+    └── docling_json_to_document - Docling JSON to Document, keeping pages, headings, tables
+
 Chunking (chunking/)
     ├── TokenChunker - Token-based with overlap
-    └── ByTitleChunker - Section-aware, preserves structure
+    ├── ByTitleChunker - Section-aware, preserves structure
+    └── HybridDocumentChunker - Docling tree-aware, token-capped, citation-ready (lazy import)
 
 Export (export/exporter.py)
     ├── JSON with full metadata
@@ -292,6 +297,10 @@ Benchmarking (benchmarking/)
 **Chunking Strategies**:
 - **Token Chunker** (`basic`): Simple token-based segmentation, preserves table integrity
 - **By-Title Chunker** (`by_title`): Section-aware, preserves document structure, combines small sections
+- **Hybrid Chunker** (`HybridDocumentChunker`): Needs a Document from `docling_json_to_document`. Follows the
+  Docling tree, enforces a token cap with a Hugging Face tokenizer, and raises `ChunkingError` for a chunk
+  without a page or a document without valid `sha256`, `entity_id`, `is_confidential`, `consent_on_file`.
+  Not selectable from the CLI yet; build it with `HybridDocumentChunker.from_settings`.
 
 **Export Formats**:
 - **JSON**: Full metadata preservation, machine-readable
@@ -311,9 +320,13 @@ src/data_ingestor/
 │   └── pdf_parser.py # PyMuPDF, PyMuPDF4LLM, Marker parsers
 ├── pipeline/         # Document routing and orchestration
 │   └── router.py     # DocumentRouter, ParserRegistry
+├── conversion/       # docling-serve client and Docling JSON mapper
+│   ├── docling_client.py
+│   └── docling_mapper.py
 ├── chunking/         # Chunking strategies
 │   ├── token_chunker.py
-│   └── by_title_chunker.py
+│   ├── by_title_chunker.py
+│   └── hybrid_chunker.py  # HybridDocumentChunker (loads transformers; re-exported lazily)
 ├── export/           # Export to JSON, Markdown
 │   └── exporter.py
 ├── evaluation/       # Evaluation framework
@@ -419,7 +432,8 @@ uv run pytest tests/unit/ -n auto -v
 1. **Parser Availability**: At least one parser must be registered per format ([router.py:49](src/data_ingestor/pipeline/router.py:49))
 2. **Memory Management**: Large PDFs can exhaust memory, must process page-by-page ([pdf_parser.py:43](src/data_ingestor/parsers/pdf_parser.py:43))
 3. **File Race Conditions**: Files may be deleted between validation and processing
-4. **Token Counting**: Must match target LLM encoding (tiktoken for cl100k_base)
+4. **Token Counting**: Must match target LLM encoding (tiktoken for cl100k_base for the token and by-title
+   chunkers; the Hugging Face tokenizer named by `chunk_tokenizer` for `HybridDocumentChunker`)
 5. **External Resources**: Files may be corrupted, encrypted, or network unavailable
 
 **Assumptions** (validation recommended):
