@@ -240,8 +240,9 @@ def chunk(
 
     This is the Chunk stage only: it writes ``{document-id}.json`` and stops. It
     does not embed, store vectors, or search. Use made-up documents with this
-    command: it does not read the document store manifest, so it does no
-    consent check and must never be pointed at a real Tax Return.
+    command: it does not read the document store manifest, so it always writes
+    ``consent_on_file`` false and refuses a tax-return category or document
+    type before converting anything.
 
     Example:
         data-ingestor chunk sample.pdf --document-id 0b1c2d3e-... --output-dir ./chunks
@@ -251,10 +252,26 @@ def chunk(
     from data_ingestor.chunking import HybridDocumentChunker, load_tokenizer
     from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
     from data_ingestor.core.exceptions import ChunkingError, ConversionError
-    from data_ingestor.export import build_chunk_set, write_chunk_set
+    from data_ingestor.export import build_chunk_set, is_tax_return, write_chunk_set
 
     settings: Settings = ctx.obj["settings"]
     console: Console = ctx.obj["console"]
+    if is_tax_return({"category": category, "document_type": document_type}):
+        # #CRITICAL: Security: this command has no consent record, so a tax return is never converted here
+        # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_tax_return
+        console.print("[bold red]Error:[/bold red] tax returns are chunked only with consent on file")
+        sys.exit(1)
+    document_fields = {
+        "sha256": hashlib.sha256(file_path.read_bytes()).hexdigest(),
+        "entity_id": entity_id,
+        "document_type": document_type,
+        "category": category,
+        "is_confidential": confidential,
+        # No document store record is read here, so consent is never on file.
+        "consent_on_file": False,
+        "title": title,
+        "document_date": document_date,
+    }
     api_key = settings.docling_serve_api_key.get_secret_value() if settings.docling_serve_api_key else None
     client = DoclingServeClient(settings.docling_serve_url, api_key, settings.docling_serve_timeout)
     try:
@@ -264,19 +281,17 @@ def chunk(
             result.docling_json,
             document_id=document_id,
             filename=file_path.name,
-            extra_metadata={
-                "sha256": hashlib.sha256(file_path.read_bytes()).hexdigest(),
-                "entity_id": entity_id,
-                "document_type": document_type,
-                "category": category,
-                "is_confidential": confidential,
-                "title": title,
-                "document_date": document_date,
-            },
+            extra_metadata=document_fields,
         )
         tokenizer = load_tokenizer(settings.chunk_tokenizer, settings.chunk_max_tokens)
         chunks = HybridDocumentChunker(tokenizer).chunk_document(document)
-        chunk_set = build_chunk_set(document_id, chunks, chunk_strategy="hybrid", trace_id=trace_id)
+        chunk_set = build_chunk_set(
+            document_id,
+            chunks,
+            chunk_strategy="hybrid",
+            document_fields=document_fields,
+            trace_id=trace_id,
+        )
         target = write_chunk_set(chunk_set, output_dir or Path(settings.chunks_dir))
     except (ConversionError, ChunkingError, OSError) as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
