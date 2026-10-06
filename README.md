@@ -64,6 +64,10 @@ uv run data-ingestor process document.pdf --chunking-strategy by_title --combine
 
 # Check parser health
 uv run data-ingestor health
+
+# Convert with docling-serve, chunk, and write one chunk-set file for the consuming application
+# (made-up documents only; the output directory is DATA_INGESTOR_CHUNKS_DIR when --output-dir is omitted)
+uv run data-ingestor chunk sample.pdf --document-id <uuid> --entity-id <uuid> --output-dir ./chunks
 ```
 
 ### Python API
