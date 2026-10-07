@@ -1,0 +1,5 @@
+This is a valid text fixture used by tests/test_pipeline_stages.py.
+
+It contains multiple short paragraphs so that downstream stages have
+predictable input to operate on. The file is intentionally tiny (well
+under the 10 KB fixture budget) and should not be modified by tests.
