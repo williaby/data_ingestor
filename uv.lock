@@ -1129,7 +1129,7 @@ ml = [
 test = [
     { name = "aiosqlite" },
     { name = "pytest-benchmark" },
-    { name = "pytest-memray" },
+    { name = "pytest-memray", marker = "sys_platform != 'win32'" },
 ]
 
 [package.metadata]
@@ -1247,7 +1247,7 @@ ml = [
 test = [
     { name = "aiosqlite", specifier = ">=0.21.0,<0.22.0" },
     { name = "pytest-benchmark", specifier = ">=4.0.0" },
-    { name = "pytest-memray", specifier = ">=1.5.0" },
+    { name = "pytest-memray", marker = "sys_platform != 'win32'", specifier = ">=1.5.0" },
 ]
 
 [[package]]

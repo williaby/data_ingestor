@@ -262,14 +262,16 @@ class TestMarkerParser:
             assert parser._marker_available is False
 
     @requires_marker
-    @patch("data_ingestor.parsers.pdf_parser.torch", create=True)
-    @patch("data_ingestor.parsers.pdf_parser.marker", create=True)
-    def test_initialization_with_gpu(self, mock_marker, mock_torch) -> None:
+    def test_initialization_with_gpu(self) -> None:
         """Test parser initialization with GPU available."""
+        # torch is imported inside MarkerParser.__init__, so patching a module
+        # attribute has no effect; replace it in sys.modules instead.
+        mock_torch = MagicMock()
         mock_torch.cuda.is_available.return_value = True
         mock_torch.version.cuda = "11.0"
 
-        parser = MarkerParser()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            parser = MarkerParser()
 
         assert parser._marker_available is True
         assert parser._gpu_available is True
@@ -1035,6 +1037,7 @@ class TestMarkerParserHelperMethods:
 
             parser = MarkerParser()
             parser.openrouter_api_key = "test-key"
+            parser.llm_base_url = "http://127.0.0.1:8081/v1"  # LLM mode only talks to a local endpoint
 
             result = parser._process_with_llm(
                 str(temp_test_file),
