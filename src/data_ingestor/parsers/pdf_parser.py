@@ -17,6 +17,7 @@ from data_ingestor.core.models import (
     ElementType,
     ParserResult,
 )
+from data_ingestor.utils.llm_endpoint import require_local_llm_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -386,6 +387,12 @@ class MarkerParser(BaseParser):
         self.use_llm = os.getenv("MARKER_USE_LLM", "false").lower() == "true"
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
 
+        # #CRITICAL: Privacy: LLM calls carry document text, so the endpoint must be local
+        # #VERIFY: Refuse to start rather than fall back to a remote endpoint
+        self.llm_base_url = os.getenv("MARKER_LLM_BASE_URL")
+        if self.use_llm:
+            require_local_llm_endpoint(self.llm_base_url)
+
         # Primary model (free tier - Llama 4 Maverick)
         self.llm_model_primary = os.getenv("MARKER_LLM_MODEL", "meta-llama/llama-4-maverick:free")
 
@@ -720,6 +727,9 @@ class MarkerParser(BaseParser):
         Raises:
             Exception: If processing fails or rate limit exceeded
         """
+        # Re-checked here because use_llm can be flipped after construction.
+        require_local_llm_endpoint(self.llm_base_url)
+
         from marker.config.parser import ConfigParser
         from marker.converters.pdf import PdfConverter
 
@@ -751,7 +761,7 @@ class MarkerParser(BaseParser):
         config["use_llm"] = True
         config["llm_service"] = "marker.services.openai.OpenAIService"
         config["openai_api_key"] = self.openrouter_api_key
-        config["openai_base_url"] = "https://openrouter.ai/api/v1"
+        config["openai_base_url"] = self.llm_base_url
         config["openai_model"] = llm_model
         config["redo_inline_math"] = True  # Highest quality inline math with LLM
 
