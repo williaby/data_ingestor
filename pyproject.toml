@@ -380,8 +380,9 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = [
     "gradio.*",
-    "sentence_transformers.*",
-    "qdrant_client.*",
+    # torch comes only with the optional marker extra, which the quality job does not install
+    "torch",
+    "torch.*",
     "redis.*",
     "yaml.*",
     "gnupg.*",
