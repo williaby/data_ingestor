@@ -42,6 +42,8 @@ jobs:
       operating-systems: '["ubuntu-latest"]'
       include-macos: true
       include-windows: true
+      # python-magic needs the libmagic shared library, which macOS runners lack
+      system-deps-macos: 'libmagic'
       source-directory: 'src'
       test-command: 'pytest tests/ -v --tb=short -x --ignore=tests/integration --ignore=tests/load -m "not slow and not integration"'
       coverage-report: false

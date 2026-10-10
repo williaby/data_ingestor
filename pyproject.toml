@@ -182,7 +182,8 @@ docs = [
 ]
 test = [
     "pytest-benchmark>=4.0.0",
-    "pytest-memray>=1.5.0",
+    # memray publishes no Windows build and cannot be compiled there
+    "pytest-memray>=1.5.0; sys_platform != 'win32'",
     "aiosqlite>=0.21.0,<0.22.0",
 ]
 
