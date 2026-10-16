@@ -874,6 +874,40 @@ def test_withdraw_stored_chunk_set_refuses_a_set_that_is_not_a_tax_return(tmp_pa
     assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before
 
 
+def test_withdraw_stored_chunk_set_is_idempotent_on_a_set_blanked_from_an_unreadable_file(tmp_path: Path) -> None:
+    # the first call leaves null category and document_type; the second must see an already
+    # withdrawn set, not a document that is "not a tax return"
+    (tmp_path / f"{DOC_ID}.json").write_text("{not json synthetic text", encoding="utf-8")
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+    after_first = (tmp_path / f"{DOC_ID}.json").read_bytes()
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == after_first
+
+
+def test_withdraw_stored_chunk_set_does_not_write_when_the_set_is_already_withdrawn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / f"{DOC_ID}.json").write_text("{not json", encoding="utf-8")
+    withdraw_stored_chunk_set(DOC_ID, tmp_path)
+
+    def no_write(*_args: object, **_kwargs: object) -> Path:
+        msg = "must not write"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr("data_ingestor.export.chunk_set.write_chunk_set", no_write)
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+
+
+def test_withdraw_stored_chunk_set_refuses_a_set_with_no_category_that_still_holds_text(tmp_path: Path) -> None:
+    # not blanked and not a tax return: only an already-blanked set is accepted without a tax-return label
+    _stored_set(tmp_path, DOC_ID, category=None, document_type=None)
+    before = (tmp_path / f"{DOC_ID}.json").read_bytes()
+    with pytest.raises(ChunkingError, match="not a tax return"):
+        withdraw_stored_chunk_set(DOC_ID, tmp_path)
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before
+
+
 def test_withdraw_stored_chunk_set_without_a_set_does_nothing(tmp_path: Path) -> None:
     assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.SKIP
     assert list(tmp_path.iterdir()) == []

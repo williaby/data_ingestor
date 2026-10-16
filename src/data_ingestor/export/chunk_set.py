@@ -458,6 +458,15 @@ def stored_tax_return_ids(output_dir: Path) -> list[str]:
     return sorted(found)
 
 
+def _is_blanked(stored: Mapping[str, Any]) -> bool:
+    """Say whether a stored set is already text-free with no document labels.
+
+    That is what ``withdraw_stored_chunk_set`` leaves behind for a file that was not valid
+    JSON: null ``category`` and ``document_type`` and no chunks.
+    """
+    return not stored.get("category") and not stored.get("document_type") and stored.get("chunks") in (None, [])
+
+
 def withdraw_stored_chunk_set(
     document_id: str,
     output_dir: Path,
@@ -471,7 +480,14 @@ def withdraw_stored_chunk_set(
     set carried. A stored set that is not valid JSON is replaced by a withdrawn set with null
     fields, so its text is removed all the same. A read fault (``OSError``) says nothing about
     the content, so it is raised and the set is left for the next run. A set that parses but
-    does not say it is a tax return is not touched. Calling it again changes nothing.
+    does not say it is a tax return is refused (``ChunkingError``) and left as it is. A set an
+    earlier call already blanked (no labels, no chunks) counts as withdrawn without a write, so
+    calling it again changes nothing.
+
+    The refusal fails that one document, once per run, and is safe: nothing is written, so the
+    stored set is exactly what it was, and the run reports the document as failed (exit 1) so a
+    person can look at why the record and the set disagree about being a tax return. Every other
+    document is still handled.
 
     # #CRITICAL: Security: a deleted tax return's consented text must not stay on disk
     # #VERIFY: tests/unit/test_chunk_set.py::test_withdraw_stored_chunk_set_removes_the_text_and_keeps_the_fields
@@ -500,6 +516,8 @@ def withdraw_stored_chunk_set(
         current = None  # not valid JSON: nothing to keep, and the text must still go
     fields: Mapping[str, Any] = current if isinstance(current, dict) else {}
     if isinstance(current, dict) and not is_tax_return(current):
+        if _is_blanked(current):
+            return ConsentAction.WITHDRAWN  # an earlier call already removed the text
         msg = "the stored chunk set is not a tax return, so it was not replaced"
         raise ChunkingError(msg)
     trace_id = fields.get("trace_id")

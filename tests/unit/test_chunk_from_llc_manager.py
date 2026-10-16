@@ -243,6 +243,8 @@ def test_a_run_with_nothing_to_do_succeeds(
     result = run(tmp_path / "out")
     assert result.exit_code == 0, result.output
     assert written(tmp_path / "out") == set()
+    assert "Newest updated_at listed: none" in result.output
+    assert "at least 5 minutes" not in result.output  # no value was listed, so there is nothing to back off from
 
 
 def test_a_partial_conversion_is_not_written_and_fails_the_run(
