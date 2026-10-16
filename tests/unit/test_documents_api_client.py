@@ -287,6 +287,43 @@ def test_a_listing_that_still_does_not_match_its_total_is_an_error() -> None:
     assert calls == [0, 1]
 
 
+def test_a_total_that_changes_between_pages_is_listed_again_and_the_second_listing_is_used() -> None:
+    # a row was created while paging: later pages report a larger total than page 1 did, though the
+    # rows read still add up to page 1's total
+    calls: list[int] = []
+    a, b, c = _three_documents()
+    changed = [([a], 3), ([b], 4), ([c], 4)]
+    good = [([a], 3), ([b], 3), ([c], 3)]
+    with _scripted_client([changed, good], calls) as client:
+        records = client.list_documents()
+    assert {str(r.id) for r in records} == {a["id"], b["id"], c["id"]}
+    assert calls == [0, 1]
+
+
+def test_a_total_that_keeps_changing_between_pages_is_an_error() -> None:
+    calls: list[int] = []
+    a, b, c = _three_documents()
+    changed = [([a], 3), ([b], 4), ([c], 4)]
+    with _scripted_client([changed, changed], calls) as client, pytest.raises(DocumentSourceError, match="total"):
+        client.list_documents()
+    assert calls == [0, 1]
+
+
+def test_an_edit_and_a_create_during_paging_do_not_pass_as_a_complete_listing() -> None:
+    # Rows A, S, C, D (total 4). A is edited and moves to the end, so S is skipped; B is created.
+    # The rows read are A, C, D, B: four distinct rows, which equals page 1's total of 4, yet S is
+    # missing. The pages after the create report a total of 5, which is what exposes it.
+    calls: list[int] = []
+    a, s, c, d = (make_document(updated_at=T0 + timedelta(minutes=n)) for n in range(4))
+    b = make_document(updated_at=T0 + timedelta(minutes=9))
+    torn = [([a], 4), ([c], 4), ([d], 5), ([b], 5)]
+    good = [([a], 4), ([s], 4), ([c], 4), ([d], 4)]
+    with _scripted_client([torn, good], calls) as client:
+        records = client.list_documents()
+    assert {str(r.id) for r in records} == {x["id"] for x in (a, s, c, d)}
+    assert calls == [0, 1]
+
+
 def test_a_total_that_is_missing_is_an_unexpected_page() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"items": [], "page": 1, "size": 1, "pages": 1})

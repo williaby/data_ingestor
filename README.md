@@ -72,8 +72,10 @@ uv run data-ingestor chunk sample.pdf --document-id <uuid> --entity-id <uuid> --
 # Chunk the documents listed by the document store API (DATA_INGESTOR_LLC_MANAGER_URL and an API key
 # from DATA_INGESTOR_LLC_MANAGER_API_KEY or DATA_INGESTOR_LLC_MANAGER_API_KEY_FILE). Every run also
 # checks consent on every tax return, whatever --updated-since says, and rewrites a withdrawn or
-# deleted document's chunk set without text. Exit status 1 means at least one document failed; do
-# not move the --updated-since mark forward past a failed run.
+# deleted tax return's chunk set without text. Exit status 1 means at least one document failed; do
+# not move the --updated-since mark forward past a failed run. The service stamps updated_at when a
+# transaction starts, so a row can commit after a later one was listed: set the next --updated-since
+# at least 5 minutes earlier than the "Newest updated_at listed" the run prints.
 uv run data-ingestor chunk --from-llc-manager --updated-since 2026-01-01 --output-dir ./chunks
 ```
 

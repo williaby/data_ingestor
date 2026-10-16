@@ -428,8 +428,10 @@ def stored_tax_return_ids(output_dir: Path) -> list[str]:
 
     The set's own ``category`` and ``document_type`` decide, so this works for a document
     the document store no longer lists. A set that cannot be read is included, because it may
-    still hold consented text and nothing says it is not a tax return. Files that are not named
-    ``{lowercase uuid}.json`` are ignored.
+    still hold consented text and nothing says it is not a tax return: one that is not valid
+    JSON, and one a read fault (``OSError``) hid. Including it only queues it for its own check;
+    ``withdraw_stored_chunk_set`` raises on a read fault rather than blanking the set. Files
+    that are not named ``{lowercase uuid}.json`` are ignored.
 
     Args:
         output_dir: Chunk-set directory; a missing directory has no sets
@@ -466,8 +468,10 @@ def withdraw_stored_chunk_set(
 
     For a document the document store has deleted: there is no record to read, so the
     withdrawn set keeps the document-level fields (and the trace ID and strategy) the stored
-    set carried. A stored set that cannot be read is replaced by a withdrawn set with null
-    fields, so its text is removed all the same. Calling it again changes nothing.
+    set carried. A stored set that is not valid JSON is replaced by a withdrawn set with null
+    fields, so its text is removed all the same. A read fault (``OSError``) says nothing about
+    the content, so it is raised and the set is left for the next run. A set that parses but
+    does not say it is a tax return is not touched. Calling it again changes nothing.
 
     # #CRITICAL: Security: a deleted tax return's consented text must not stay on disk
     # #VERIFY: tests/unit/test_chunk_set.py::test_withdraw_stored_chunk_set_removes_the_text_and_keeps_the_fields
@@ -481,8 +485,10 @@ def withdraw_stored_chunk_set(
         ``WITHDRAWN`` when a stored set exists (it is now text-free), ``SKIP`` when there is none
 
     Raises:
-        ChunkingError: If the document ID is not a UUID
-        OSError: If the write fails; the stored set is then unchanged
+        ChunkingError: If the document ID is not a UUID, or the stored set parses but is not a
+            tax return (it is left as it is)
+        OSError: If the stored set cannot be read or the write fails; the stored set is then
+            unchanged
     """
     document_id = _require_uuid(document_id, "document_id")
     path = _chunk_set_path(output_dir, document_id)
@@ -490,9 +496,12 @@ def withdraw_stored_chunk_set(
         return ConsentAction.SKIP
     try:
         current: object = _read_json(path)
-    except (OSError, ValueError, RecursionError):
-        current = None
+    except (ValueError, RecursionError):
+        current = None  # not valid JSON: nothing to keep, and the text must still go
     fields: Mapping[str, Any] = current if isinstance(current, dict) else {}
+    if isinstance(current, dict) and not is_tax_return(current):
+        msg = "the stored chunk set is not a tax return, so it was not replaced"
+        raise ChunkingError(msg)
     trace_id = fields.get("trace_id")
     strategy = fields.get("chunk_strategy")
     try:

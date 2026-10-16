@@ -315,13 +315,17 @@ Benchmarking (benchmarking/)
   `chunk --from-llc-manager` (`pipeline/documents_sync.py`, client in `sources/documents_api.py`) lists
   documents from the document store's HTTP API (`DATA_INGESTOR_LLC_MANAGER_URL`, key from
   `DATA_INGESTOR_LLC_MANAGER_API_KEY` or `_API_KEY_FILE`), downloads each file to a private temp
-  directory, and chunks it. `--updated-since` limits the document listing only: every run also lists
+  directory, and chunks it. `--updated-since` limits the document listing only (and the service stamps
+  `updated_at` when a transaction starts, so the next mark must overlap: at least 5 minutes before the
+  "Newest updated_at listed" the run prints): every run also lists
   the whole Tax Returns category and reconciles consent for each, and consent is re-read from the
   current record before conversion and again before the write. It exits 1 if any document failed. The
-  single-file options and `FILE_PATH` are refused with this flag. A listing is read again once when the
-  rows read do not match the reported total (an edit mid-paging can skip a row), then fails the run.
+  single-file options and `FILE_PATH` are refused with this flag. A listing is read again once when a
+  page's total differs from page 1's or the rows read do not match that total (an edit mid-paging can
+  skip a row), then fails the run.
   After the listings, each stored chunk set that is a tax return by its own fields and was not reached
-  is looked up: a deleted document's set is rewritten without text (`withdraw_stored_chunk_set`), and
+  is looked up: a deleted document's set is rewritten without text (`withdraw_stored_chunk_set`; a read
+  fault is raised and retried next run, never treated as unreadable content), and
   a 404 met while chunking a tax return is handled the same way. Plain http is refused except to loopback.
 
 **Export Formats**:

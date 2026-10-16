@@ -220,6 +220,19 @@ def test_the_run_reports_the_newest_updated_at_it_saw(
     assert "2026-03-01T13:00:00+00:00" in result.output
 
 
+def test_the_run_says_the_next_updated_since_must_overlap_the_newest_updated_at(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    # updated_at is the time the service's transaction started, so a row can commit after a later
+    # one was listed: a caller that polls with the newest value as it stands would miss it
+    use_api(monkeypatch, FakeDocumentsApi([make_document(updated_at=T0)]))
+    result = run(tmp_path / "out")
+    assert "pass a value at least 5 minutes earlier than this" in result.output
+
+
 def test_a_run_with_nothing_to_do_succeeds(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -778,6 +791,42 @@ def test_a_failed_write_for_a_deleted_tax_return_fails_the_run(
     assert result.exit_code == 1
     assert doc["id"] in result.output
     assert stored_consent(out, doc["id"]) is True
+
+
+def test_a_stored_set_that_cannot_be_read_fails_the_run_and_is_retried_not_blanked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0 - timedelta(days=30))
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    api.delete(doc["id"])
+    before = (out / f"{doc['id']}.json").read_bytes()
+
+    real_read_text = Path.read_text
+
+    def flaky_read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+        if self.name == f"{doc['id']}.json":
+            msg = "input/output error"
+            raise OSError(msg)
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", flaky_read_text)
+    failed = run(out, "--updated-since", SINCE)
+
+    assert failed.exit_code == 1
+    assert doc["id"] in failed.output
+    assert (out / f"{doc['id']}.json").read_bytes() == before
+
+    monkeypatch.setattr(Path, "read_text", real_read_text)
+    retried = run(out, "--updated-since", SINCE)
+
+    assert retried.exit_code == 0, retried.output
+    secret_text_gone(out, doc["id"])
 
 
 def test_a_stored_tax_return_the_api_cannot_check_fails_the_run(

@@ -830,6 +830,50 @@ def test_withdraw_stored_chunk_set_of_an_unreadable_set_still_removes_the_text(t
     assert data["consent_on_file"] is False
 
 
+def _unreadable(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """Make reading the file called ``name`` fail with an OSError, as a transient I/O fault would."""
+    real_read_text = Path.read_text
+
+    def read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+        if self.name == name:
+            msg = "input/output error"
+            raise OSError(msg)
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+
+
+def test_withdraw_stored_chunk_set_that_cannot_be_read_raises_and_leaves_the_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # a read fault says nothing about the content, so the set must not be blanked on a guess
+    _stored_set(tmp_path, DOC_ID)
+    before = (tmp_path / f"{DOC_ID}.json").read_bytes()
+    _unreadable(monkeypatch, f"{DOC_ID}.json")
+    with pytest.raises(OSError, match="input/output error"):
+        withdraw_stored_chunk_set(DOC_ID, tmp_path)
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before
+
+
+def test_stored_tax_return_ids_includes_a_set_it_cannot_read_so_that_it_is_handled_on_its_own(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stored_set(tmp_path, DOC_ID)
+    _stored_set(tmp_path, OTHER_ID)
+    _unreadable(monkeypatch, f"{DOC_ID}.json")
+    assert sorted(stored_tax_return_ids(tmp_path)) == sorted([DOC_ID, OTHER_ID])
+
+
+def test_withdraw_stored_chunk_set_refuses_a_set_that_is_not_a_tax_return(tmp_path: Path) -> None:
+    _stored_set(tmp_path, DOC_ID, category="LLCs", document_type="operating_agreement")
+    before = (tmp_path / f"{DOC_ID}.json").read_bytes()
+    with pytest.raises(ChunkingError, match="not a tax return"):
+        withdraw_stored_chunk_set(DOC_ID, tmp_path)
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before
+
+
 def test_withdraw_stored_chunk_set_without_a_set_does_nothing(tmp_path: Path) -> None:
     assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.SKIP
     assert list(tmp_path.iterdir()) == []

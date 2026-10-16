@@ -241,5 +241,5 @@ class _Sync:
 
 def _withdrawal_failed(exc: OSError) -> DataIngestorError:
     # The stored set may still hold consented text, so say plainly that withdrawal failed.
-    msg = f"consent withdrawal write failed ({type(exc).__name__}); the stored chunk set was not replaced"
+    msg = f"consent withdrawal failed ({type(exc).__name__}); the stored chunk set was not replaced"
     return DataIngestorError(msg)

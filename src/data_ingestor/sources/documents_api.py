@@ -318,7 +318,10 @@ class DocumentsApiClient:
         de-duplicated by ID, keeping the newest copy. Soft-deleted documents are not listed.
 
         Args:
-            updated_since: Only documents updated at or after this time (no zone means UTC)
+            updated_since: Only documents updated at or after this time (no zone means UTC). The
+                service stamps ``updated_at`` with the time its transaction started, so a row can
+                commit after a later one has been listed. A caller that re-polls with the newest
+                ``updated_at`` it saw must subtract a margin (at least five minutes) first.
             category: Only documents in this category
 
         Returns:
@@ -336,8 +339,8 @@ class DocumentsApiClient:
 
         # #CRITICAL: Data Integrity: offset paging ordered by updated_at can skip a row when a
         # document is edited while the pages are read, and a skipped tax return would miss its
-        # consent check. The page-1 total is compared with what was read, and a mismatch is read
-        # again once, then fails the run.
+        # consent check. Every page's total is compared with page 1's and with the rows read, and
+        # a mismatch is read again once, then fails the run.
         # #VERIFY: tests/unit/test_documents_api_client.py::test_a_skipped_row_is_listed_again_and_the_second_listing_is_used
         for _attempt in range(_LIST_ATTEMPTS):
             records = self._read_pages(params)
@@ -348,7 +351,12 @@ class DocumentsApiClient:
         raise DocumentSourceError(msg)
 
     def _read_pages(self, params: dict[str, Any]) -> dict[uuid.UUID, DocumentRecord] | None:
-        """Read every page once; return None when the rows read do not match the first page's total."""
+        """Read every page once; return None when the listing moved while it was being read.
+
+        Every page must report the same total as page 1, and the distinct rows read must equal it.
+        A changed total proves a row was created or removed mid-read; the row count alone cannot,
+        because an edit that skips one row and a create that adds another cancel out.
+        """
         records: dict[uuid.UUID, DocumentRecord] = {}
         page = 1
         total = 0
@@ -356,6 +364,8 @@ class DocumentsApiClient:
             items, pages, page_total = self._fetch_page(params, page)
             if page == 1:
                 total = page_total
+            elif page_total != total:
+                return None
             self._merge(records, items)
             if page >= pages:
                 break

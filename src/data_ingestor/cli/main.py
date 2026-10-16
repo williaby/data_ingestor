@@ -449,6 +449,13 @@ def _chunk_from_llc_manager(
         soft_wrap=True,
     )
     console.print(f"Newest updated_at listed: {newest}", soft_wrap=True)
+    # The service stamps updated_at when its transaction starts, so a row can commit after a later
+    # one was listed; the next --updated-since must reach back past that.
+    console.print(
+        "For the next --updated-since, pass a value at least 5 minutes earlier than this "
+        "(a document that committed late can carry an earlier updated_at).",
+        soft_wrap=True,
+    )
     if not report.ok:
         sys.exit(1)
 
