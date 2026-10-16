@@ -103,3 +103,15 @@ class ConversionError(DataIngestorError):
 
 class ConfigurationError(DataIngestorError):
     """Exception raised when configuration is unsafe or invalid and the component must not start."""
+
+
+class DocumentSourceError(DataIngestorError):
+    """Exception raised when the document store's HTTP API cannot be read.
+
+    Messages carry the HTTP status or exception class only, never a response body, an API key
+    or document content.
+    """
+
+
+class DocumentNotFoundError(DocumentSourceError):
+    """Exception raised when the document store has no such document or file (HTTP 404)."""

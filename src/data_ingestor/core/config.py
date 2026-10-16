@@ -72,6 +72,15 @@ class Settings(BaseSettings):
     docling_serve_api_key: SecretStr | None = None
     docling_serve_timeout: float = Field(default=300.0, gt=0)  # seconds
 
+    # Document store HTTP API (llc-manager's read-only documents API), read by
+    # ``chunk --from-llc-manager``. The base URL always comes from configuration; there is no
+    # default. Give the key directly (LLC_MANAGER_API_KEY) or as the path of a file that holds
+    # it (LLC_MANAGER_API_KEY_FILE, for example a mounted secret); setting both is an error.
+    llc_manager_url: str | None = None
+    llc_manager_api_key: SecretStr | None = None
+    llc_manager_api_key_file: Path | None = None
+    llc_manager_timeout: float = Field(default=60.0, gt=0)  # seconds
+
     # Chunking (HybridChunker). Chunks are sized with a Hugging Face tokenizer; set it to the
     # tokenizer of the embedding model the consuming application will use. This stage does not
     # embed. Build a chunker with HybridDocumentChunker.from_settings.
