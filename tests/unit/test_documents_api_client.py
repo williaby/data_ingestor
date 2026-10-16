@@ -408,8 +408,9 @@ def test_from_settings_refuses_incomplete_settings(
     env: dict[str, str],
     needle: str,
 ) -> None:
+    settings = _settings(monkeypatch, **env)
     with pytest.raises(ConfigurationError, match=needle):
-        DocumentsApiClient.from_settings(_settings(monkeypatch, **env))
+        DocumentsApiClient.from_settings(settings)
 
 
 def test_from_settings_refuses_both_a_key_and_a_key_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
