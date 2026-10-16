@@ -312,6 +312,14 @@ Benchmarking (benchmarking/)
   `consent_on_file` false and refuses a tax-return category or document type, so use it on made-up
   documents. A partial docling-serve conversion is refused, not written.
   `reconcile_consent` rewrites a consent-withdrawn tax return's set with no chunks.
+  `chunk --from-llc-manager` (`pipeline/documents_sync.py`, client in `sources/documents_api.py`) lists
+  documents from the document store's HTTP API (`DATA_INGESTOR_LLC_MANAGER_URL`, key from
+  `DATA_INGESTOR_LLC_MANAGER_API_KEY` or `_API_KEY_FILE`), downloads each file to a private temp
+  directory, and chunks it. `--updated-since` limits the document listing only: every run also lists
+  the whole Tax Returns category and reconciles consent for each, and consent is re-read from the
+  current record before conversion and again before the write. It exits 1 if any document failed. The
+  single-file options and `FILE_PATH` are refused with this flag. A tax return deleted in the store
+  is not seen, so its stored set is not withdrawn by this run.
 
 **Export Formats**:
 - **JSON**: Full metadata preservation, machine-readable
