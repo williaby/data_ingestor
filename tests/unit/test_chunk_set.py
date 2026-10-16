@@ -24,6 +24,8 @@ from data_ingestor.export import (
     is_tax_return,
     reconcile_consent,
     stored_consent,
+    stored_tax_return_ids,
+    withdraw_stored_chunk_set,
     write_chunk_set,
 )
 from tests.docling_fixtures import WordTokenizer, build_sample_docling_json
@@ -739,3 +741,117 @@ def test_cli_chunk_refuses_tax_return(tmp_path: Path, monkeypatch: pytest.Monkey
     assert "consent" in result.output
     assert client.created == 0
     assert not out.exists()
+
+
+# --- stored tax returns and deleted documents ----------------------------------------------
+
+OTHER_ID = "7d8e9f00-1a2b-4c3d-8e4f-5a6b7c8d9e0f"
+THIRD_ID = "3b4c5d6e-7f80-4192-a3b4-c5d6e7f80912"
+
+
+def _stored_set(output_dir: Path, document_id: str, **fields: object) -> None:
+    """Write a chunk set by hand: ``fields`` override the carried document fields."""
+    carried = {
+        "entity_id": "11111111-1111-4111-8111-111111111111",
+        "document_type": "tax_return",
+        "category": "Tax Returns",
+        "is_confidential": True,
+        "consent_on_file": True,
+        "title": "Synthetic Return",
+        "document_date": "2025-01-31",
+        "sha256": "a" * 64,
+        **fields,
+    }
+    chunks = [{"text": "synthetic consented text", **carried, "chunk_id": "c1"}]
+    write_chunk_set(
+        {
+            "document_id": document_id,
+            "trace_id": "5f4e3d2c-1b0a-4f9e-8d7c-6b5a4f3e2d1c",
+            "chunk_strategy": "hybrid",
+            "total_chunks": 1,
+            **carried,
+            "chunks": chunks,
+        },
+        output_dir,
+    )
+
+
+def test_stored_tax_return_ids_lists_sets_whose_own_fields_say_tax_return(tmp_path: Path) -> None:
+    _stored_set(tmp_path, DOC_ID)
+    _stored_set(tmp_path, OTHER_ID, category="Other", document_type="tax-election")
+    _stored_set(tmp_path, THIRD_ID, category="LLCs", document_type="operating_agreement")
+    assert sorted(stored_tax_return_ids(tmp_path)) == sorted([DOC_ID, OTHER_ID])
+
+
+def test_stored_tax_return_ids_ignores_files_that_are_not_chunk_sets(tmp_path: Path) -> None:
+    (tmp_path / "notes.json").write_text("{}", encoding="utf-8")
+    (tmp_path / f".{DOC_ID}.abc.tmp").write_text("{}", encoding="utf-8")
+    (tmp_path / "readme.txt").write_text("x", encoding="utf-8")
+    assert stored_tax_return_ids(tmp_path) == []
+
+
+def test_stored_tax_return_ids_of_a_missing_directory_is_empty(tmp_path: Path) -> None:
+    assert stored_tax_return_ids(tmp_path / "absent") == []
+
+
+def test_stored_tax_return_ids_includes_a_set_it_cannot_read(tmp_path: Path) -> None:
+    # fail closed: an unreadable set may still hold consented text, so it is not assumed harmless
+    (tmp_path / f"{DOC_ID}.json").write_text("{not json", encoding="utf-8")
+    assert stored_tax_return_ids(tmp_path) == [DOC_ID]
+
+
+def test_withdraw_stored_chunk_set_removes_the_text_and_keeps_the_fields(tmp_path: Path) -> None:
+    _stored_set(tmp_path, DOC_ID)
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+    data = json.loads((tmp_path / f"{DOC_ID}.json").read_text(encoding="utf-8"))
+    assert data["chunks"] == []
+    assert data["total_chunks"] == 0
+    assert data["consent_on_file"] is False
+    assert data["category"] == "Tax Returns"
+    assert data["entity_id"] == "11111111-1111-4111-8111-111111111111"
+    assert data["trace_id"] == "5f4e3d2c-1b0a-4f9e-8d7c-6b5a4f3e2d1c"
+    assert "synthetic consented text" not in (tmp_path / f"{DOC_ID}.json").read_text(encoding="utf-8")
+    assert stored_consent(tmp_path, DOC_ID) is False
+
+
+def test_withdraw_stored_chunk_set_is_idempotent(tmp_path: Path) -> None:
+    _stored_set(tmp_path, DOC_ID)
+    withdraw_stored_chunk_set(DOC_ID, tmp_path)
+    before = (tmp_path / f"{DOC_ID}.json").read_bytes()
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before
+
+
+def test_withdraw_stored_chunk_set_of_an_unreadable_set_still_removes_the_text(tmp_path: Path) -> None:
+    (tmp_path / f"{DOC_ID}.json").write_text("{not json synthetic text", encoding="utf-8")
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.WITHDRAWN
+    data = json.loads((tmp_path / f"{DOC_ID}.json").read_text(encoding="utf-8"))
+    assert data["chunks"] == []
+    assert data["consent_on_file"] is False
+
+
+def test_withdraw_stored_chunk_set_without_a_set_does_nothing(tmp_path: Path) -> None:
+    assert withdraw_stored_chunk_set(DOC_ID, tmp_path) is ConsentAction.SKIP
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_withdraw_stored_chunk_set_rejects_a_bad_document_id(tmp_path: Path) -> None:
+    with pytest.raises(ChunkingError):
+        withdraw_stored_chunk_set("doc-1", tmp_path)
+
+
+def test_a_failed_withdrawal_write_is_raised_and_leaves_the_stored_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _stored_set(tmp_path, DOC_ID)
+    before = (tmp_path / f"{DOC_ID}.json").read_bytes()
+
+    def failing_write(*_args: object, **_kwargs: object) -> Path:
+        msg = "disk full"
+        raise OSError(msg)
+
+    monkeypatch.setattr("data_ingestor.export.chunk_set.write_chunk_set", failing_write)
+    with pytest.raises(OSError, match="disk full"):
+        withdraw_stored_chunk_set(DOC_ID, tmp_path)
+    assert (tmp_path / f"{DOC_ID}.json").read_bytes() == before

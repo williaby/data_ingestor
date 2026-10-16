@@ -318,8 +318,11 @@ Benchmarking (benchmarking/)
   directory, and chunks it. `--updated-since` limits the document listing only: every run also lists
   the whole Tax Returns category and reconciles consent for each, and consent is re-read from the
   current record before conversion and again before the write. It exits 1 if any document failed. The
-  single-file options and `FILE_PATH` are refused with this flag. A tax return deleted in the store
-  is not seen, so its stored set is not withdrawn by this run.
+  single-file options and `FILE_PATH` are refused with this flag. A listing is read again once when the
+  rows read do not match the reported total (an edit mid-paging can skip a row), then fails the run.
+  After the listings, each stored chunk set that is a tax return by its own fields and was not reached
+  is looked up: a deleted document's set is rewritten without text (`withdraw_stored_chunk_set`), and
+  a 404 met while chunking a tax return is handled the same way. Plain http is refused except to loopback.
 
 **Export Formats**:
 - **JSON**: Full metadata preservation, machine-readable

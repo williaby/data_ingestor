@@ -96,13 +96,17 @@ def _public(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def _paged_client(pages: list[list[dict[str, Any]]], *, page_size: int = 1) -> DocumentsApiClient:
-    """A client whose service returns the given pages, one per ``page`` query value."""
+    """A client whose service returns the given pages, one per ``page`` query value.
+
+    The reported total is the number of distinct documents across the pages.
+    """
+    distinct = len({d["id"] for page in pages for d in page})
 
     def handler(request: httpx.Request) -> httpx.Response:
         page = int(request.url.params["page"])
         body = {
             "items": [_public(d) for d in pages[page - 1]],
-            "total": sum(len(p) for p in pages),
+            "total": distinct,
             "page": page,
             "size": page_size,
             "pages": len(pages),
@@ -194,6 +198,101 @@ def test_a_page_loop_that_never_ends_is_stopped() -> None:
 
     client = DocumentsApiClient(BASE_URL, API_KEY, transport=httpx.MockTransport(handler), sleep=lambda _s: None)
     with client, pytest.raises(DocumentSourceError, match="pages"):
+        client.list_documents()
+
+
+def _scripted_client(
+    listings: list[list[tuple[list[dict[str, Any]], int]]],
+    calls: list[int] | None = None,
+    *,
+    failing_page: int | None = None,
+) -> DocumentsApiClient:
+    """A client whose service plays one scripted listing per pass over the pages.
+
+    Each listing is a list of ``(items, total)`` pages; a request for page 1 starts the next listing.
+    """
+    state = {"listing": -1}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params["page"])
+        if page == 1:
+            state["listing"] += 1
+            if calls is not None:
+                calls.append(state["listing"])
+        if page == failing_page:
+            return httpx.Response(500, json={"detail": "secret-detail"})
+        pages = listings[min(state["listing"], len(listings) - 1)]
+        items, total = pages[page - 1]
+        body = {"items": [_public(d) for d in items], "total": total, "page": page, "size": 1, "pages": len(pages)}
+        return httpx.Response(200, json=body)
+
+    return DocumentsApiClient(
+        BASE_URL,
+        API_KEY,
+        transport=httpx.MockTransport(handler),
+        sleep=lambda _s: None,
+        page_size=1,
+    )
+
+
+def _three_documents() -> list[dict[str, Any]]:
+    return [make_document(updated_at=T0 + timedelta(minutes=n)) for n in range(3)]
+
+
+def test_a_page_that_fails_part_way_fails_the_listing() -> None:
+    first, second, _third = _three_documents()
+    client = _scripted_client([[([first], 3), ([second], 3), ([], 3)]], failing_page=2)
+    with client, pytest.raises(DocumentSourceError, match="HTTP 500"):
+        client.list_documents()
+
+
+def test_a_listing_that_matches_its_total_is_read_once() -> None:
+    calls: list[int] = []
+    docs = _three_documents()
+    with _scripted_client([[([d], 3) for d in docs]], calls) as client:
+        records = client.list_documents()
+    assert len(records) == 3
+    assert calls == [0]
+
+
+def test_an_early_empty_page_is_listed_again_and_the_second_listing_is_used() -> None:
+    calls: list[int] = []
+    a, b, c = _three_documents()
+    broken = [([a], 3), ([], 3), ([c], 3)]
+    good = [([a], 3), ([b], 3), ([c], 3)]
+    with _scripted_client([broken, good], calls) as client:
+        records = client.list_documents()
+    assert {str(r.id) for r in records} == {a["id"], b["id"], c["id"]}
+    assert calls == [0, 1]
+
+
+def test_a_skipped_row_is_listed_again_and_the_second_listing_is_used() -> None:
+    # an edit mid-paging shifted a row past the page boundary: two distinct documents of three
+    calls: list[int] = []
+    a, b, c = _three_documents()
+    skipped = [([a], 3), ([c], 3), ([c], 3)]
+    good = [([a], 3), ([b], 3), ([c], 3)]
+    with _scripted_client([skipped, good], calls) as client:
+        records = client.list_documents()
+    assert len(records) == 3
+    assert calls == [0, 1]
+
+
+def test_a_listing_that_still_does_not_match_its_total_is_an_error() -> None:
+    calls: list[int] = []
+    a, _b, c = _three_documents()
+    skipped = [([a], 3), ([c], 3), ([c], 3)]
+    with _scripted_client([skipped, skipped], calls) as client, pytest.raises(DocumentSourceError, match="total"):
+        client.list_documents()
+    assert calls == [0, 1]
+
+
+def test_a_total_that_is_missing_is_an_unexpected_page() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"items": [], "page": 1, "size": 1, "pages": 1})
+
+    client = DocumentsApiClient(BASE_URL, API_KEY, transport=httpx.MockTransport(handler), sleep=lambda _s: None)
+    with client, pytest.raises(DocumentSourceError, match="unexpected"):
         client.list_documents()
 
 
@@ -410,6 +509,23 @@ def test_from_settings_refuses_incomplete_settings(
 ) -> None:
     settings = _settings(monkeypatch, **env)
     with pytest.raises(ConfigurationError, match=needle):
+        DocumentsApiClient.from_settings(settings)
+
+
+@pytest.mark.parametrize("host", ["documents.example.test", "api.example.org"])
+def test_plain_http_to_a_remote_host_is_refused(host: str) -> None:
+    with pytest.raises(ConfigurationError, match="https"):
+        DocumentsApiClient(f"http://{host}", API_KEY)
+
+
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1", "[::1]"])
+def test_plain_http_to_a_loopback_host_is_allowed(host: str) -> None:
+    DocumentsApiClient(f"http://{host}:8000", API_KEY).close()
+
+
+def test_from_settings_refuses_plain_http_to_a_remote_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings(monkeypatch, LLC_MANAGER_URL="http://documents.example.test", LLC_MANAGER_API_KEY=API_KEY)
+    with pytest.raises(ConfigurationError, match="https"):
         DocumentsApiClient.from_settings(settings)
 
 

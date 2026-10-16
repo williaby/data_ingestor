@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -360,43 +361,39 @@ def chunk(
         missing = "--document-id" if document_id is None else "--entity-id"
         msg = f"Missing option '{missing}'."
         raise click.UsageError(msg)
-    _chunk_one_file(
-        settings,
-        console,
-        target_dir,
-        file_path,
+    job = _FileJob(
+        file_path=file_path,
         document_id=document_id,
-        entity_id=entity_id,
         trace_id=trace_id,
-        document_type=document_type,
-        category=category,
-        confidential=True if confidential is None else confidential,
-        title=title,
-        document_date=document_date,
+        labels={
+            "entity_id": entity_id,
+            "document_type": document_type,
+            "category": category,
+            "is_confidential": True if confidential is None else confidential,
+            "title": title,
+            "document_date": document_date,
+        },
     )
+    _chunk_one_file(settings, console, target_dir, job)
 
 
-def _chunk_one_file(
-    settings: Settings,
-    console: Console,
-    output_dir: Path,
-    file_path: Path,
-    *,
-    document_id: str,
-    entity_id: str,
-    trace_id: str | None,
-    document_type: str | None,
-    category: str | None,
-    confidential: bool,
-    title: str | None,
-    document_date: str | None,
-) -> None:
+@dataclass(frozen=True)
+class _FileJob:
+    """One local file to chunk, with the labels given on the command line."""
+
+    file_path: Path
+    document_id: str
+    trace_id: str | None
+    labels: dict[str, Any]
+
+
+def _chunk_one_file(settings: Settings, console: Console, output_dir: Path, job: _FileJob) -> None:
     """Chunk one local file with the labels given on the command line."""
     from data_ingestor.core.exceptions import ChunkingError
     from data_ingestor.export import is_tax_return, write_chunk_set
     from data_ingestor.pipeline.chunk_job import build_document_chunk_set, file_sha256
 
-    if is_tax_return({"category": category, "document_type": document_type}):
+    if is_tax_return(job.labels):
         # #CRITICAL: Security: a file labelled as a tax return is never converted here, since this
         # command has no consent record; an unlabelled or differently labelled file is not detected
         # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_tax_return
@@ -404,23 +401,18 @@ def _chunk_one_file(
         sys.exit(1)
     try:
         document_fields = {
-            "sha256": file_sha256(file_path),
-            "entity_id": entity_id,
-            "document_type": document_type,
-            "category": category,
-            "is_confidential": confidential,
+            "sha256": file_sha256(job.file_path),
+            **job.labels,
             # No document store record is read here, so consent is never on file.
             "consent_on_file": False,
-            "title": title,
-            "document_date": document_date,
         }
-        console.print(f"[bold blue]Converting:[/bold blue] {file_path.name}")
+        console.print(f"[bold blue]Converting:[/bold blue] {job.file_path.name}")
         chunk_set = build_document_chunk_set(
             settings,
-            file_path,
-            document_id=document_id,
+            job.file_path,
+            document_id=job.document_id,
             document_fields=document_fields,
-            trace_id=trace_id,
+            trace_id=job.trace_id,
         )
         target = write_chunk_set(chunk_set, output_dir, file_mode=int(settings.chunks_file_mode, 8))
     except (ConversionError, ChunkingError, OSError, ValueError) as exc:

@@ -7,6 +7,8 @@ from data_ingestor.export.chunk_set import (
     is_tax_return,
     reconcile_consent,
     stored_consent,
+    stored_tax_return_ids,
+    withdraw_stored_chunk_set,
     write_chunk_set,
 )
 from data_ingestor.export.exporter import DocumentExporter, OutputFormat
@@ -20,5 +22,7 @@ __all__ = [
     "is_tax_return",
     "reconcile_consent",
     "stored_consent",
+    "stored_tax_return_ids",
+    "withdraw_stored_chunk_set",
     "write_chunk_set",
 ]

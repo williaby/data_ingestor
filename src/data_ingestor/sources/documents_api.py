@@ -36,6 +36,7 @@ DEFAULT_TIMEOUT = 60.0
 # The file is handed to docling-serve next, so the cap matches its upload limit.
 DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 MAX_PAGES = 10_000
+_LIST_ATTEMPTS = 2  # one read and one re-read when the rows do not match the total
 _RATE_LIMIT_RETRIES = 4
 _RETRY_AFTER_CAP_SECONDS = 60.0
 _CONNECT_RETRIES = 2  # connection-establishment retries only
@@ -199,7 +200,8 @@ class DocumentsApiClient:
             sleep: Sleep function used while rate limited, replaceable in tests
 
         Raises:
-            ConfigurationError: If ``base_url`` is not an http(s) URL with a host
+            ConfigurationError: If ``base_url`` is not an http(s) URL with a host, or is plain http
+                to a host that is not loopback
         """
         try:
             url = httpx.URL(base_url)
@@ -210,7 +212,10 @@ class DocumentsApiClient:
             msg = "the documents API base URL must be an http or https URL with a host"
             raise ConfigurationError(msg)
         if url.scheme == "http" and url.host not in _LOOPBACK_HOSTS:
-            logger.warning("The documents API key and documents are sent over plain http; use https")
+            # #CRITICAL: Security: the key and the documents must not cross a network in clear text
+            # #VERIFY: tests/unit/test_documents_api_client.py::test_plain_http_to_a_remote_host_is_refused
+            msg = "the documents API base URL must use https unless the host is loopback"
+            raise ConfigurationError(msg)
 
         self._max_download_bytes = max_download_bytes
         self._page_size = page_size
@@ -329,34 +334,64 @@ class DocumentsApiClient:
         if category is not None:
             params["category"] = category
 
+        # #CRITICAL: Data Integrity: offset paging ordered by updated_at can skip a row when a
+        # document is edited while the pages are read, and a skipped tax return would miss its
+        # consent check. The page-1 total is compared with what was read, and a mismatch is read
+        # again once, then fails the run.
+        # #VERIFY: tests/unit/test_documents_api_client.py::test_a_skipped_row_is_listed_again_and_the_second_listing_is_used
+        for _attempt in range(_LIST_ATTEMPTS):
+            records = self._read_pages(params)
+            if records is not None:
+                return sorted(records.values(), key=lambda r: (r.updated_at, str(r.id)))
+            logger.warning("Document listing did not match its reported total; listing again")
+        msg = "documents API listing did not match its reported total after a second read"
+        raise DocumentSourceError(msg)
+
+    def _read_pages(self, params: dict[str, Any]) -> dict[uuid.UUID, DocumentRecord] | None:
+        """Read every page once; return None when the rows read do not match the first page's total."""
         records: dict[uuid.UUID, DocumentRecord] = {}
         page = 1
+        total = 0
+        complete = True
         while True:
             response = self._send(DOCUMENTS_PATH, {**params, "page": page})
             if response.status_code != httpx.codes.OK:
                 raise _status_error(response.status_code)
-            items, pages = self._parse_page(self._json(response))
+            items, pages, page_total = self._parse_page(self._json(response))
+            if page == 1:
+                total = page_total
             for raw in items:
                 record = self._record(raw)
                 known = records.get(record.id)
                 if known is None or record.updated_at >= known.updated_at:
                     records[record.id] = record
+            if not items and page < pages:
+                complete = False  # an empty page before the last one means rows moved
             if page >= pages or not items:
                 break
             page += 1
-        return sorted(records.values(), key=lambda r: (r.updated_at, str(r.id)))
+        return records if complete and len(records) == total else None
 
     @staticmethod
-    def _parse_page(body: object) -> tuple[list[object], int]:
+    def _parse_page(body: object) -> tuple[list[object], int, int]:
         items = body.get("items") if isinstance(body, dict) else None
         pages = body.get("pages") if isinstance(body, dict) else None
-        if not isinstance(items, list) or not isinstance(pages, int) or isinstance(pages, bool) or pages < 1:
+        total = body.get("total") if isinstance(body, dict) else None
+        if (
+            not isinstance(items, list)
+            or not isinstance(pages, int)
+            or isinstance(pages, bool)
+            or pages < 1
+            or not isinstance(total, int)
+            or isinstance(total, bool)
+            or total < 0
+        ):
             msg = "documents API returned an unexpected page shape"
             raise DocumentSourceError(msg)
         if pages > MAX_PAGES:
             msg = f"documents API reported {pages} pages, more than the {MAX_PAGES} page limit"
             raise DocumentSourceError(msg)
-        return items, pages
+        return items, pages, total
 
     def get_document(self, document_id: str | uuid.UUID) -> DocumentRecord | None:
         """Fetch one document's current metadata.

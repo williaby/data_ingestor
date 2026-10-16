@@ -80,6 +80,7 @@ class FakeDocumentsApi:
         self.before_detail: Callable[[str], None] | None = None
         self.rate_limit_first: int = 0
         self.file_status: dict[str, int] = {}
+        self.detail_status: dict[str, int] = {}
         self.max_page_size = 200
         for document in documents or []:
             self.add(document)
@@ -90,6 +91,10 @@ class FakeDocumentsApi:
 
     def set_consent(self, document_id: str, value: bool) -> None:
         self.documents[document_id]["consent_on_file"] = value
+
+    def delete(self, document_id: str) -> None:
+        """Soft-delete: the document leaves the list and its detail and file return 404."""
+        self.documents.pop(document_id, None)
 
     @property
     def transport(self) -> httpx.MockTransport:
@@ -107,20 +112,24 @@ class FakeDocumentsApi:
         path = request.url.path
         query = dict(request.url.params)
         self.requests.append((path, query))
+        return self._refuse(request) or self._route(path, query)
+
+    def _refuse(self, request: httpx.Request) -> httpx.Response | None:
+        """A rate-limit or key rejection, or None when the request goes through."""
         if self.rate_limit_first > 0:
             self.rate_limit_first -= 1
             return httpx.Response(429, headers={"Retry-After": "1"}, json={"detail": "rate limited"})
         if request.headers.get("X-API-Key") != self.api_key:
             return httpx.Response(401, json={"detail": "Invalid API key: secret-detail"})
+        return None
+
+    def _route(self, path: str, query: dict[str, str]) -> httpx.Response:
         if path == DOCUMENTS_PATH:
             return self._list(query)
         if not path.startswith(f"{DOCUMENTS_PATH}/"):
             return httpx.Response(404, json={"detail": "Not Found"})
-        rest = path[len(DOCUMENTS_PATH) + 1 :]
-        document_id, _, tail = rest.partition("/")
-        if tail == "file":
-            return self._file(document_id)
-        return self._detail(document_id)
+        document_id, _, tail = path[len(DOCUMENTS_PATH) + 1 :].partition("/")
+        return self._file(document_id) if tail == "file" else self._detail(document_id)
 
     @staticmethod
     def _public(document: dict[str, Any]) -> dict[str, Any]:
@@ -151,6 +160,8 @@ class FakeDocumentsApi:
     def _detail(self, document_id: str) -> httpx.Response:
         if self.before_detail is not None:
             self.before_detail(document_id)
+        if document_id in self.detail_status:
+            return httpx.Response(self.detail_status[document_id], json={"detail": "secret-detail"})
         document = self.documents.get(document_id)
         if document is None:
             return httpx.Response(404, json={"detail": "Document not found"})

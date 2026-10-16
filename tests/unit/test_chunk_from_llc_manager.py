@@ -576,6 +576,236 @@ def test_a_failed_withdrawal_write_fails_the_run_and_the_others_still_run(
     assert other["id"] in written(out)
 
 
+# --- deleted tax returns ------------------------------------------------------------------
+
+
+def secret_text_gone(out: Path, document_id: str) -> None:
+    data = load(out, document_id)
+    assert data["chunks"] == []
+    assert data["total_chunks"] == 0
+    assert data["consent_on_file"] is False
+    assert stored_consent(out, document_id) is False
+
+
+def test_a_deleted_tax_return_loses_its_stored_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0 - timedelta(days=30))
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    assert load(out, doc["id"])["total_chunks"] > 0
+
+    api.delete(doc["id"])
+    api.requests.clear()
+    pipeline.converted.clear()
+    result = run(out, "--updated-since", SINCE)
+
+    assert result.exit_code == 0, result.output
+    secret_text_gone(out, doc["id"])
+    assert load(out, doc["id"])["category"] == "Tax Returns"
+    assert api.file_requests() == []
+    assert pipeline.converted == []
+    assert "withdrawn 1" in result.output
+
+
+def test_a_deleted_tax_return_filed_under_another_category_loses_its_stored_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_document(category="Other", document_type="tax_return", consent_on_file=True, updated_at=T0)
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    api.delete(doc["id"])
+
+    assert run(out, "--updated-since", SINCE).exit_code == 0
+    secret_text_gone(out, doc["id"])
+
+
+def test_a_stored_tax_return_missing_from_the_category_listing_is_still_reconciled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_document(
+        category="Other",
+        document_type="tax_return",
+        consent_on_file=True,
+        updated_at=T0 - timedelta(days=30),
+    )
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    api.set_consent(doc["id"], False)
+    api.requests.clear()
+
+    assert run(out, "--updated-since", SINCE).exit_code == 0
+
+    secret_text_gone(out, doc["id"])
+    assert f"/api/v1/documents/{doc['id']}" in api.paths()
+    assert api.file_requests() == []
+
+
+def test_a_stored_tax_return_that_still_exists_and_has_consent_is_left_alone(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_document(
+        category="Other",
+        document_type="tax_return",
+        consent_on_file=True,
+        updated_at=T0 - timedelta(days=30),
+    )
+    use_api(monkeypatch, FakeDocumentsApi([doc]))
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    before = (out / f"{doc['id']}.json").read_bytes()
+    pipeline.converted.clear()
+
+    assert run(out, "--updated-since", SINCE).exit_code == 0
+
+    assert (out / f"{doc['id']}.json").read_bytes() == before
+    assert pipeline.converted == []
+
+
+def test_the_stored_set_of_a_deleted_document_that_is_not_a_tax_return_is_left_alone(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_document(updated_at=T0)
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    assert run(out).exit_code == 0
+    before = (out / f"{doc['id']}.json").read_bytes()
+    api.delete(doc["id"])
+    api.requests.clear()
+
+    assert run(out, "--updated-since", SINCE).exit_code == 0
+
+    assert (out / f"{doc['id']}.json").read_bytes() == before
+    assert f"/api/v1/documents/{doc['id']}" not in api.paths()
+
+
+def test_a_tax_return_deleted_after_it_was_listed_loses_its_stored_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0)
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    pipeline.converted.clear()
+    api.before_detail = api.delete
+
+    result = run(out)
+
+    assert result.exit_code == 0, result.output
+    secret_text_gone(out, doc["id"])
+    assert pipeline.converted == []
+
+
+def test_a_tax_return_deleted_while_it_converts_is_not_rewritten_with_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0)
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    pipeline.on_convert = lambda _path: api.delete(doc["id"])
+
+    assert run(out).exit_code == 0
+
+    secret_text_gone(out, doc["id"])
+
+
+def test_a_tax_return_deleted_before_its_first_chunking_writes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0)
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    api.before_detail = api.delete
+    out = tmp_path / "out"
+    assert run(out).exit_code == 0
+    assert written(out) == set()
+
+
+def test_a_failed_write_for_a_deleted_tax_return_fails_the_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_tax_return(consent_on_file=True, updated_at=T0 - timedelta(days=30))
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    api.delete(doc["id"])
+
+    def failing_write(*_args: object, **_kwargs: object) -> Path:
+        msg = "disk full"
+        raise OSError(msg)
+
+    monkeypatch.setattr(chunk_set_module, "write_chunk_set", failing_write)
+    result = run(out, "--updated-since", SINCE)
+
+    assert result.exit_code == 1
+    assert doc["id"] in result.output
+    assert stored_consent(out, doc["id"]) is True
+
+
+def test_a_stored_tax_return_the_api_cannot_check_fails_the_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pipeline: Pipeline,
+    scratch: Path,
+) -> None:
+    doc = make_document(
+        category="Other",
+        document_type="tax_return",
+        consent_on_file=True,
+        updated_at=T0 - timedelta(days=30),
+    )
+    api = FakeDocumentsApi([doc])
+    use_api(monkeypatch, api)
+    out = tmp_path / "out"
+    write_consented_set(out, doc)
+    api.detail_status[doc["id"]] = 500
+
+    result = run(out, "--updated-since", SINCE)
+
+    assert result.exit_code == 1
+    assert doc["id"] in result.output
+    assert "HTTP 500" in result.output
+    assert stored_consent(out, doc["id"]) is True
+
+
 # --- configuration, options and API errors ---------------------------------------------
 
 
