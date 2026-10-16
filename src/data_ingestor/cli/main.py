@@ -1,17 +1,18 @@
 """Command-line interface for document processing."""
 
-import hashlib
 import logging
 import os
 import sys
 import uuid
-from datetime import date, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 import click
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.markup import escape
 from rich.table import Table
 
 from data_ingestor.benchmarking import BenchmarkOrchestrator, BenchmarkReporter
@@ -21,7 +22,7 @@ from data_ingestor.benchmarking.fingerprint import HardwareFingerprint
 from data_ingestor.chunking import ByTitleChunker, TokenChunker
 from data_ingestor.core.config import Settings
 from data_ingestor.core.exceptions import ConversionError
-from data_ingestor.core.models import Document, DocumentFormat, ProcessingStatus
+from data_ingestor.core.models import DocumentFormat
 from data_ingestor.export.exporter import DocumentExporter, OutputFormat
 from data_ingestor.parsers.pdf_parser import MarkerParser, PyMuPDF4LLMParser, PyMuPDFParser
 from data_ingestor.pipeline.router import DocumentRouter
@@ -236,23 +237,33 @@ def _date_option(_ctx: click.Context, param: click.Parameter, value: str | None)
     return value
 
 
-def _require_complete_conversion(document: Document, status: str, filename: str) -> None:
-    """Refuse a document docling-serve converted only partially.
+def _updated_since_option(_ctx: click.Context, param: click.Parameter, value: str | None) -> datetime | None:
+    """Click callback: accept an ISO 8601 date or date and time; no zone means UTC."""
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        msg = f"{param.human_readable_name} must be an ISO 8601 date or date and time"
+        raise click.BadParameter(msg) from exc
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
 
-    # #CRITICAL: Data Integrity: a partial conversion may be missing content, so it is not written
-    # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_a_partial_conversion
 
-    Raises:
-        ConversionError: If the conversion needs review
-    """
-    if document.status is ProcessingStatus.REQUIRES_REVIEW:
-        msg = f"docling-serve reported status {status} for {filename}; review required, nothing written"
-        raise ConversionError(msg)
+_SINGLE_FILE_OPTIONS = (
+    "document_id",
+    "trace_id",
+    "entity_id",
+    "document_type",
+    "category",
+    "confidential",
+    "title",
+    "document_date",
+)
 
 
 @cli.command()
-@click.argument("file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--document-id", required=True, callback=_uuid_option, help="Document UUID from the document store")
+@click.argument("file_path", required=False, type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--document-id", callback=_uuid_option, help="Document UUID from the document store")
 @click.option(
     "--trace-id",
     callback=_uuid_option,
@@ -265,7 +276,6 @@ def _require_complete_conversion(document: Document, status: str, filename: str)
 )
 @click.option(
     "--entity-id",
-    required=True,
     callback=_uuid_option,
     help="Owning entity UUID, carried onto every chunk",
 )
@@ -273,7 +283,7 @@ def _require_complete_conversion(document: Document, status: str, filename: str)
 @click.option("--category", help="Document category, carried onto every chunk")
 @click.option(
     "--confidential/--not-confidential",
-    default=True,
+    default=None,
     help="Access flag carried onto every chunk (default: confidential)",
 )
 @click.option("--title", help="Document title, carried onto every chunk")
@@ -282,90 +292,176 @@ def _require_complete_conversion(document: Document, status: str, filename: str)
     callback=_date_option,
     help="Document date (YYYY-MM-DD), carried onto every chunk",
 )
+@click.option(
+    "--from-llc-manager",
+    is_flag=True,
+    help="Chunk the documents listed by the document store API instead of one file",
+)
+@click.option(
+    "--updated-since",
+    callback=_updated_since_option,
+    help="With --from-llc-manager: only documents updated at or after this ISO 8601 time",
+)
 @click.pass_context
 def chunk(
     ctx: click.Context,
-    file_path: Path,
-    document_id: str,
+    file_path: Path | None,
+    document_id: str | None,
     trace_id: str | None,
     output_dir: Path | None,
-    entity_id: str,
+    entity_id: str | None,
     document_type: str | None,
     category: str | None,
-    confidential: bool,
+    confidential: bool | None,
     title: str | None,
     document_date: str | None,
+    from_llc_manager: bool,
+    updated_since: datetime | None,
 ) -> None:
     """Convert one file with docling-serve, chunk it, and write its chunk set.
 
     This is the Chunk stage only: it writes ``{document-id}.json`` and stops. It
-    does not embed, store vectors, or search. Use made-up documents with this
-    command: it does not read the document store manifest, so it always writes
-    ``consent_on_file`` false and refuses a tax-return category or document
-    type (as the labels are spelled in ``is_tax_return``) before converting
-    anything. A conversion docling-serve reports as partial is not written.
+    does not embed, store vectors, or search. Use made-up documents with the
+    single-file form: it does not read the document store manifest, so it always
+    writes ``consent_on_file`` false and refuses a tax-return category or
+    document type (as the labels are spelled in ``is_tax_return``) before
+    converting anything. A conversion docling-serve reports as partial is not
+    written.
+
+    With ``--from-llc-manager`` it instead lists documents from the document
+    store API (DATA_INGESTOR_LLC_MANAGER_URL and an API key from
+    DATA_INGESTOR_LLC_MANAGER_API_KEY or DATA_INGESTOR_LLC_MANAGER_API_KEY_FILE),
+    downloads each file, and chunks it. Every run also checks consent on every
+    tax return, whatever ``--updated-since`` says, and rewrites a withdrawn
+    document's chunk set without text. It exits 1 if any document failed.
 
     Example:
         data-ingestor chunk sample.pdf --document-id 0b1c2d3e-4f50-4a61-8b72-93a4b5c6d7e8
         --entity-id 11111111-1111-4111-8111-111111111111 --output-dir ./chunks
-    """
-    from data_ingestor.chunking import HybridDocumentChunker
-    from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
-    from data_ingestor.core.exceptions import ChunkingError
-    from data_ingestor.export import build_chunk_set, is_tax_return, write_chunk_set
-    from data_ingestor.export.chunk_set import DEFAULT_CHUNK_STRATEGY
 
+        data-ingestor chunk --from-llc-manager --updated-since 2026-01-01 --output-dir ./chunks
+    """
     settings: Settings = ctx.obj["settings"]
     console: Console = ctx.obj["console"]
-    if is_tax_return({"category": category, "document_type": document_type}):
+    target_dir = output_dir or Path(settings.chunks_dir)
+    if from_llc_manager:
+        given = {name: value for name, value in ctx.params.items() if name in _SINGLE_FILE_OPTIONS}
+        if file_path is not None or any(value is not None for value in given.values()):
+            msg = "--from-llc-manager takes its documents from the API, so it cannot be combined with FILE_PATH or a per-file option"
+            raise click.UsageError(msg)
+        _chunk_from_llc_manager(settings, console, target_dir, updated_since)
+        return
+    if updated_since is not None:
+        msg = "--updated-since needs --from-llc-manager"
+        raise click.UsageError(msg)
+    if file_path is None:
+        msg = "Missing argument 'FILE_PATH'."
+        raise click.UsageError(msg)
+    if document_id is None or entity_id is None:
+        missing = "--document-id" if document_id is None else "--entity-id"
+        msg = f"Missing option '{missing}'."
+        raise click.UsageError(msg)
+    job = _FileJob(
+        file_path=file_path,
+        document_id=document_id,
+        trace_id=trace_id,
+        labels={
+            "entity_id": entity_id,
+            "document_type": document_type,
+            "category": category,
+            "is_confidential": True if confidential is None else confidential,
+            "title": title,
+            "document_date": document_date,
+        },
+    )
+    _chunk_one_file(settings, console, target_dir, job)
+
+
+@dataclass(frozen=True)
+class _FileJob:
+    """One local file to chunk, with the labels given on the command line."""
+
+    file_path: Path
+    document_id: str
+    trace_id: str | None
+    labels: dict[str, Any]
+
+
+def _chunk_one_file(settings: Settings, console: Console, output_dir: Path, job: _FileJob) -> None:
+    """Chunk one local file with the labels given on the command line."""
+    from data_ingestor.core.exceptions import ChunkingError
+    from data_ingestor.export import is_tax_return, write_chunk_set
+    from data_ingestor.pipeline.chunk_job import build_document_chunk_set, file_sha256
+
+    if is_tax_return(job.labels):
         # #CRITICAL: Security: a file labelled as a tax return is never converted here, since this
         # command has no consent record; an unlabelled or differently labelled file is not detected
         # #VERIFY: tests/unit/test_chunk_set.py::test_cli_chunk_refuses_tax_return
         console.print("[bold red]Error:[/bold red] tax returns are chunked only with consent on file")
         sys.exit(1)
     try:
-        with file_path.open("rb") as handle:
-            sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
         document_fields = {
-            "sha256": sha256,
-            "entity_id": entity_id,
-            "document_type": document_type,
-            "category": category,
-            "is_confidential": confidential,
+            "sha256": file_sha256(job.file_path),
+            **job.labels,
             # No document store record is read here, so consent is never on file.
             "consent_on_file": False,
-            "title": title,
-            "document_date": document_date,
         }
-        with DoclingServeClient.from_settings(settings) as client:
-            console.print(f"[bold blue]Converting:[/bold blue] {file_path.name}")
-            result = client.convert(file_path)
-        document = docling_json_to_document(
-            result.docling_json,
-            document_id=document_id,
-            filename=file_path.name,
-            extra_metadata=document_fields,
-            conversion_status=result.status,
-        )
-        _require_complete_conversion(document, result.status, file_path.name)
-        chunks = HybridDocumentChunker.from_settings(settings).chunk_document(document)
-        chunk_set = build_chunk_set(
-            document_id,
-            chunks,
-            chunk_strategy=DEFAULT_CHUNK_STRATEGY,
+        console.print(f"[bold blue]Converting:[/bold blue] {job.file_path.name}")
+        chunk_set = build_document_chunk_set(
+            settings,
+            job.file_path,
+            document_id=job.document_id,
             document_fields=document_fields,
-            trace_id=trace_id,
+            trace_id=job.trace_id,
         )
-        target = write_chunk_set(
-            chunk_set,
-            output_dir or Path(settings.chunks_dir),
-            file_mode=int(settings.chunks_file_mode, 8),
-        )
+        target = write_chunk_set(chunk_set, output_dir, file_mode=int(settings.chunks_file_mode, 8))
     except (ConversionError, ChunkingError, OSError, ValueError) as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         sys.exit(1)
 
     console.print(f"[bold green]Wrote {chunk_set['total_chunks']} chunks:[/bold green] {target}")
+
+
+def _chunk_from_llc_manager(
+    settings: Settings,
+    console: Console,
+    output_dir: Path,
+    updated_since: datetime | None,
+) -> None:
+    """Chunk the documents the document store lists, then report by document ID."""
+    from data_ingestor.core.exceptions import ConfigurationError, DocumentSourceError
+    from data_ingestor.pipeline.documents_sync import sync_documents
+    from data_ingestor.sources import DocumentsApiClient
+
+    try:
+        with DocumentsApiClient.from_settings(settings) as client:
+            report = sync_documents(client, settings, output_dir, updated_since=updated_since)
+    except (ConfigurationError, DocumentSourceError) as exc:
+        console.print(f"[bold red]Error:[/bold red] {escape(str(exc))}")
+        sys.exit(1)
+
+    for document_id, reason in report.failed:
+        console.print(f"[bold red]Failed[/bold red] {document_id}: {escape(reason)}", soft_wrap=True)
+    newest = report.newest_updated_at.isoformat() if report.newest_updated_at else "none"
+    console.print(
+        f"Chunked {len(report.chunked)}, withdrawn {len(report.withdrawn)}, "
+        f"skipped {len(report.skipped)}, unchanged {len(report.unchanged)}, failed {len(report.failed)}",
+        soft_wrap=True,
+    )
+    console.print(f"Newest updated_at listed: {newest}", soft_wrap=True)
+    if report.newest_updated_at is not None:
+        # The service stamps updated_at when its transaction starts, so a row can commit after a
+        # later one was listed; the next --updated-since must reach back past that.
+        # #ASSUME: no documents-API transaction outlasts 5 minutes
+        # #VERIFY: confirm the longest write transaction with the llc-manager owner; a longer one
+        # needs a wider overlap than the 5 minutes printed here
+        console.print(
+            "For the next --updated-since, pass a value at least 5 minutes earlier than this "
+            "(a document that committed late can carry an earlier updated_at).",
+            soft_wrap=True,
+        )
+    if not report.ok:
+        sys.exit(1)
 
 
 @cli.command()
@@ -514,7 +610,7 @@ def benchmark(
         console.print(f"[cyan]Total Documents:[/cyan] {overall.get('total_documents', 0)}")
         console.print(f"[cyan]Success Rate:[/cyan] {overall.get('success_rate', 0):.1%}")
         console.print(f"[cyan]Throughput:[/cyan] {overall.get('throughput_docs_per_hour', 0):.1f} docs/hr")
-        console.print(f"[cyan]Total Time:[/cyan] {overall.get('total_time', 0)/60:.1f} minutes")
+        console.print(f"[cyan]Total Time:[/cyan] {overall.get('total_time', 0) / 60:.1f} minutes")
         console.print(f"\n[cyan]Results saved to:[/cyan] {saved_path}")
 
         console.print("\n[dim]Generate reports with:[/dim]")

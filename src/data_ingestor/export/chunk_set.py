@@ -116,6 +116,10 @@ def is_tax_return(document_fields: Mapping[str, Any]) -> bool:
         True when the category is ``Tax Returns`` or the document type is a
         tax-return type, ignoring case, surrounding spaces and ``-`` versus
         ``_`` versus space. A label outside the known vocabulary is not detected.
+
+    The consent sweep reads documents from the Tax Returns category, so a tax-type document
+    filed under another category is reconciled when it is updated or, once it has a stored
+    chunk set, by ``stored_tax_return_ids`` (including a document that was deleted).
     """
     if _normalise_label(document_fields.get("category")) in TAX_RETURN_CATEGORIES:
         return True
@@ -360,6 +364,8 @@ def reconcile_consent(
     document_id: str,
     document_fields: Mapping[str, Any],
     output_dir: Path,
+    *,
+    file_mode: int = DEFAULT_FILE_MODE,
 ) -> ConsentAction:
     """Apply the tax-return consent rules to one document before chunking it.
 
@@ -385,6 +391,7 @@ def reconcile_consent(
         document_id: Document UUID
         document_fields: Document-level values from the document store record
         output_dir: Chunk-set directory
+        file_mode: Permission bits of a replaced (withdrawn) file; see ``DEFAULT_FILE_MODE``
 
     Returns:
         What the caller should do next
@@ -411,8 +418,122 @@ def reconcile_consent(
     except (OSError, ValueError, RecursionError):
         current = None
     if current != withdrawn:
-        write_chunk_set(withdrawn, output_dir)
+        write_chunk_set(withdrawn, output_dir, file_mode=file_mode)
         logger.info("Replaced chunk set after consent withdrawal: %s", document_id)
+    return ConsentAction.WITHDRAWN
+
+
+def stored_tax_return_ids(output_dir: Path) -> list[str]:
+    """List the documents whose stored chunk set says they are tax returns.
+
+    The set's own ``category`` and ``document_type`` decide, so this works for a document
+    the document store no longer lists. A set that cannot be read is included, because it may
+    still hold consented text and nothing says it is not a tax return: one that is not valid
+    JSON, and one a read fault (``OSError``) hid. Including it only queues it for its own check;
+    ``withdraw_stored_chunk_set`` raises on a read fault rather than blanking the set. Files
+    that are not named ``{lowercase uuid}.json`` are ignored.
+
+    Args:
+        output_dir: Chunk-set directory; a missing directory has no sets
+
+    Returns:
+        The document IDs, sorted
+    """
+    if not output_dir.is_dir():
+        return []
+    found: list[str] = []
+    for path in output_dir.glob("*.json"):
+        try:
+            if _require_uuid(path.stem, "document_id") != path.stem:
+                continue
+        except ChunkingError:
+            continue
+        try:
+            raw = _read_json(path)
+        except (OSError, ValueError, RecursionError):
+            found.append(path.stem)
+            continue
+        if not isinstance(raw, dict) or is_tax_return(raw):
+            found.append(path.stem)
+    return sorted(found)
+
+
+def _is_blanked(stored: Mapping[str, Any]) -> bool:
+    """Say whether a stored set is already text-free with no document labels.
+
+    That is what ``withdraw_stored_chunk_set`` leaves behind for a file that was not valid
+    JSON: null ``category`` and ``document_type`` and no chunks.
+    """
+    return not stored.get("category") and not stored.get("document_type") and stored.get("chunks") in (None, [])
+
+
+def withdraw_stored_chunk_set(
+    document_id: str,
+    output_dir: Path,
+    *,
+    file_mode: int = DEFAULT_FILE_MODE,
+) -> ConsentAction:
+    """Replace a stored chunk set with a text-free one, using the stored set's own fields.
+
+    For a document the document store has deleted: there is no record to read, so the
+    withdrawn set keeps the document-level fields (and the trace ID and strategy) the stored
+    set carried. A stored set that is not valid JSON is replaced by a withdrawn set with null
+    fields, so its text is removed all the same. A read fault (``OSError``) says nothing about
+    the content, so it is raised and the set is left for the next run. A set that parses but
+    does not say it is a tax return is refused (``ChunkingError``) and left as it is. A set an
+    earlier call already blanked (no labels, no chunks) counts as withdrawn without a write, so
+    calling it again changes nothing.
+
+    The refusal fails that one document, once per run, and is safe: nothing is written, so the
+    stored set is exactly what it was, and the run reports the document as failed (exit 1) so a
+    person can look at why the record and the set disagree about being a tax return. Every other
+    document is still handled.
+
+    # #CRITICAL: Security: a deleted tax return's consented text must not stay on disk
+    # #VERIFY: tests/unit/test_chunk_set.py::test_withdraw_stored_chunk_set_removes_the_text_and_keeps_the_fields
+
+    Args:
+        document_id: Document UUID
+        output_dir: Chunk-set directory
+        file_mode: Permission bits of the replacement file; see ``DEFAULT_FILE_MODE``
+
+    Returns:
+        ``WITHDRAWN`` when a stored set exists (it is now text-free), ``SKIP`` when there is none
+
+    Raises:
+        ChunkingError: If the document ID is not a UUID, or the stored set parses but is not a
+            tax return (it is left as it is)
+        OSError: If the stored set cannot be read or the write fails; the stored set is then
+            unchanged
+    """
+    document_id = _require_uuid(document_id, "document_id")
+    path = _chunk_set_path(output_dir, document_id)
+    if not path.exists():
+        return ConsentAction.SKIP
+    try:
+        current: object = _read_json(path)
+    except (ValueError, RecursionError):
+        current = None  # not valid JSON: nothing to keep, and the text must still go
+    fields: Mapping[str, Any] = current if isinstance(current, dict) else {}
+    if isinstance(current, dict) and not is_tax_return(current):
+        if _is_blanked(current):
+            return ConsentAction.WITHDRAWN  # an earlier call already removed the text
+        msg = "the stored chunk set is not a tax return, so it was not replaced"
+        raise ChunkingError(msg)
+    trace_id = fields.get("trace_id")
+    strategy = fields.get("chunk_strategy")
+    try:
+        withdrawn = build_withdrawn_chunk_set(
+            document_id,
+            fields,
+            chunk_strategy=strategy if isinstance(strategy, str) and strategy else DEFAULT_CHUNK_STRATEGY,
+            trace_id=trace_id if isinstance(trace_id, str) else None,
+        )
+    except ChunkingError:
+        withdrawn = build_withdrawn_chunk_set(document_id, fields)
+    if current != withdrawn:
+        write_chunk_set(withdrawn, output_dir, file_mode=file_mode)
+        logger.info("Replaced chunk set of a deleted document: %s", document_id)
     return ConsentAction.WITHDRAWN
 
 
