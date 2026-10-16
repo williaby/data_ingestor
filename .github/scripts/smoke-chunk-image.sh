@@ -19,14 +19,14 @@
 # No document or service is needed.
 set -euo pipefail
 
-if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+if [[ "$#" -ne 1 || -z "$1" ]]; then
   echo "usage: $0 IMAGE_REFERENCE" >&2
   exit 2
 fi
 IMG="$1"
 
 user="$(docker inspect --format '{{.Config.User}}' "${IMG}")"
-if [ "${user}" != "65532:65532" ]; then
+if [[ "${user}" != "65532:65532" ]]; then
   echo "expected user 65532:65532, got '${user}'"
   exit 1
 fi
