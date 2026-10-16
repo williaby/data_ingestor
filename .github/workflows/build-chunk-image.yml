@@ -7,6 +7,10 @@
 # Two jobs: "build" builds and smoke-tests with read-only permissions and runs
 # on pull requests too; "push" needs it, runs only on main, and is the only job
 # that can write packages or sign. A run from any other ref never pushes.
+#
+# The push job publishes by digest only: no tag exists until the image has been
+# pulled back by digest, passed the same smoke script as the build job, and been
+# signed. Only then are the sha, date and latest tags added to that digest.
 name: Build Chunk Image
 
 on:
@@ -19,6 +23,7 @@ on:
       - 'uv.lock'
       - 'src/**'
       - '.github/workflows/build-chunk-image.yml'
+      - '.github/scripts/smoke-chunk-image.sh'
   # A pull request builds and smoke-tests the image but never pushes it.
   pull_request:
     branches: [main]
@@ -29,6 +34,7 @@ on:
       - 'uv.lock'
       - 'src/**'
       - '.github/workflows/build-chunk-image.yml'
+      - '.github/scripts/smoke-chunk-image.sh'
   workflow_dispatch:
     inputs:
       push:
@@ -81,32 +87,10 @@ jobs:
           cache-from: type=gha,scope=data-ingestor
           cache-to: type=gha,mode=max,scope=data-ingestor
 
-      # The job is a CLI, so the smoke test checks what a broken build would
-      # lose: the entrypoint starts, the whole dependency closure of the chunk
-      # command imports (docling-core, transformers, tiktoken, libmagic), the
-      # image runs as a non-root user, and it runs with a read-only root
-      # filesystem. `--help` imports nothing heavy (the chunk command imports
-      # its dependencies when it runs), so the import check is a separate step.
-      # No document or service is needed.
+      # The same script runs again in the push job against the image pulled back
+      # by digest.
       - name: Smoke test
-        run: |
-          set -euo pipefail
-          IMG=data-ingestor-smoke:ci
-          user="$(docker inspect --format '{{.Config.User}}' "${IMG}")"
-          if [ "${user}" != "65532:65532" ]; then
-            echo "expected user 65532:65532, got '${user}'"
-            exit 1
-          fi
-          docker run --rm --read-only --tmpfs /tmp "${IMG}" --help
-          docker run --rm --read-only --tmpfs /tmp "${IMG}" chunk --help
-          docker run --rm --read-only --tmpfs /tmp --entrypoint python "${IMG}" -c '
-          import magic, tiktoken, transformers
-          import data_ingestor.cli.main
-          from data_ingestor.chunking import HybridDocumentChunker
-          from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
-          from data_ingestor.export import build_chunk_set, write_chunk_set
-          print("imports ok")
-          '
+        run: bash .github/scripts/smoke-chunk-image.sh data-ingestor-smoke:ci
 
   push:
     name: Push chunk image
@@ -147,43 +131,58 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
-      - name: Compute tags
-        id: meta
-        env:
-          SOURCE_SHA: ${{ github.sha }}
-        run: |
-          SHA_TAG="sha-${SOURCE_SHA:0:7}"
-          {
-            echo "tags=${IMAGE}:${SHA_TAG},${IMAGE}:latest,${IMAGE}:$(date +%Y%m%d)"
-            echo "sha_tag=${SHA_TAG}"
-          } >> "$GITHUB_OUTPUT"
-
-      # Rebuilt from the cache the build job wrote (same scope), so every layer is the
-      # one that was smoke-tested. Pushing the tested image itself would need an image
-      # tarball hand-off that drops the provenance and SBOM attestations.
-      - name: Build and push
+      # Rebuilt from the cache the build job wrote (same scope), so the layers are
+      # the ones that were smoke-tested. The image is pushed by digest only, with
+      # its provenance and SBOM attestations, and carries no tag yet.
+      - name: Build and push by digest
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
           file: chunk.Dockerfile
           platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=data-ingestor
           provenance: mode=max
           sbom: true
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
 
+      # What is signed and tagged below is what the registry now holds, so test
+      # that, not the local build.
+      - name: Pull by digest and smoke test
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          docker pull "${IMAGE}@${DIGEST}"
+          bash .github/scripts/smoke-chunk-image.sh "${IMAGE}@${DIGEST}"
+
       - name: Sign image
         env:
-          IMAGE_DIGEST_REF: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
-        run: cosign sign --yes "${IMAGE_DIGEST_REF}"
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      # imagetools create copies the manifest list, attestations included, so the
+      # tags point at exactly the digest that was tested and signed.
+      - name: Tag the signed digest
+        id: tag
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SHA_TAG="sha-${SOURCE_SHA:0:7}"
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${SHA_TAG}" \
+            --tag "${IMAGE}:latest" \
+            --tag "${IMAGE}:$(date +%Y%m%d)" \
+            "${IMAGE}@${DIGEST}"
+          echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Summary
         env:
-          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          SHA_TAG: ${{ steps.tag.outputs.sha_tag }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           {
