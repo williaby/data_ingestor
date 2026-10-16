@@ -116,6 +116,18 @@ markdown = exporter.to_markdown(document, include_chunks=True)
 json_data, markdown = exporter.export(document, OutputFormat.BOTH)
 ```
 
+## Container image
+
+The chunk job (the `chunk` command) is published as a hardened, non-root, read-only-root-filesystem
+image at `ghcr.io/williaby/data-ingestor`, built from `chunk.Dockerfile` by the Build Chunk Image
+workflow on each push to `main` that changes the image inputs, and signed with cosign. The workflow
+pushes by digest, smoke-tests the pulled image, signs it, and only then adds the tags. Pin a
+deployment to the digest the workflow summary prints (the `sha-` tag is a lookup aid). It needs a reachable docling-serve and a writable
+chunk directory mounted at `/data/chunks`.
+
+`docker compose build` (see `make dev`) builds a separate local dev image, `data-ingestor:dev`, from
+the general `Dockerfile`; it is not the published image.
+
 ## Architecture
 
 - **Document Router**: Routes documents to appropriate parsers with fallback support

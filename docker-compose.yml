@@ -2,6 +2,11 @@
 # long-running service. Run it with:
 #   docker compose run --rm data-ingestor process /app/data/document.pdf --output /app/output/document.json
 # Embeddings, vector storage and search belong to downstream applications.
+#
+# This builds a LOCAL DEV image (data-ingestor:dev) from ./Dockerfile, a general
+# CLI image that also serves the `process` command. It is not the published chunk
+# job. That image is built from chunk.Dockerfile by the Build Chunk Image workflow
+# and published as ghcr.io/williaby/data-ingestor; use it for chunk runs.
 services:
   data-ingestor:
     build: .

@@ -1,0 +1,8 @@
+# Allowlist build context for chunk.Dockerfile: only what the image installs.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+**/__pycache__
+**/*.pyc
