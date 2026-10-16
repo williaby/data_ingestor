@@ -1,6 +1,10 @@
 # Data Ingestor is a CLI tool (the Chunk stage of the Foundry pipeline), not a
 # long-running service. The image runs the CLI; see docker-compose.yml.
 #
+# This is the local dev image (data-ingestor:dev, built by docker compose). The
+# published chunk-job image, ghcr.io/williaby/data-ingestor, is built from
+# chunk.Dockerfile instead.
+#
 # Dependencies come from uv.lock (hash-verified). Run `uv lock` after changing
 # pyproject.toml, or `uv sync --frozen` fails the build.
 

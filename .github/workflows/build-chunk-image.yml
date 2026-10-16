@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 #
 # Build, smoke-test, sign, and push the chunk-job image (chunk.Dockerfile) to
-# GHCR. Pattern follows the family-office-portal build-image.yml. The image is
-# pushed only after the smoke test passes.
+# GHCR. Pattern follows the family-office-portal build-image.yml.
+#
+# Two jobs: "build" builds and smoke-tests with read-only permissions and runs
+# on pull requests too; "push" needs it, runs only on main, and is the only job
+# that can write packages or sign. A run from any other ref never pushes.
 name: Build Chunk Image
 
 on:
@@ -29,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       push:
-        description: 'Push image to registry (false for a build and smoke test only)'
+        description: 'Push image to registry (main only; false for a build and smoke test only)'
         required: false
         default: true
         type: boolean
@@ -51,6 +54,73 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    steps:
+      - name: Harden the runner (Audit outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      # The cache is written here and read by the push job, so the pushed image is
+      # assembled from the layers this job built and tested.
+      - name: Build image for smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: .
+          file: chunk.Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: data-ingestor-smoke:ci
+          cache-from: type=gha,scope=data-ingestor
+          cache-to: type=gha,mode=max,scope=data-ingestor
+
+      # The job is a CLI, so the smoke test checks what a broken build would
+      # lose: the entrypoint starts, the whole dependency closure of the chunk
+      # command imports (docling-core, transformers, tiktoken, libmagic), the
+      # image runs as a non-root user, and it runs with a read-only root
+      # filesystem. `--help` imports nothing heavy (the chunk command imports
+      # its dependencies when it runs), so the import check is a separate step.
+      # No document or service is needed.
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          IMG=data-ingestor-smoke:ci
+          user="$(docker inspect --format '{{.Config.User}}' "${IMG}")"
+          if [ "${user}" != "65532:65532" ]; then
+            echo "expected user 65532:65532, got '${user}'"
+            exit 1
+          fi
+          docker run --rm --read-only --tmpfs /tmp "${IMG}" --help
+          docker run --rm --read-only --tmpfs /tmp "${IMG}" chunk --help
+          docker run --rm --read-only --tmpfs /tmp --entrypoint python "${IMG}" -c '
+          import magic, tiktoken, transformers
+          import data_ingestor.cli.main
+          from data_ingestor.chunking import HybridDocumentChunker
+          from data_ingestor.conversion import DoclingServeClient, docling_json_to_document
+          from data_ingestor.export import build_chunk_set, write_chunk_set
+          print("imports ok")
+          '
+
+  push:
+    name: Push chunk image
+    needs: build
+    # Only main publishes. A pull request or a manual run from another branch
+    # stops after the build job, so no unsigned tag is ever pushed.
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_dispatch' || inputs.push == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
       packages: write
       id-token: write
       attestations: write
@@ -68,7 +138,6 @@ jobs:
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
         with:
           registry: ghcr.io
@@ -76,62 +145,30 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Cosign
-        if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
       - name: Compute tags
         id: meta
         env:
           SOURCE_SHA: ${{ github.sha }}
-          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
         run: |
           SHA_TAG="sha-${SOURCE_SHA:0:7}"
-          TAGS="${IMAGE}:${SHA_TAG}"
-          if [ "${IS_MAIN}" = "true" ]; then
-            TAGS="${TAGS},${IMAGE}:latest,${IMAGE}:$(date +%Y%m%d)"
-          fi
           {
-            echo "tags=${TAGS}"
+            echo "tags=${IMAGE}:${SHA_TAG},${IMAGE}:latest,${IMAGE}:$(date +%Y%m%d)"
             echo "sha_tag=${SHA_TAG}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build image for smoke test
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
-        with:
-          context: .
-          file: chunk.Dockerfile
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: data-ingestor-smoke:ci
-          cache-from: type=gha,scope=data-ingestor
-          cache-to: type=gha,mode=max,scope=data-ingestor
-
-      # The job is a CLI, so the smoke test checks what a broken build would
-      # lose: the entrypoint starts, the chunk command imports its whole
-      # dependency closure, the image runs as a non-root user, and it runs
-      # with a read-only root filesystem. No document or service is needed.
-      - name: Smoke test
-        run: |
-          set -euo pipefail
-          IMG=data-ingestor-smoke:ci
-          user="$(docker inspect --format '{{.Config.User}}' "${IMG}")"
-          if [ "${user}" != "65532:65532" ]; then
-            echo "expected user 65532:65532, got '${user}'"
-            exit 1
-          fi
-          docker run --rm --read-only --tmpfs /tmp "${IMG}" --help
-          docker run --rm --read-only --tmpfs /tmp "${IMG}" chunk --help
-
+      # Rebuilt from the cache the build job wrote (same scope), so every layer is the
+      # one that was smoke-tested. Pushing the tested image itself would need an image
+      # tarball hand-off that drops the provenance and SBOM attestations.
       - name: Build and push
         id: build
-        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
           file: chunk.Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'workflow_dispatch' || inputs.push == true }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=data-ingestor
           provenance: mode=max
@@ -140,10 +177,6 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Sign image
-        if: >-
-          github.ref == 'refs/heads/main' &&
-          steps.build.outputs.digest != '' &&
-          (github.event_name != 'workflow_dispatch' || inputs.push == true)
         env:
           IMAGE_DIGEST_REF: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMAGE_DIGEST_REF}"
@@ -156,7 +189,5 @@ jobs:
           {
             echo "### Chunk image"
             echo "Short tag (a lookup aid): \`${IMAGE}:${SHA_TAG}\`"
-            if [ -n "${DIGEST}" ]; then
-              echo "Pin deployments to the digest: \`${IMAGE}@${DIGEST}\`"
-            fi
+            echo "Pin deployments to the digest: \`${IMAGE}@${DIGEST}\`"
           } >> "$GITHUB_STEP_SUMMARY"
