@@ -41,16 +41,29 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.17@sha256:e4644cb5bd56fdc2c5ea3ee0525d9d21e
 # Runtime dependencies only: no dev, test, docs, ml or azure groups and no
 # optional extras (no torch, CUDA, Marker, or the full docling package).
 # Conversion goes through docling-serve over HTTP.
+#
+# Nothing here runs package build scripts: --no-build makes uv refuse any
+# source distribution, so every dependency is installed from a prebuilt wheel
+# and no setup.py executes during the image build. langdetect is the one locked
+# dependency that ships only as a source distribution, so it is left out
+# (--no-install-package). It is an optional import in the PDF parser, which
+# skips language detection when it is missing, and the chunk job does not use
+# that parser.
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-default-groups --no-install-project
+RUN uv sync --frozen --no-default-groups --no-install-project \
+        --no-build --no-install-package langdetect
 
+# The project itself is built into a wheel by its own build backend (hatchling,
+# our code only) and installed from that wheel with --no-build. The wheel
+# directory stays in this stage, which is discarded. Settings creates
+# storage_path (./data/processed) when it loads, and every CLI command loads
+# it, so pre-create it for a read-only root filesystem.
 COPY src ./src
-# Settings creates storage_path (./data/processed) when it loads, and every
-# CLI command loads it, so pre-create it for a read-only root filesystem.
-RUN uv sync --frozen --no-default-groups --no-editable \
+RUN uv build --wheel --out-dir /tmp/dist \
+    && uv pip install --python /app/.venv/bin/python --no-build --no-deps /tmp/dist/*.whl \
     && mkdir -p /app/data/processed /app/output
 
 # =============================================================================
@@ -78,7 +91,7 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
 # Non-root. The /data/chunks volume must be writable by this UID on the host
-# (the portal mounts the same directory read-only, D-32).
+# (the consuming application mounts the same directory read-only).
 # #ASSUME: the home server can reach the Hugging Face hub for the chunk
 # tokenizer (DATA_INGESTOR_CHUNK_TOKENIZER) on first use, or mounts a
 # pre-populated HF_HOME. #VERIFY: run one `chunk` job on the home server and

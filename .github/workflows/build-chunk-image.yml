@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Byron Williams
 # SPDX-License-Identifier: MIT
 #
-# Build, smoke-test, sign, and push the chunk-job image (Dockerfile.chunk) to
+# Build, smoke-test, sign, and push the chunk-job image (chunk.Dockerfile) to
 # GHCR. Pattern follows the family-office-portal build-image.yml. The image is
 # pushed only after the smoke test passes.
 name: Build Chunk Image
@@ -10,8 +10,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Dockerfile.chunk'
-      - 'Dockerfile.chunk.dockerignore'
+      - 'chunk.Dockerfile'
+      - 'chunk.Dockerfile.dockerignore'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'src/**'
@@ -32,7 +32,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ghcr.io/williaby/data-ingestor-chunk
+  IMAGE: ghcr.io/williaby/data-ingestor
 
 jobs:
   build:
@@ -87,13 +87,13 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
-          file: Dockerfile.chunk
+          file: chunk.Dockerfile
           platforms: linux/amd64
           push: false
           load: true
-          tags: data-ingestor-chunk-smoke:ci
-          cache-from: type=gha,scope=data-ingestor-chunk
-          cache-to: type=gha,mode=max,scope=data-ingestor-chunk
+          tags: data-ingestor-smoke:ci
+          cache-from: type=gha,scope=data-ingestor
+          cache-to: type=gha,mode=max,scope=data-ingestor
 
       # The job is a CLI, so the smoke test checks what a broken build would
       # lose: the entrypoint starts, the chunk command imports its whole
@@ -102,7 +102,7 @@ jobs:
       - name: Smoke test
         run: |
           set -euo pipefail
-          IMG=data-ingestor-chunk-smoke:ci
+          IMG=data-ingestor-smoke:ci
           user="$(docker inspect --format '{{.Config.User}}' "${IMG}")"
           if [ "${user}" != "65532:65532" ]; then
             echo "expected user 65532:65532, got '${user}'"
@@ -116,11 +116,11 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
-          file: Dockerfile.chunk
+          file: chunk.Dockerfile
           platforms: linux/amd64
           push: ${{ github.event_name != 'workflow_dispatch' || inputs.push == true }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=data-ingestor-chunk
+          cache-from: type=gha,scope=data-ingestor
           provenance: mode=max
           sbom: true
           labels: |
@@ -138,8 +138,12 @@ jobs:
       - name: Summary
         env:
           SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           {
             echo "### Chunk image"
-            echo "Pin in the homelab-infra data-ingestor job: \`${SHA_TAG}\`"
+            echo "Short tag (a lookup aid): \`${IMAGE}:${SHA_TAG}\`"
+            if [ -n "${DIGEST}" ]; then
+              echo "Pin deployments to the digest: \`${IMAGE}@${DIGEST}\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
