@@ -352,25 +352,31 @@ class DocumentsApiClient:
         records: dict[uuid.UUID, DocumentRecord] = {}
         page = 1
         total = 0
-        complete = True
         while True:
-            response = self._send(DOCUMENTS_PATH, {**params, "page": page})
-            if response.status_code != httpx.codes.OK:
-                raise _status_error(response.status_code)
-            items, pages, page_total = self._parse_page(self._json(response))
+            items, pages, page_total = self._fetch_page(params, page)
             if page == 1:
                 total = page_total
-            for raw in items:
-                record = self._record(raw)
-                known = records.get(record.id)
-                if known is None or record.updated_at >= known.updated_at:
-                    records[record.id] = record
-            if not items and page < pages:
-                complete = False  # an empty page before the last one means rows moved
-            if page >= pages or not items:
+            self._merge(records, items)
+            if page >= pages:
                 break
+            if not items:
+                return None  # an empty page before the last one means rows moved
             page += 1
-        return records if complete and len(records) == total else None
+        return records if len(records) == total else None
+
+    def _fetch_page(self, params: dict[str, Any], page: int) -> tuple[list[object], int, int]:
+        response = self._send(DOCUMENTS_PATH, {**params, "page": page})
+        if response.status_code != httpx.codes.OK:
+            raise _status_error(response.status_code)
+        return self._parse_page(self._json(response))
+
+    def _merge(self, records: dict[uuid.UUID, DocumentRecord], items: list[object]) -> None:
+        """Add the page's records, keeping the newest copy of one that repeats."""
+        for raw in items:
+            record = self._record(raw)
+            known = records.get(record.id)
+            if known is None or record.updated_at >= known.updated_at:
+                records[record.id] = record
 
     @staticmethod
     def _parse_page(body: object) -> tuple[list[object], int, int]:
