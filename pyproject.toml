@@ -35,7 +35,7 @@ dependencies = [
     "openai>=1.12.0,<2.0.0",
     "cryptography>=50.0.0,<51.0.0",
     "pyjwt[crypto]>=2.10.1,<3.0.0",
-    "python-gnupg>=0.5.2,<0.6.0",
+    "python-gnupg>=0.5.7,<0.6.0",
     "pyyaml>=6.0.2,<7.0.0",
     "toml>=0.10.2,<0.11.0",
     "python-multipart>=0.0.31,<0.1.0",
@@ -69,7 +69,7 @@ dependencies = [
     # Document processing dependencies for RAG ingestion pipeline
     # PDF processing
     "pymupdf>=1.24.0,<2.0.0",
-    "pymupdf4llm>=0.0.17,<0.0.18",
+    "pymupdf4llm>=0.0.25,<0.0.26",
     # Image processing for PDF resolution enhancement
     "opencv-python-headless>=4.10.0,<5.0.0",
     "pillow>=10.1.0,<11.0.0",  # Compatible with marker-pdf
