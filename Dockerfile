@@ -8,7 +8,7 @@
 # Dependencies come from uv.lock (hash-verified). Run `uv lock` after changing
 # pyproject.toml, or `uv sync --frozen` fails the build.
 
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Build tools for any dependency that has no wheel for this platform
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -33,7 +33,7 @@ COPY src/ ./src/
 RUN uv sync --frozen --no-default-groups --no-editable
 
 # Minimal final image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # libmagic is required by python-magic (format detection)
 RUN apt-get update && apt-get install -y --no-install-recommends \
