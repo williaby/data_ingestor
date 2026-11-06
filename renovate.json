@@ -219,7 +219,7 @@
       "matchManagers": [
         "github-actions"
       ],
-      "matchPackagePatterns": [
+      "matchPackageNames": [
         "ByronWilliamsCPA/.github",
         "williaby/.github"
       ],
