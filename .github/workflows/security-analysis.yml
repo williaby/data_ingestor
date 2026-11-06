@@ -19,7 +19,7 @@
 #   - Semgrep workflow step (now using Semgrep App)
 #   - Bandit from ci.yml (consolidated here)
 #   - CodeQL standalone check (using workflow version with custom queries)
-#   - Safety (coverage now provided by Dependency Review, CodeQL, OSV-Scanner)
+#   - Safety (coverage now provided by Dependency Review and CodeQL)
 #
 # BENEFITS:
 #   - Saves ~10-12 minutes per PR
@@ -188,7 +188,6 @@ jobs:
           name: security-scan-reports
           path: |
             bandit-report.json
-            requirements-scan.txt
 
   # Document processing specific security validations
   document-processing-security:
