@@ -44,17 +44,16 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.17@sha256:e4644cb5bd56fdc2c5ea3ee0525d9d21e
 #
 # Nothing here runs package build scripts: --no-build makes uv refuse any
 # source distribution, so every dependency is installed from a prebuilt wheel
-# and no setup.py executes during the image build. langdetect is the one locked
-# dependency that ships only as a source distribution, so it is left out
-# (--no-install-package). It is an optional import in the PDF parser, which
-# skips language detection when it is missing, and the chunk job does not use
-# that parser.
+# and no setup.py executes during the image build. lingua-language-detector is
+# left out (--no-install-package) to keep the image small: its wheel is about
+# 96 MB. It is an optional import in the PDF parser, which skips language
+# detection when it is missing, and the chunk job does not use that parser.
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-default-groups --no-install-project \
-        --no-build --no-install-package langdetect
+        --no-build --no-install-package lingua-language-detector
 
 # The project itself is built into a wheel by its own build backend (hatchling,
 # our code only) and installed from that wheel with --no-build. The wheel

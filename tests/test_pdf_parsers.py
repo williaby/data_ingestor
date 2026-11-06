@@ -346,32 +346,45 @@ class TestMarkerParser:
         assert toc[0]["title"] == "Title 1"
         assert toc[1]["title"] == "Heading 1"
 
-    @patch("data_ingestor.parsers.pdf_parser.detect", create=True)
-    def test_detect_languages_success(self, mock_detect) -> None:
-        """Test language detection success."""
-        mock_detect.return_value = "en"
-
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("The quarterly report shows revenue increased by twelve percent compared to last year.", "en"),
+            (
+                "El informe trimestral muestra que los ingresos aumentaron un doce por ciento respecto al año pasado.",
+                "es",
+            ),
+            (
+                "Der Quartalsbericht zeigt, dass die Einnahmen im Vergleich zum Vorjahr um zwölf Prozent gestiegen sind.",
+                "de",
+            ),
+        ],
+    )
+    def test_detect_languages_real_detector(self, text: str, expected: str) -> None:
+        """Run the real Lingua detector so a broken import cannot pass silently."""
+        pytest.importorskip("lingua")
         parser = MarkerParser()
-        elements = [
-            DocumentElement(element_type=ElementType.PARAGRAPH, content="Test content in English"),
-        ]
+        elements = [DocumentElement(element_type=ElementType.PARAGRAPH, content=text)]
 
-        languages = parser._detect_languages(elements)
-
-        assert len(languages) == 1
-        assert languages[0] == "en"
+        assert parser._detect_languages(elements) == [expected]
 
     def test_detect_languages_import_error(self) -> None:
-        """Test language detection when langdetect is not available."""
-        with patch.dict("sys.modules", {"langdetect": None}):
-            parser = MarkerParser()
-            elements = [
-                DocumentElement(element_type=ElementType.PARAGRAPH, content="Test content"),
-            ]
+        """Test language detection when lingua-language-detector is not available."""
+        from data_ingestor.parsers.pdf_parser import _language_detector
 
-            languages = parser._detect_languages(elements)
+        _language_detector.cache_clear()
+        try:
+            with patch.dict("sys.modules", {"lingua": None}):
+                parser = MarkerParser()
+                elements = [
+                    DocumentElement(element_type=ElementType.PARAGRAPH, content="Test content"),
+                ]
+
+                languages = parser._detect_languages(elements)
 
             assert languages == []
+        finally:
+            _language_detector.cache_clear()
 
     def test_enhance_element_metadata(self) -> None:
         """Test element metadata enhancement."""
@@ -505,21 +518,18 @@ class TestMarkerParserExtended:
         assert toc[0]["level"] == 1
         assert toc[1]["level"] == 2
 
-    @patch("data_ingestor.parsers.pdf_parser.detect", create=True)
-    def test_detect_languages_with_multiple_elements(self, mock_detect) -> None:
-        """Test language detection with enough text."""
-        mock_detect.return_value = "en"
-
+    def test_detect_languages_with_multiple_elements(self) -> None:
+        """Only text elements are sampled and the sample is capped."""
+        pytest.importorskip("lingua")
         parser = MarkerParser()
+        english = "The committee approved the annual budget after a long discussion. "
         elements = [
-            DocumentElement(element_type=ElementType.PARAGRAPH, content="A" * 500),
-            DocumentElement(element_type=ElementType.PARAGRAPH, content="B" * 500),
-            DocumentElement(element_type=ElementType.TABLE, content="Table"),  # Should be skipped
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=english * 8),
+            DocumentElement(element_type=ElementType.PARAGRAPH, content=english * 8),
+            DocumentElement(element_type=ElementType.TABLE, content="Tabla"),  # Should be skipped
         ]
 
-        languages = parser._detect_languages(elements)
-
-        assert len(languages) == 1
+        assert parser._detect_languages(elements) == ["en"]
 
     def test_detect_languages_insufficient_text(self) -> None:
         """Test language detection with insufficient text."""

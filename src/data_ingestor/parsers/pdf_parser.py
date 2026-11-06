@@ -2,6 +2,7 @@
 
 import logging
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -20,6 +21,26 @@ from data_ingestor.core.models import (
 from data_ingestor.utils.llm_endpoint import require_local_llm_endpoint
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _language_detector() -> Any:
+    """Build the shared Lingua language detector once.
+
+    #CRITICAL: Library Dependency: lingua-language-detector may not be installed
+    #ASSUME: Low accuracy mode is enough for the ~1000 character samples used here.
+    It needs about 66 MB and 0.3 s to start, against about 910 MB and 5 s for the
+    default mode (measured with lingua-language-detector 2.1.1, all languages).
+
+    Returns:
+        A Lingua LanguageDetector.
+
+    Raises:
+        ImportError: If lingua-language-detector is not installed.
+    """
+    from lingua import LanguageDetectorBuilder
+
+    return LanguageDetectorBuilder.from_all_languages().with_low_accuracy_mode().build()
 
 
 class PyMuPDFParser(BaseParser):
@@ -997,7 +1018,7 @@ class MarkerParser(BaseParser):
     def _detect_languages(self, elements: list[DocumentElement]) -> list[str]:
         """Detect languages present in document elements.
 
-        # #CRITICAL: Library Dependency: langdetect may not be installed
+        # #CRITICAL: Library Dependency: lingua-language-detector may not be installed
         # #VERIFY: Gracefully degrade if library unavailable
 
         Args:
@@ -1007,10 +1028,6 @@ class MarkerParser(BaseParser):
             List of detected language codes (ISO 639-1)
         """
         try:
-            from collections import Counter
-
-            from langdetect import LangDetectException, detect
-
             # Sample text from elements (combine up to 1000 chars for better accuracy)
             sample_texts: list[str] = []
             total_chars = 0
@@ -1038,16 +1055,16 @@ class MarkerParser(BaseParser):
             # Detect language
             # #ASSUME: Language Detection: Single language detection sufficient
             # #VERIFY: May need multi-language detection for multilingual docs
-            try:
-                detected_lang = detect(combined_text)
-                logger.debug(f"Detected language: {detected_lang}")
-                return [detected_lang]
-            except LangDetectException:
-                logger.warning("Language detection failed - insufficient text")
+            language = _language_detector().detect_language_of(combined_text)
+            if language is None:
+                logger.warning("Language detection failed - insufficient or ambiguous text")
                 return []
+            detected_lang = str(language.iso_code_639_1.name).lower()
+            logger.debug(f"Detected language: {detected_lang}")
+            return [detected_lang]
 
         except ImportError:
-            logger.debug("langdetect not installed, skipping language detection")
+            logger.debug("lingua-language-detector not installed, skipping language detection")
             return []
         except Exception as e:
             logger.warning(f"Language detection failed: {e}")

@@ -48,12 +48,11 @@ jobs:
       # Install wheels only: no sdist build backend or setup.py runs. Imported
       # wheels still execute their own code, so this job keeps a read-only
       # token. The project itself is not installed (nothing here imports it).
-      # langdetect is skipped because uv.lock records only its source
-      # distribution (its one published wheel is py2-only) and --no-build
-      # forbids building it. Neither is needed by the checks below.
+      # lingua-language-detector is skipped because it is a large (about 96 MB)
+      # wheel that none of the checks below use.
       - name: Install dependencies
         run: |
-          uv sync --frozen --no-build --no-install-project --no-install-package langdetect
+          uv sync --frozen --no-build --no-install-project --no-install-package lingua-language-detector
 
       # Validate document processing dependencies
       - name: Validate Document Processing Dependencies
