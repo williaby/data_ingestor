@@ -1,6 +1,6 @@
 # OpenSSF Scorecard Security Assessment
 # Automated security health metrics for open source projects
-# Results published to: https://scorecard.dev/viewer/?uri=github.com/Byron/data_ingestor
+# Results published to: https://scorecard.dev/viewer/?uri=github.com/williaby/data_ingestor
 
 name: OpenSSF Scorecard
 
