@@ -1174,7 +1174,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.2.1,<3.0.0" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1,<3.0.0" },
     { name = "pymupdf", specifier = ">=1.24.0,<2.0.0" },
-    { name = "pymupdf4llm", specifier = ">=0.0.25,<0.0.26" },
+    { name = "pymupdf4llm", specifier = ">=2.0,<2.0.1" },
     { name = "python-dateutil", specifier = ">=2.9.0,<3.0.0" },
     { name = "python-docx", specifier = ">=1.1.0,<2.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.1,<2.0.0" },
@@ -4215,14 +4215,10 @@ wheels = [
 
 [[package]]
 name = "pymupdf4llm"
-version = "0.0.25"
+version = "2.0"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pymupdf" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/64/b0d235a8fedb5e04c4a668321365cc8b8a767c1bc502a3985fed2162917a/pymupdf4llm-0.0.25.tar.gz", hash = "sha256:deebe0f54c2d654ab175432cf015a17b33a02463f46a5ea1aeed741f6fa502de", size = 28684, upload-time = "2025-06-13T17:27:30.816Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/a0/cb7c3ec3eb762b6849745132465d25c11cd6c74a8cf18ae9dbbee8159cda/pymupdf4llm-0.0.25-py3-none-any.whl", hash = "sha256:a4b4ce8680c008a27b33a14d9fbaeeeb7475e726a010e08bdf171d53eb777a6d", size = 29352, upload-time = "2025-06-13T17:27:32.867Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/86/91671857614bbf931c04532c11572c70fa2031862b1332befcd3bcde1f51/pymupdf4llm-2.0-py3-none-any.whl", hash = "sha256:43d4b4a2d0bf8b9b4d7f21a48875ef0016018dbad6677ef6b01ef2b0f6e392dd", size = 904, upload-time = "2026-10-19T09:47:36.281Z" },
 ]
 
 [[package]]
