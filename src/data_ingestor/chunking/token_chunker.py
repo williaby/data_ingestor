@@ -41,16 +41,74 @@ class TokenChunker:
             self.encoding = tiktoken.get_encoding("cl100k_base")
 
     def chunk_document(self, document: Document) -> list[Chunk]:
-        """Chunk document into smaller pieces with overlap.
+        """Chunking stage: split a parsed document into token-bounded chunks.
 
-        # #CRITICAL: Context Preservation: Chunking may split semantic units
-        # #VERIFY: Implement semantic boundary detection for better splits
+        **Strategy:** Fixed-size, token-based with overlap. This is one
+        of the two chunking strategies exposed by the pipeline; see
+        :class:`~data_ingestor.chunking.by_title_chunker.ByTitleChunker`
+        for semantic-boundary chunking.
+
+        **Parameters controlling chunk size:**
+
+        * ``chunk_size`` (constructor arg, default 1000): **soft**
+          target / cap for tokens per chunk, measured with the
+          configured tiktoken encoding. The chunker seals a chunk
+          *before* the element that would overflow it is added, but
+          two documented exceptions can produce chunks larger than
+          ``chunk_size``:
+
+          1. Overlap content from the previous chunk is seeded into
+             the new chunk's buffer *before* the next element is
+             added, so a chunk's final token count can be up to
+             ``chunk_size + chunk_overlap`` (minus one element).
+          2. Tables emitted under ``preserve_tables=True`` are
+             standalone chunks regardless of their own token count.
+        * ``chunk_overlap`` (constructor arg, default 200): target
+          number of overlapping tokens between consecutive chunks
+          within the same element-flush boundary.
+        * ``preserve_tables`` (constructor arg, default True): when
+          True, :attr:`ElementType.TABLE` elements are emitted as
+          standalone chunks regardless of their token count -- one
+          of the two exceptions to the soft ``chunk_size`` cap above.
+
+        **How overlap is calculated:** When a chunk is sealed because
+        adding the next element would exceed ``chunk_size``, the
+        chunker walks the just-sealed content list *backwards*,
+        prepending whole content parts to the new chunk's buffer as
+        long as their combined token count stays at or below
+        ``chunk_overlap``. The first content part whose addition would
+        breach the overlap budget terminates the walk. Overlap is
+        therefore measured in *whole element-content parts*, not in
+        raw tokens; the actual overlap may be smaller than
+        ``chunk_overlap`` (never larger). Setting ``chunk_overlap=0``
+        disables overlap. Overlap is *not* applied across the
+        oversize-element split branch in
+        :meth:`_split_large_element`, which uses a sentence-window
+        overlap of up to the last 3 sentences instead.
+
+        **Input schema:** A :class:`Document` whose ``elements`` list
+        is non-empty. An empty ``elements`` list yields an empty list
+        (logged at WARNING).
+
+        **Output schema:** A list of :class:`Chunk`, each with:
+
+        * ``content``: concatenated element texts joined by ``"\\n\\n"``
+          (or, for split oversize elements, sentence-joined by ``" "``).
+        * ``elements``: the originating elements (empty for overlap-
+          inherited content where element tracking is lost).
+        * ``token_count``: computed via the configured encoding.
+        * ``metadata``: includes ``document_id``, ``chunk_index``,
+          ``total_chunks``, ``source_path``, ``document_format``.
+        * ``start_page``/``end_page``: min/max page numbers across the
+          chunk's elements.
+
+        **Side effects:** None. Pure transformation.
 
         Args:
-            document: Document with extracted elements
+            document: A parsed document with populated ``elements``.
 
         Returns:
-            List of chunks
+            List of :class:`Chunk` objects ready for embedding/storage.
         """
         if not document.elements:
             logger.warning(f"Document {document.document_id} has no elements to chunk")

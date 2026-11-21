@@ -62,16 +62,57 @@ class ByTitleChunker:
             self.encoding = tiktoken.get_encoding("cl100k_base")
 
     def chunk_document(self, document: Document) -> list[Chunk]:
-        """Chunk document preserving section boundaries.
+        """Chunking stage: section-aware (by_title) chunking.
 
-        # #CRITICAL: Section Boundary Preservation: Must never chunk across title elements
-        # #VERIFY: Validate that no chunk contains elements from different sections
+        **Strategy:** Semantic / section-aware. Title and heading
+        elements act as section boundaries; chunks never span them
+        **unless** ``combine_text_under_n_chars`` is set, in which
+        case consecutive small sections are merged *before* chunking
+        and the resulting combined chunk may contain more than one
+        title/heading boundary by design. Within each (possibly
+        merged) section, elements are packed into chunks up to
+        ``chunk_size`` tokens; oversized elements form standalone
+        chunks tagged ``oversized_element: True``.
+
+        **Parameters controlling chunk size:**
+
+        * ``chunk_size`` (default 1000): soft maximum tokens per chunk.
+        * ``chunk_overlap`` (default 200): retained for API symmetry
+          but **not applied** in by-title mode -- crossing a section
+          boundary would defeat the strategy's purpose. Overlap inside
+          a single section is also disabled by design.
+        * ``preserve_tables`` (default True): tables become standalone
+          chunks.
+        * ``combine_text_under_n_chars`` (default None): when set, runs
+          of sections whose combined text length is below this
+          threshold are merged before chunking, preventing tiny
+          fragments.
+        * ``respect_page_boundaries`` (default False): when True,
+          forces a chunk seal on page changes within a section.
+
+        **How overlap is calculated:** Overlap is *intentionally zero*
+        across both section and page boundaries; section identity is
+        the more important signal for retrieval than token-window
+        continuity.
+
+        **Output schema:** A list of :class:`Chunk` with the same
+        fields documented in
+        :meth:`TokenChunker.chunk_document` plus:
+
+        * ``metadata["chunking_strategy"] = "by_title"``.
+        * ``metadata["section_title"]``: the first title/heading
+          content found in the chunk, or None.
+        * ``metadata["orig_elements"]``: list of source element IDs.
+
+        **Side effects:** None. Pure transformation.
 
         Args:
-            document: Document with extracted elements
+            document: Parsed document with populated ``elements``.
 
         Returns:
-            List of chunks
+            List of :class:`Chunk`. Each chunk respects section
+            boundaries except where ``combine_text_under_n_chars``
+            triggered an explicit small-section merge.
         """
         if not document.elements:
             logger.warning(f"Document {document.document_id} has no elements to chunk")
