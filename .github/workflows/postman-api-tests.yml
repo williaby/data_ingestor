@@ -1,0 +1,234 @@
+# Postman / Newman API contract tests for the Data Ingestor FastAPI surface.
+#
+# This workflow starts the FastAPI app with mocked cloud-storage credentials,
+# waits for the /health endpoint to report ready, then runs Newman against
+# docs/api/postman-collection.json. The collection asserts status codes and
+# response-body shapes for every route, so any drift between the OpenAPI spec
+# committed at docs/api/openapi.json and the live app will fail this job.
+#
+# ---------------------------------------------------------------------------
+# Required GitHub Actions secrets (configure under Settings → Secrets and
+# variables → Actions). These are read into the test process's environment so
+# that the cloud-storage clients in src/data_ingestor/storage/ can boot in
+# "mocked" mode without touching real cloud accounts.
+#
+#   AWS_ACCESS_KEY_ID           - dummy value, e.g. "test"; required by boto3
+#   AWS_SECRET_ACCESS_KEY       - dummy value, e.g. "test"
+#   AWS_DEFAULT_REGION          - e.g. "us-east-1"
+#   AZURE_STORAGE_CONNECTION_STRING - dummy connection string for azurite/mock
+#   GOOGLE_APPLICATION_CREDENTIALS_JSON - dummy GCS service-account JSON blob
+#   DATA_INGESTOR_API_KEY       - API key Newman sends in the X-API-Key header
+#
+# The DATA_INGESTOR_STORAGE_BACKEND=mock env var below forces the app to use
+# in-memory storage shims regardless of the secret values, so the secrets only
+# need to be syntactically valid -- they do not need to authenticate against
+# real cloud accounts.
+# ---------------------------------------------------------------------------
+
+name: Postman API Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postman-api-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  newman:
+    name: Newman contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Force the app into a fully-mocked storage backend so no real cloud
+      # credentials are required to boot.
+      DATA_INGESTOR_STORAGE_BACKEND: mock
+      # Quoted because the trailing ":memory:" would otherwise be parsed as YAML.
+      DATA_INGESTOR_DATABASE_URL: "sqlite:///:memory:"
+      DATA_INGESTOR_REDIS_URL: "redis://localhost:6379/0"
+      DATA_INGESTOR_ENABLE_GPU: "false"
+      DATA_INGESTOR_LOG_LEVEL: WARNING
+
+      # Cloud SDK clients still read these even when mocked; the workflow
+      # surfaces them from secrets so the values are not hard-coded.
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies (uv pip, minimal API runtime only)
+        # The repo's pyproject.toml is Poetry-managed with `dynamic = ["dependencies"]`
+        # under `[project]`, so `uv sync` can't resolve from it directly. We use
+        # `uv pip install` with an explicit pin set covering exactly what the
+        # FastAPI surface needs to serve /health, /status, and /ingest. This
+        # avoids pulling the heavy ML deps (marker, docling, torch) the API
+        # itself does not exercise.
+        #
+        # The transitive imports come from `data_ingestor/__init__.py`, which
+        # eagerly imports DocumentRouter -> pdf_analyzer (fitz / PIL / cv2 /
+        # numpy) and format_detector (magic). Those packages must be present or
+        # `from data_ingestor.api.app import app` fails at import time, which
+        # would break both the spec-regen step and the uvicorn start-up below.
+        run: |
+          uv venv --python 3.11
+          # Pydantic and FastAPI are pinned to specific minor lines because
+          # subtle JSON-Schema-emission changes between minors (e.g.,
+          # additionalProperties defaults, `examples` placement) would cause
+          # the committed docs/api/openapi.json to drift in CI even when the
+          # source code is unchanged. Match the versions used to generate the
+          # committed spec.
+          uv pip install \
+            "fastapi==0.136.1" \
+            "uvicorn[standard]>=0.35,<1" \
+            "pydantic==2.13.4" \
+            "pydantic-settings>=2.2,<3" \
+            "python-magic>=0.4,<1" \
+            "structlog>=24,<26" \
+            "python-multipart>=0.0.27,<1" \
+            "httpx>=0.27,<1" \
+            "pymupdf>=1.24,<2" \
+            "Pillow>=10,<12" \
+            "opencv-python-headless>=4.9,<5" \
+            "numpy>=1.26,<3"
+          # python-magic requires the libmagic system library on Linux runners.
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libmagic1
+
+      - name: Set up Node.js (for Newman)
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "20"
+
+      - name: Install Newman (pinned)
+        run: npm install --global newman@6.2.2
+
+      - name: Verify generated OpenAPI spec is up to date
+        # Regenerate the spec from the live app and fail if the committed file
+        # has drifted. This guarantees docs/api/openapi.json stays in sync.
+        # The diff output is captured to a file (and uploaded as an artifact
+        # on failure) so the drift is debuggable from the run page.
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run python scripts/export_openapi.py /tmp/openapi.regen.json
+          if ! diff -u docs/api/openapi.json /tmp/openapi.regen.json > /tmp/openapi.diff; then
+            echo "::error::docs/api/openapi.json is out of date. Diff:"
+            cat /tmp/openapi.diff
+            exit 1
+          fi
+
+      - name: Verify Postman collection is up to date
+        run: |
+          uv run python scripts/generate_postman_collection.py \
+            --openapi docs/api/openapi.json \
+            --out /tmp/postman.regen.json
+          if ! diff -u docs/api/postman-collection.json /tmp/postman.regen.json > /tmp/postman.diff; then
+            echo "::error::docs/api/postman-collection.json is out of date. Diff:"
+            cat /tmp/postman.diff
+            exit 1
+          fi
+
+      - name: Start FastAPI app in background
+        env:
+          PYTHONPATH: src
+        run: |
+          mkdir -p /tmp/data_ingestor_logs
+          uv run uvicorn data_ingestor.api.app:app \
+            --host 127.0.0.1 --port 8000 --log-level warning \
+            > /tmp/data_ingestor_logs/app.log 2>&1 &
+          echo $! > /tmp/data_ingestor_logs/app.pid
+          echo "Started uvicorn with PID $(cat /tmp/data_ingestor_logs/app.pid)"
+
+      - name: Poll /health until ready
+        run: |
+          set +e
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8000/health > /tmp/health.json; then
+              echo "Health probe succeeded on attempt ${attempt}:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Health probe attempt ${attempt} failed; sleeping 1s"
+            sleep 1
+          done
+          echo "::error::API did not become healthy within 30 seconds"
+          echo "----- app.log -----"
+          cat /tmp/data_ingestor_logs/app.log || true
+          exit 1
+
+      - name: Run Newman against the running app
+        env:
+          DATA_INGESTOR_API_KEY: ${{ secrets.DATA_INGESTOR_API_KEY }}
+        run: |
+          newman run docs/api/postman-collection.json \
+            --env-var "baseUrl=http://127.0.0.1:8000" \
+            --env-var "apiKey=${DATA_INGESTOR_API_KEY:-ci-test-key}" \
+            --reporters cli,junit \
+            --reporter-junit-export newman-results.xml
+
+      - name: Upload Newman JUnit report
+        if: always()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: newman-results
+          path: newman-results.xml
+          if-no-files-found: ignore
+
+      - name: Stop FastAPI app
+        if: always()
+        run: |
+          if [ -f /tmp/data_ingestor_logs/app.pid ]; then
+            pid=$(cat /tmp/data_ingestor_logs/app.pid)
+            echo "Stopping uvicorn PID ${pid}"
+            kill "${pid}" 2>/dev/null || true
+            # Give it a moment to flush; then force-kill if still alive.
+            sleep 2
+            kill -9 "${pid}" 2>/dev/null || true
+          fi
+
+      - name: Upload app log on failure
+        if: failure()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: data-ingestor-app-log
+          path: /tmp/data_ingestor_logs/app.log
+          if-no-files-found: ignore
+
+      - name: Upload spec/collection drift diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: openapi-postman-drift
+          path: |
+            /tmp/openapi.diff
+            /tmp/postman.diff
+          if-no-files-found: ignore

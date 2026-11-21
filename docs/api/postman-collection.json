@@ -1,0 +1,306 @@
+{
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Ensure baseUrl has no trailing slash",
+          "const base = pm.variables.get('baseUrl') || '';",
+          "if (base.endsWith('/')) {",
+          "    pm.variables.set('baseUrl', base.replace(/\\/+$/, ''));",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "info": {
+    "_postman_id": "data-ingestor-api",
+    "description": "REST interface to the Data Ingestor pipeline. The pipeline transforms diverse document formats (PDF, DOCX, HTML, video, audio) into structured, chunked, and metadata-rich records suitable for retrieval-augmented generation. The API exposes three pipeline stages: ingest (submit a document and poll job status), health (process liveness and parser availability), and status (aggregate job and uptime metrics).",
+    "name": "Data Ingestor API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "0.1.0"
+  },
+  "item": [
+    {
+      "description": "Endpoints tagged 'health'.",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response body is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('object');",
+                  "});",
+                  "pm.test(\"status field is 'ok'\", function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Liveness probe",
+          "request": {
+            "description": "Report API process liveness.\n\nPipeline stage: ``health`` \u2014 this endpoint does not invoke any parser or storage code;\nit only confirms that the API process is accepting requests.\n\nAsync response structure: a :class:`HealthStatus` payload with three fields \u2014\n``status`` (literal ``\"ok\"`` while serving), ``version`` (application version), and\n``uptime_seconds`` (float since process start).",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "raw": "{{baseUrl}}/health",
+              "variable": []
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response body is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Supported document formats",
+          "request": {
+            "description": "List the document formats this build can route to a parser.\n\nPipeline stage: ``health`` \u2014 returns the static set of formats the\npipeline's :class:`DocumentFormat` enum advertises as routable. Actual parser\nregistration happens inside the pipeline runtime (out of scope for the API\nsurface in this PR), so the per-format ``available`` flag here reflects only\nwhether the format is recognised by the router, not whether any specific\nparser binary is installed in the current environment.\n\nAsync response structure: a :class:`ParserHealthReport` payload with a\ntop-level ``healthy`` boolean (true when the format enum is non-empty) and a\n``formats`` list of :class:`ParserHealth` entries.",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "parsers"
+              ],
+              "raw": "{{baseUrl}}/health/parsers",
+              "variable": []
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "health"
+    },
+    {
+      "description": "Endpoints tagged 'ingest'.",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "pm.test(\"Response body is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('object');",
+                  "});",
+                  "pm.test(\"Response carries a job_id and queued state\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('job_id').that.is.a('string');",
+                  "    pm.expect(body).to.have.property('state', 'queued');",
+                  "    pm.collectionVariables.set('jobId', body.job_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Submit a document for ingestion",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"file_path\": \"/data/inbox/sample.pdf\",\n  \"chunking_strategy\": \"basic\",\n  \"metadata\": {\n    \"source\": \"postman-newman-smoke-test\"\n  }\n}"
+            },
+            "description": "Accept a document into the ingestion pipeline.\n\nPipeline stage: ``ingest`` \u2014 enqueues the request for asynchronous processing by the\npipeline's :class:`DocumentRouter`. This endpoint records a job entry in the\nin-memory tracker and returns immediately; actual parsing, chunking, and export are\nperformed by the pipeline workers.\n\nAsync response structure: a :class:`IngestAccepted` payload with the server-issued\n``job_id``, the initial ``state`` (``\"queued\"``), the ``submitted_at`` UTC timestamp,\nand a ``poll_url`` the client can ``GET`` for status updates.",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest"
+              ],
+              "raw": "{{baseUrl}}/ingest",
+              "variable": []
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response body is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('object');",
+                  "});",
+                  "pm.test(\"Response describes the same job_id\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const expected = pm.collectionVariables.get('jobId');",
+                  "    pm.expect(body).to.have.property('job_id', expected);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Get ingestion job status",
+          "request": {
+            "description": "Return the lifecycle snapshot for a previously submitted ingestion job.\n\nPipeline stage: ``ingest`` \u2014 read-only view over the in-memory job tracker; does not\nre-trigger parsing or touch storage. The ``job_id`` path parameter is validated as a\nUUID by FastAPI, so malformed IDs are rejected with 422 before the lookup.\n\nAsync response structure: a :class:`JobStatus` payload with ``job_id``, current\n``state``, ``submitted_at`` / ``started_at`` / ``completed_at`` timestamps,\n``parser_used`` (when known), and an optional ``error`` string for failed jobs.",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                ":job_id",
+                "status"
+              ],
+              "raw": "{{baseUrl}}/ingest/:job_id/status",
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": "{{jobId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "ingest"
+    },
+    {
+      "description": "Endpoints tagged 'status'.",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response body is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Pipeline status snapshot",
+          "request": {
+            "description": "Return an aggregate snapshot of pipeline activity.\n\nPipeline stage: ``status`` \u2014 read-only view over the API process's in-memory job\ntracker. Does not invoke parser or storage code.\n\nAsync response structure: a :class:`PipelineStatus` payload with ``total_jobs`` and\nper-state counters (``queued``, ``running``, ``completed``, ``failed``) plus\n``uptime_seconds`` since process start.",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "status"
+              ],
+              "raw": "{{baseUrl}}/status",
+              "variable": []
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "status"
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "type": "string",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "apiKey",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "key": "jobId",
+      "type": "string",
+      "value": ""
+    }
+  ]
+}
