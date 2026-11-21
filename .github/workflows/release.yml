@@ -11,16 +11,22 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write       # semantic-release pushes tags and CHANGELOG commits
+      issues: write         # semantic-release/github comments on resolved issues
+      pull-requests: write  # semantic-release/github comments on released PRs
+      # id-token: write — intentionally NOT granted. The release job uses
+      # GITHUB_TOKEN for semantic-release, not OIDC. The publish-pypi job
+      # below requests id-token: write at its own job scope (PyPI Trusted
+      # Publishing); add this back here only when release-time signing
+      # (Sigstore/cosign) is actually wired up.
     # Skip release if commit message contains [skip ci] or [skip release]
     if: |
       !contains(github.event.head_commit.message, '[skip ci]') &&
