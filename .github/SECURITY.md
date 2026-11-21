@@ -115,7 +115,7 @@ settings = Settings(
 
 - [Organization Security Policy](https://github.com/williaby/.github/blob/main/SECURITY.md)
 - [Code of Conduct](https://github.com/williaby/.github/blob/main/CODE_OF_CONDUCT.md)
-- [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/Byron/data_ingestor)
+- [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/williaby/data_ingestor)
 
 ## Security Contact
 

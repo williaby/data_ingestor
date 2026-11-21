@@ -1,5 +1,10 @@
 # Multimodal RAG: Comparison Analysis
 
+> **Status note (2026-10-02)**: This is a historical planning document. The Foundry pipeline ends at chunks
+> (`RAGChunkSet.json`); embedding, vector storage, and search are out of scope for this repository, per
+> [pipeline-level-0.md](architecture/pipeline-level-0.md). Treat sections on those topics as superseded. For what is
+> built, see [Level 1](architecture/diagrams/level-1/index.md).
+
 **Document**: Comparison of Alejandro AO's Multimodal RAG Approach vs. Current Implementation
 **Date**: 2025-11-03
 **Author**: Byron Williams
