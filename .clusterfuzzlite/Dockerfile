@@ -5,7 +5,7 @@
 # builds this file from the repository root, then runs build.sh inside it to
 # compile the Atheris harnesses in fuzz/. The base image provides Python 3.11,
 # which Atheris requires (it does not support 3.12 or later).
-FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:21f6fab17ace4dc76e1c56de91ee95d3d03da021df94b41056ba036f6c6f55e9
+FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:ed78b82bdc5a9fde750bc83f50594042a8918f2ddb5a2f6e7b1a4b8ad79c893c
 
 # The build runs as root because the action mounts host directories at /out and
 # /work and the OSS-Fuzz compile step installs packages system-wide; this image
